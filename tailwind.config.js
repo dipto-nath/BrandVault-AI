@@ -66,6 +66,8 @@ module.exports = {
         sans: ["var(--font-geist)", "system-ui", "sans-serif"],
         serif: ["var(--font-newsreader)", "Georgia", "serif"],
         jakarta: ["var(--font-jakarta)", "system-ui", "sans-serif"],
+        rounded: ["var(--font-rounded)", "sans-serif"],
+        outfit: ["var(--font-outfit)", "sans-serif"],
       },
       fontSize: {
         xs: ["0.75rem", { lineHeight: "1.4" }],

@@ -11,6 +11,7 @@ interface WordsPullUpProps {
   className?: string;
   showAsterisk?: boolean;
   style?: React.CSSProperties;
+  stacked?: boolean;
 }
 
 export const WordsPullUp = ({
@@ -18,23 +19,28 @@ export const WordsPullUp = ({
   className = "",
   showAsterisk = false,
   style,
+  stacked = false,
 }: WordsPullUpProps) => {
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, { once: true });
   const words = text.split(" ");
 
   return (
-    <div ref={ref} className={`inline-flex flex-wrap ${className}`} style={style}>
+    <div
+      ref={ref}
+      className={`${stacked ? "inline-flex flex-col items-start" : "inline-flex flex-wrap"} ${className}`}
+      style={style}
+    >
       {words.map((word, i) => {
         const isLast = i === words.length - 1;
         return (
           <motion.span
             key={i}
-            initial={{ y: 20, opacity: 0 }}
+            initial={{ y: 24, opacity: 0 }}
             animate={isInView ? { y: 0, opacity: 1 } : {}}
-            transition={{ duration: 0.6, delay: i * 0.08, ease: [0.16, 1, 0.3, 1] }}
-            className="inline-block relative"
-            style={{ marginRight: isLast ? 0 : "0.25em" }}
+            transition={{ duration: 0.6, delay: i * 0.1, ease: [0.16, 1, 0.3, 1] }}
+            className={`inline-block relative ${stacked ? "leading-[0.84]" : ""}`}
+            style={{ marginRight: stacked || isLast ? 0 : "0.25em" }}
           >
             {word}
             {showAsterisk && isLast && (
@@ -187,12 +193,12 @@ const PrismaHero = ({
             {/* Wordmark Column: strictly sized so it never overflows */}
             <div className="col-span-12 lg:col-span-7 min-w-0">
               <h1
-                className="font-jakarta font-medium leading-[0.88] tracking-[-0.06em] select-none text-[#EFECE1]"
+                className="font-rounded font-bold leading-[0.82] tracking-[-0.04em] select-none text-[#EFECE1]"
                 style={{
-                  fontSize: "clamp(3.2rem, 6.8vw, 8.5rem)",
+                  fontSize: "clamp(3.8rem, 8.2vw, 9.8rem)",
                 }}
               >
-                <WordsPullUp text={title} showAsterisk={false} />
+                <WordsPullUp text={title} showAsterisk={false} stacked />
               </h1>
             </div>
 
