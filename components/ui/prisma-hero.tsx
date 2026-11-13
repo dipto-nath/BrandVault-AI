@@ -124,7 +124,7 @@ const defaultNavItems: NavItem[] = [
 ];
 
 const PrismaHero = ({
-  title = "BrandVault",
+  title = "BrandVault AI",
   description = "BrandVault AI is a pre-publication review gate for brand content. It verifies claims against approved knowledge, explains every finding with traceable citations, and keeps every decision accountable.",
   ctaText = "Explore Platform",
   ctaHref = "/overview",
@@ -187,25 +187,23 @@ const PrismaHero = ({
             {/* Wordmark Column: strictly sized so it never overflows */}
             <div className="col-span-12 lg:col-span-7 min-w-0">
               <h1
-                className="font-sans font-medium leading-[0.88] tracking-[-0.07em] select-none"
+                className="font-jakarta font-medium leading-[0.88] tracking-[-0.06em] select-none text-[#EFECE1]"
                 style={{
-                  fontSize: "clamp(3.5rem, 7.8vw, 9.5rem)",
-                  color: "#E1E0CC",
+                  fontSize: "clamp(3.2rem, 6.8vw, 8.5rem)",
                 }}
               >
-                <WordsPullUp text={title} showAsterisk />
+                <WordsPullUp text={title} showAsterisk={false} />
               </h1>
             </div>
 
-            {/* Content Column: cleanly positioned with dedicated width */}
-            <div className="col-span-12 lg:col-span-5 flex flex-col gap-4 sm:gap-5 pb-1 lg:pb-3 max-w-lg lg:ml-auto">
+            {/* Content Column: cleanly positioned with dedicated width, styled to match reference */}
+            <div className="col-span-12 lg:col-span-5 flex flex-col gap-5 sm:gap-6 pb-1 lg:pb-3 max-w-xl lg:ml-auto">
               
               <motion.p
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ duration: 0.8, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                className="text-xs sm:text-sm md:text-[15px] font-normal leading-relaxed"
-                style={{ color: "rgba(225, 224, 204, 0.85)" }}
+                className="font-jakarta text-[14.5px] sm:text-[16px] md:text-[17px] font-normal leading-[1.56] tracking-[-0.01em] text-[#EDEAE2]/90"
               >
                 {description}
               </motion.p>
@@ -214,30 +212,31 @@ const PrismaHero = ({
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ duration: 0.8, delay: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                className="flex items-center gap-3 pt-1"
+                className="flex items-center gap-3.5 pt-1 flex-wrap"
               >
                 <Link
                   href={ctaHref}
-                  className="group inline-flex items-center gap-2 self-start rounded-full py-1 pl-5 pr-1.5 text-xs sm:text-sm font-medium transition-all hover:gap-3"
-                  style={{ background: "#E1E0CC", color: "#17212B" }}
+                  className="group inline-flex items-center gap-3.5 self-start rounded-full py-2 pl-7 pr-2.5 font-jakarta text-[15px] sm:text-[16px] font-medium tracking-tight transition-all duration-200 hover:gap-4 shadow-sm"
+                  style={{ background: "#EDEAE1", color: "#0F141A" }}
                 >
-                  {ctaText}
-                  <span className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full bg-black transition-transform group-hover:scale-105">
-                    <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" style={{ color: "#E1E0CC" }} />
+                  <span>{ctaText}</span>
+                  <span className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-black transition-transform duration-200 group-hover:scale-105">
+                    <ArrowRight className="h-4 w-4 sm:h-4.5 sm:w-4.5 text-[#EDEAE1]" />
                   </span>
                 </Link>
 
                 {secondaryCtaText && (
                   <Link
                     href={secondaryCtaHref}
-                    className="inline-flex items-center justify-center px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-colors"
+                    className="inline-flex items-center justify-center px-6 py-3 rounded-full font-jakarta text-[14.5px] sm:text-[15.5px] font-medium tracking-tight transition-all duration-200"
                     style={{
-                      background: "rgba(225, 224, 204, 0.12)",
-                      color: "#E1E0CC",
-                      border: "1px solid rgba(225, 224, 204, 0.2)",
+                      background: "rgba(237, 234, 225, 0.12)",
+                      color: "#EDEAE1",
+                      border: "1px solid rgba(237, 234, 225, 0.22)",
+                      backdropFilter: "blur(8px)",
                     }}
-                    onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "rgba(225, 224, 204, 0.22)")}
-                    onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "rgba(225, 224, 204, 0.12)")}
+                    onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "rgba(237, 234, 225, 0.22)")}
+                    onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "rgba(237, 234, 225, 0.12)")}
                   >
                     {secondaryCtaText}
                   </Link>
