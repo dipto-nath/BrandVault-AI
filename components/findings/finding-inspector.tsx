@@ -352,3 +352,4 @@ export function FindingInspector({
     </div>
   );
 }
+
