@@ -1,6 +1,12 @@
 import { NextRequest } from 'next/server';
 import { withAuth, withAdmin, ok, fail } from '@/lib/api/handler';
 import { uploadDocument } from '@/lib/services/knowledge';
+import { storage } from '@/lib/db/adaptor';
+
+export const GET = withAuth(async (ctx) => {
+  const docs = await storage.listDocuments(ctx.workspaceId);
+  return ok(docs);
+});
 
 export const POST = withAdmin(async (ctx, req) => {
   const formData = await req.formData();

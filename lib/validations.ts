@@ -1,10 +1,14 @@
 import { z } from 'zod';
 
-export const ContentTypeSchema = z.enum([
+export const ContentTypeSchema = z.string().transform((val) => {
+  return val.toUpperCase().replace(/[\s-]+/g, '_');
+}).pipe(z.enum([
   'SOCIAL_MEDIA_POST', 'ADVERTISEMENT', 'PRODUCT_DESCRIPTION', 'WEBSITE_COPY', 'EMAIL_CAMPAIGN', 'PRESS_RELEASE', 'OTHER',
-]);
+]));
 
-export const ChannelSchema = z.enum(['WEBSITE', 'INSTAGRAM', 'LINKEDIN', 'EMAIL', 'ADVERTISING', 'OTHER']);
+export const ChannelSchema = z.string().transform((val) => {
+  return val.toUpperCase().replace(/[\s-]+/g, '_');
+}).pipe(z.enum(['WEBSITE', 'INSTAGRAM', 'LINKEDIN', 'EMAIL', 'ADVERTISING', 'OTHER']));
 
 export const CreateSubmissionSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200),

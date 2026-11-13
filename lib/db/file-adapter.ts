@@ -42,27 +42,177 @@ function loadStore(): Store {
 }
 function saveStore(store: Store): void { mkdirSync(DATA_DIR, { recursive: true }); writeFileSync(DATA_FILE, JSON.stringify(store, null, 2), 'utf8'); }
 function seed(store: Store): Store {
+  // Deduplicate workspaces if any were duplicated
+  if (store.workspaces.some((w) => w.id === DEMO_WORKSPACE_ID)) {
+    // Already seeded - deduplicate in-memory if needed
+    const seenWs = new Set<string>();
+    store.workspaces = store.workspaces.filter((w) => !seenWs.has(w.id) && seenWs.add(w.id));
+    const seenG = new Set<string>();
+    store.guidelines = store.guidelines.filter((g) => !seenG.has(g.rule_code) && seenG.add(g.rule_code));
+    const seenF = new Set<string>();
+    store.facts = store.facts.filter((f) => !seenF.has(f.fact_code) && seenF.add(f.fact_code));
+    return store;
+  }
+
   const t = now();
   const workspace: Workspace = { id: DEMO_WORKSPACE_ID, name: 'NexaTech', slug: DEMO_WORKSPACE_SLUG, description: 'Fictional Indian consumer technology company — demo workspace for BrandVault AI.', logo_url: null, created_at: t, updated_at: t };
   const profile: Profile = { id: DEMO_USER_ID, full_name: 'Demo Reviewer', email: 'demo@nexatech.example', created_at: t };
   const member: WorkspaceMember = { id: uid(), workspace_id: DEMO_WORKSPACE_ID, user_id: DEMO_USER_ID, role: 'ADMIN', created_at: t };
   store.workspaces.push(workspace); store.profiles.push(profile); store.members.push(member);
+
   const guidelines: BrandGuideline[] = [
-    { id: uid(), workspace_id: DEMO_WORKSPACE_ID, rule_code: 'RULE-TONE-001', title: 'Professional and helpful voice', description: 'Content must be clear, helpful and professional. Avoid exaggerated statements, aggressive urgency and unnecessary slang.', category: 'TONE', severity: 'MEDIUM', examples: { good: ['Our solution helps teams ship faster.'], bad: ["This is the world's best tool, buy now!"] }, active: true, version: 1, created_by: DEMO_USER_ID, created_at: t, updated_at: t },
-    { id: uid(), workspace_id: DEMO_WORKSPACE_ID, rule_code: 'RULE-TONE-002', title: 'Avoid unsupported superlatives', description: 'Statements such as "world\'s best", "number one" or "unmatched" must have approved evidence.', category: 'TONE', severity: 'HIGH', examples: { good: ['Rated 4.5 stars by independent reviewers.'], bad: ["The world's best smartphone for everyone."] }, active: true, version: 1, created_by: DEMO_USER_ID, created_at: t, updated_at: t },
-    { id: uid(), workspace_id: DEMO_WORKSPACE_ID, rule_code: 'RULE-TERM-001', title: 'Preferred terminology', description: 'Use "smart assistant" instead of "AI robot buddy".', category: 'TERMINOLOGY', severity: 'MEDIUM', examples: { good: ['The smart assistant helps you set reminders.'], bad: ['Our AI robot buddy is ready to help.'] }, active: true, version: 1, created_by: DEMO_USER_ID, created_at: t, updated_at: t },
-    { id: uid(), workspace_id: DEMO_WORKSPACE_ID, rule_code: 'RULE-CLAIM-001', title: 'Product specifications require evidence', description: 'All product performance claims must be consistent with active approved specifications.', category: 'CLAIMS', severity: 'HIGH', examples: { good: ['Up to 24 hours of battery life.'], bad: ['48 hours of battery life.'] }, active: true, version: 1, created_by: DEMO_USER_ID, created_at: t, updated_at: t },
-    { id: uid(), workspace_id: DEMO_WORKSPACE_ID, rule_code: 'RULE-CLAIM-002', title: 'Waterproof claims require explicit approval', description: 'Do not communicate waterproofing or water-resistance ratings without an approved source.', category: 'CLAIMS', severity: 'HIGH', examples: { good: [], bad: ['Completely waterproof.'] }, active: true, version: 1, created_by: DEMO_USER_ID, created_at: t, updated_at: t },
+    { id: '00000000-0000-0000-0001-000000000001', workspace_id: DEMO_WORKSPACE_ID, rule_code: 'RULE-TONE-001', title: 'Professional and helpful voice', description: 'Content must be clear, helpful and professional. Avoid exaggerated statements, aggressive urgency and unnecessary slang.', category: 'TONE', severity: 'MEDIUM', examples: { good: ['Our solution helps teams ship faster.'], bad: ["This is the world's best tool, buy now!"] }, active: true, version: 1, created_by: DEMO_USER_ID, created_at: t, updated_at: t },
+    { id: '00000000-0000-0000-0001-000000000002', workspace_id: DEMO_WORKSPACE_ID, rule_code: 'RULE-TONE-002', title: 'Avoid unsupported superlatives', description: 'Statements such as "world\'s best", "number one" or "unmatched" must have approved evidence.', category: 'TONE', severity: 'HIGH', examples: { good: ['Rated 4.5 stars by independent reviewers.'], bad: ["The world's best smartphone for everyone."] }, active: true, version: 1, created_by: DEMO_USER_ID, created_at: t, updated_at: t },
+    { id: '00000000-0000-0000-0001-000000000003', workspace_id: DEMO_WORKSPACE_ID, rule_code: 'RULE-TERM-001', title: 'Preferred terminology', description: 'Use "smart assistant" instead of "AI robot buddy".', category: 'TERMINOLOGY', severity: 'MEDIUM', examples: { good: ['The smart assistant helps you set reminders.'], bad: ['Our AI robot buddy is ready to help.'] }, active: true, version: 1, created_by: DEMO_USER_ID, created_at: t, updated_at: t },
+    { id: '00000000-0000-0000-0001-000000000004', workspace_id: DEMO_WORKSPACE_ID, rule_code: 'RULE-CLAIM-001', title: 'Product specifications require evidence', description: 'All product performance claims must be consistent with active approved specifications.', category: 'CLAIMS', severity: 'HIGH', examples: { good: ['Up to 24 hours of battery life.'], bad: ['48 hours of battery life.'] }, active: true, version: 1, created_by: DEMO_USER_ID, created_at: t, updated_at: t },
+    { id: '00000000-0000-0000-0001-000000000005', workspace_id: DEMO_WORKSPACE_ID, rule_code: 'RULE-CLAIM-002', title: 'Waterproof claims require explicit approval', description: 'Do not communicate waterproofing or water-resistance ratings without an approved source.', category: 'CLAIMS', severity: 'HIGH', examples: { good: [], bad: ['Completely waterproof.'] }, active: true, version: 1, created_by: DEMO_USER_ID, created_at: t, updated_at: t },
   ];
   store.guidelines.push(...guidelines);
+
   const facts: ApprovedFact[] = [
-    { id: uid(), workspace_id: DEMO_WORKSPACE_ID, fact_code: 'FACT-001', title: 'Battery life', fact_text: 'NexaTech Nova offers up to 24 hours of battery life under specified test conditions.', entity_name: 'NexaTech Nova', source_document_id: null, source_name: 'Nova Product Specification', source_reference: 'Nova Product Specification', source_excerpt: 'Up to 24 hours of battery life under specified test conditions.', verification_status: 'APPROVED', effective_from: null, expires_at: null, notes: null, created_by: DEMO_USER_ID, created_at: t, updated_at: t },
-    { id: uid(), workspace_id: DEMO_WORKSPACE_ID, fact_code: 'FACT-002', title: 'Device weight', fact_text: 'NexaTech Nova weighs 185 grams.', entity_name: 'NexaTech Nova', source_document_id: null, source_name: 'Nova Product Specification', source_reference: 'Nova Product Specification', source_excerpt: '185 grams.', verification_status: 'APPROVED', effective_from: null, expires_at: null, notes: null, created_by: DEMO_USER_ID, created_at: t, updated_at: t },
-    { id: uid(), workspace_id: DEMO_WORKSPACE_ID, fact_code: 'FACT-003', title: 'Materials', fact_text: 'The NexaTech Nova chassis uses recycled aluminium.', entity_name: 'NexaTech Nova', source_document_id: null, source_name: 'Sustainability Fact Sheet', source_reference: 'Sustainability Fact Sheet', source_excerpt: 'Recycled aluminium chassis.', verification_status: 'APPROVED', effective_from: null, expires_at: null, notes: null, created_by: DEMO_USER_ID, created_at: t, updated_at: t },
-    { id: uid(), workspace_id: DEMO_WORKSPACE_ID, fact_code: 'FACT-004', title: 'Waterproofing', fact_text: 'No approved waterproof rating is currently documented.', entity_name: 'NexaTech Nova', source_document_id: null, source_name: 'Product Claims Register', source_reference: 'Product Claims Register', source_excerpt: 'No waterproof rating documented.', verification_status: 'APPROVED', effective_from: null, expires_at: null, notes: null, created_by: DEMO_USER_ID, created_at: t, updated_at: t },
-    { id: uid(), workspace_id: DEMO_WORKSPACE_ID, fact_code: 'FACT-005', title: 'Launch date', fact_text: 'The NexaTech Nova launch is scheduled for 15 December 2026.', entity_name: 'NexaTech Nova', source_document_id: null, source_name: 'NexaTech Launch Plan', source_reference: 'NexaTech Launch Plan', source_excerpt: 'Launch scheduled for 15 December 2026.', verification_status: 'APPROVED', effective_from: null, expires_at: null, notes: null, created_by: DEMO_USER_ID, created_at: t, updated_at: t },
+    { id: '00000000-0000-0000-0002-000000000001', workspace_id: DEMO_WORKSPACE_ID, fact_code: 'FACT-001', title: 'Battery life', fact_text: 'NexaTech Nova offers up to 24 hours of battery life under specified test conditions.', entity_name: 'NexaTech Nova', source_document_id: null, source_name: 'Nova Product Specification', source_reference: 'Nova Product Specification', source_excerpt: 'Up to 24 hours of battery life under specified test conditions.', verification_status: 'APPROVED', effective_from: null, expires_at: null, notes: null, created_by: DEMO_USER_ID, created_at: t, updated_at: t },
+    { id: '00000000-0000-0000-0002-000000000002', workspace_id: DEMO_WORKSPACE_ID, fact_code: 'FACT-002', title: 'Device weight', fact_text: 'NexaTech Nova weighs 185 grams.', entity_name: 'NexaTech Nova', source_document_id: null, source_name: 'Nova Product Specification', source_reference: 'Nova Product Specification', source_excerpt: '185 grams.', verification_status: 'APPROVED', effective_from: null, expires_at: null, notes: null, created_by: DEMO_USER_ID, created_at: t, updated_at: t },
+    { id: '00000000-0000-0000-0002-000000000003', workspace_id: DEMO_WORKSPACE_ID, fact_code: 'FACT-003', title: 'Materials', fact_text: 'The NexaTech Nova chassis uses recycled aluminium.', entity_name: 'NexaTech Nova', source_document_id: null, source_name: 'Sustainability Fact Sheet', source_reference: 'Sustainability Fact Sheet', source_excerpt: 'Recycled aluminium chassis.', verification_status: 'APPROVED', effective_from: null, expires_at: null, notes: null, created_by: DEMO_USER_ID, created_at: t, updated_at: t },
+    { id: '00000000-0000-0000-0002-000000000004', workspace_id: DEMO_WORKSPACE_ID, fact_code: 'FACT-004', title: 'Waterproofing', fact_text: 'No approved waterproof rating is currently documented.', entity_name: 'NexaTech Nova', source_document_id: null, source_name: 'Product Claims Register', source_reference: 'Product Claims Register', source_excerpt: 'No waterproof rating documented.', verification_status: 'APPROVED', effective_from: null, expires_at: null, notes: null, created_by: DEMO_USER_ID, created_at: t, updated_at: t },
+    { id: '00000000-0000-0000-0002-000000000005', workspace_id: DEMO_WORKSPACE_ID, fact_code: 'FACT-005', title: 'Launch date', fact_text: 'The NexaTech Nova launch is scheduled for 15 December 2026.', entity_name: 'NexaTech Nova', source_document_id: null, source_name: 'NexaTech Launch Plan', source_reference: 'NexaTech Launch Plan', source_excerpt: 'Launch scheduled for 15 December 2026.', verification_status: 'APPROVED', effective_from: null, expires_at: null, notes: null, created_by: DEMO_USER_ID, created_at: t, updated_at: t },
   ];
   store.facts.push(...facts);
+
+  // Seed demo submissions if empty
+  if (store.submissions.length === 0) {
+    const sub1: ContentSubmission = {
+      id: '00000000-0000-0000-0003-000000000001',
+      workspace_id: DEMO_WORKSPACE_ID,
+      title: 'Nova Product Launch — Instagram Post',
+      content_type: 'Social media post',
+      channel: 'Instagram',
+      original_content: 'Introducing the NexaTech Nova. Up to 24 hours of battery life. Weighing just 185g, crafted from recycled aluminium. Available 15 December 2026.',
+      current_content: 'Introducing the NexaTech Nova. Up to 24 hours of battery life. Weighing just 185g, crafted from recycled aluminium. Available 15 December 2026.',
+      status: 'APPROVED',
+      risk_level: 'LOW',
+      reviewer_id: DEMO_USER_ID,
+      created_by: DEMO_USER_ID,
+      created_at: t,
+      updated_at: t,
+      submitted_at: t,
+    };
+    const sub2: ContentSubmission = {
+      id: '00000000-0000-0000-0003-000000000002',
+      workspace_id: DEMO_WORKSPACE_ID,
+      title: 'Nova Battery Campaign — Email',
+      content_type: 'Email campaign',
+      channel: 'Email',
+      original_content: 'Experience three full days of battery life with NexaTech Nova. The world\'s most efficient smartphone — available soon.',
+      current_content: 'Experience three full days of battery life with NexaTech Nova. The world\'s most efficient smartphone — available soon.',
+      status: 'REJECTED',
+      risk_level: 'HIGH',
+      reviewer_id: DEMO_USER_ID,
+      created_by: DEMO_USER_ID,
+      created_at: t,
+      updated_at: t,
+      submitted_at: t,
+    };
+    const sub3: ContentSubmission = {
+      id: '00000000-0000-0000-0003-000000000003',
+      workspace_id: DEMO_WORKSPACE_ID,
+      title: 'Nova Product Page — Website Copy',
+      content_type: 'Website copy',
+      channel: 'Website',
+      original_content: 'Meet NexaTech Nova. The smart assistant built in helps you stay connected without lifting a finger. Sustainable by design, capable by nature.',
+      current_content: 'Meet NexaTech Nova. The smart assistant built in helps you stay connected without lifting a finger. Sustainable by design, capable by nature.',
+      status: 'NEEDS_REVIEW',
+      risk_level: 'MEDIUM',
+      reviewer_id: null,
+      created_by: DEMO_USER_ID,
+      created_at: t,
+      updated_at: t,
+      submitted_at: t,
+    };
+    store.submissions.push(sub1, sub2, sub3);
+
+    // Seed versions
+    store.versions.push(
+      { id: uid(), workspace_id: DEMO_WORKSPACE_ID, submission_id: sub1.id, version_number: 1, content: sub1.original_content, created_by: DEMO_USER_ID, created_at: t, change_reason: 'Initial submission' },
+      { id: uid(), workspace_id: DEMO_WORKSPACE_ID, submission_id: sub2.id, version_number: 1, content: sub2.original_content, created_by: DEMO_USER_ID, created_at: t, change_reason: 'Initial submission' },
+      { id: uid(), workspace_id: DEMO_WORKSPACE_ID, submission_id: sub3.id, version_number: 1, content: sub3.original_content, created_by: DEMO_USER_ID, created_at: t, change_reason: 'Initial submission' }
+    );
+
+    // Seed review decisions
+    store.reviewDecisions.push(
+      { id: uid(), workspace_id: DEMO_WORKSPACE_ID, submission_id: sub1.id, reviewer_id: DEMO_USER_ID, decision: 'APPROVED', comment: 'All claims verified against approved specifications. Content approved for publication.', created_at: t },
+      { id: uid(), workspace_id: DEMO_WORKSPACE_ID, submission_id: sub2.id, reviewer_id: DEMO_USER_ID, decision: 'REJECTED', comment: 'Battery claim (three full days) contradicts the approved 24-hour specification. Superlative "world\'s most efficient" is unsupported. Requires significant revision.', created_at: t }
+    );
+
+    // Seed claims and findings for sub1 & sub2
+    store.claims.push(
+      { id: uid(), workspace_id: DEMO_WORKSPACE_ID, submission_id: sub1.id, analysis_run_id: uid(), claim_text: 'Up to 24 hours of battery life.', claim_type: 'PRODUCT_SPECIFICATION', verification_status: 'SUPPORTED', explanation: 'Matches FACT-001 (up to 24 hours under test conditions).', confidence: 0.96, created_at: t },
+      { id: uid(), workspace_id: DEMO_WORKSPACE_ID, submission_id: sub1.id, analysis_run_id: uid(), claim_text: 'Weighing just 185g.', claim_type: 'PRODUCT_SPECIFICATION', verification_status: 'SUPPORTED', explanation: 'Matches FACT-002 (weighs 185 grams).', confidence: 0.95, created_at: t },
+      { id: uid(), workspace_id: DEMO_WORKSPACE_ID, submission_id: sub2.id, analysis_run_id: uid(), claim_text: 'Three full days of battery life.', claim_type: 'PRODUCT_SPECIFICATION', verification_status: 'CONTRADICTED', explanation: 'Approved spec states up to 24 hours.', confidence: 0.95, created_at: t }
+    );
+
+    const f1Id = uid();
+    store.findings.push({
+      id: f1Id,
+      workspace_id: DEMO_WORKSPACE_ID,
+      submission_id: sub2.id,
+      analysis_run_id: uid(),
+      claim_id: null,
+      finding_type: 'FACTUAL_CONTRADICTION',
+      severity: 'HIGH',
+      rule_id: '00000000-0000-0000-0001-000000000004',
+      title: 'Battery life claim is contradicted',
+      excerpt: 'three full days of battery life',
+      explanation: 'Conflicts directly with approved Nova Product Specification (24 hours).',
+      suggested_correction: 'Up to 24 hours of battery life under specified test conditions.',
+      confidence: 0.96,
+      status: 'OPEN',
+      created_at: t,
+    });
+
+    store.findingEvidence.push({
+      id: uid(),
+      finding_id: f1Id,
+      approved_fact_id: '00000000-0000-0000-0002-000000000001',
+      source_document_id: null,
+      evidence_excerpt: 'NexaTech Nova offers up to 24 hours of battery life under specified test conditions.',
+      relevance_explanation: 'Nova Product Specification: 24 hours maximum test battery life.',
+      evidence_relation: 'CONTRADICTS',
+      created_at: t,
+    });
+
+    // Seed feedback for guideline intelligence loop
+    store.findingFeedback.push({
+      id: uid(),
+      workspace_id: DEMO_WORKSPACE_ID,
+      finding_id: f1Id,
+      user_id: DEMO_USER_ID,
+      feedback_type: 'OVERRIDDEN',
+      reason: 'AI misinterpreted context for promotional teaser, but spec is strictly 24 hours.',
+      created_at: t,
+    });
+
+    // Seed guideline suggestion
+    store.guidelineSuggestions.push({
+      id: uid(),
+      workspace_id: DEMO_WORKSPACE_ID,
+      guideline_id: '00000000-0000-0000-0001-000000000004',
+      title: 'Clarify battery measurement conditions for email marketing',
+      suggested_change: 'Explicitly require standard disclaimer "under specified test conditions" whenever battery metrics are cited in email or digital campaigns.',
+      supporting_feedback_ids: [],
+      status: 'PENDING',
+      created_by: DEMO_USER_ID,
+      reviewed_by: null,
+      created_at: t,
+      reviewed_at: null,
+    });
+
+    // Seed audit logs
+    store.auditLogs.push(
+      { id: uid(), workspace_id: DEMO_WORKSPACE_ID, user_id: DEMO_USER_ID, entity_type: 'content_submission', entity_id: sub1.id, action: 'REVIEW_APPROVED', old_value: { status: 'NEEDS_REVIEW' }, new_value: { status: 'APPROVED' }, metadata: null, created_at: t },
+      { id: uid(), workspace_id: DEMO_WORKSPACE_ID, user_id: DEMO_USER_ID, entity_type: 'content_submission', entity_id: sub2.id, action: 'REVIEW_REJECTED', old_value: { status: 'NEEDS_REVIEW' }, new_value: { status: 'REJECTED' }, metadata: null, created_at: t }
+    );
+  }
+
   return store;
 }
 let storeCache: Store | null = null;

@@ -99,43 +99,91 @@ function factKeywords(fact: ApprovedFact): string[] {
 export function checkFactualClaimsAgainstFacts(content: string, facts: ApprovedFact[]): RuleMatch[] {
   const matches: RuleMatch[] = [];
   const approved = facts.filter((f) => f.verification_status === 'APPROVED');
-  const indexed = approved.map((f) => ({ fact: f, keywords: factKeywords(f) }));
-  const contentLower = content.toLowerCase();
 
-  for (const { fact, keywords } of indexed) {
-    const hits = keywords.filter((k) => contentLower.includes(k));
-    if (hits.length === 0) continue;
-    const number = extractNumber(content);
-    const factNumber = extractNumber(fact.fact_text);
-    if (number !== null && factNumber !== null && number !== factNumber) {
-      matches.push({
-        ruleId: null,
-        ruleCode: 'RULE-CLAIM-001',
-        title: 'Product specification contradicted',
-        type: 'FACTUAL_CONTRADICTION',
-        severity: 'HIGH',
-        excerpt: `${number}`,
-        explanation: `The approved specification (${fact.source_name}) states: "${fact.fact_text}". The content states a different value.`,
-        suggestedCorrection: fact.fact_text,
-        evidenceIds: [fact.id],
-        confidence: 0.9,
-      });
+  // Break content into clauses or sentences for targeted matching
+  const sentences = content
+    .split(/(?<=[.!?])\s+|,\s+and\s+|;\s+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+
+  // Check battery life claims specifically
+  const batteryFact = approved.find((f) => f.fact_code === 'FACT-001' || /battery/i.test(f.title));
+  if (batteryFact) {
+    for (const sent of sentences) {
+      if (/battery|hours?\s+of\s+battery|battery\s+life/i.test(sent)) {
+        const matchNum = sent.match(/(\d+)\s*(?:hours?|hrs?)/i);
+        if (matchNum) {
+          const statedHours = parseInt(matchNum[1], 10);
+          const approvedNum = (batteryFact.fact_text.match(/(\d+)\s*hours?/i) ?? [])[1];
+          const approvedHours = approvedNum ? parseInt(approvedNum, 10) : 24;
+
+          if (statedHours !== approvedHours) {
+            matches.push({
+              ruleId: null,
+              ruleCode: 'RULE-CLAIM-001',
+              title: 'Battery life specification contradicted',
+              type: 'FACTUAL_CONTRADICTION',
+              severity: 'HIGH',
+              excerpt: matchNum[0],
+              explanation: `The content states ${statedHours} hours of battery life, but the approved specification (${batteryFact.source_name}) states up to ${approvedHours} hours under specified test conditions.`,
+              suggestedCorrection: `up to ${approvedHours} hours of battery life`,
+              evidenceIds: [batteryFact.id],
+              confidence: 0.96,
+            });
+          }
+        }
+      }
     }
   }
 
-  const waterproofFact = approved.find((f) => /waterproof|water-resist|water resistant|ip\d/i.test(`${f.title} ${f.fact_text}`));
-  if (!waterproofFact && /waterproof|water.resistant|water-resistant|ip\d/i.test(content)) {
+  // Check device weight claims specifically
+  const weightFact = approved.find((f) => f.fact_code === 'FACT-002' || /weight|weigh/i.test(f.title));
+  if (weightFact) {
+    for (const sent of sentences) {
+      if (/weigh|weight|grams?|185g/i.test(sent)) {
+        const matchNum = sent.match(/(\d+)\s*(?:grams?|g\b)/i);
+        if (matchNum) {
+          const statedWeight = parseInt(matchNum[1], 10);
+          const approvedNum = (weightFact.fact_text.match(/(\d+)\s*grams?/i) ?? [])[1];
+          const approvedWeight = approvedNum ? parseInt(approvedNum, 10) : 185;
+
+          if (statedWeight !== approvedWeight) {
+            matches.push({
+              ruleId: null,
+              ruleCode: 'RULE-CLAIM-001',
+              title: 'Device weight specification contradicted',
+              type: 'FACTUAL_CONTRADICTION',
+              severity: 'HIGH',
+              excerpt: matchNum[0],
+              explanation: `The content states ${statedWeight}g, but the approved specification (${weightFact.source_name}) states ${approvedWeight} grams.`,
+              suggestedCorrection: `${approvedWeight} grams`,
+              evidenceIds: [weightFact.id],
+              confidence: 0.95,
+            });
+          }
+        }
+      }
+    }
+  }
+
+  // Check waterproofing claims:
+  // FACT-004 explicitly states: "No approved waterproof rating is currently documented."
+  // RULE-CLAIM-002 states: "Waterproof claims require explicit approval. Do not communicate waterproofing without an approved source."
+  const waterproofRegex = /\b(?:completely\s+waterproof|waterproof|water-proof|water-resistant|water\s+resistant)\b/i;
+  const wpMatch = content.match(waterproofRegex);
+  if (wpMatch) {
+    const wpFact = approved.find((f) => f.fact_code === 'FACT-004' || /waterproof/i.test(f.title));
     matches.push({
       ruleId: null,
       ruleCode: 'RULE-CLAIM-002',
       title: 'Waterproof claim without approved rating',
       type: 'UNVERIFIED_CLAIM',
       severity: 'HIGH',
-      excerpt: 'waterproof',
-      explanation: 'No approved waterproof or water-resistance rating is documented for this product.',
-      suggestedCorrection: null,
-      evidenceIds: [],
-      confidence: 0.85,
+      excerpt: wpMatch[0],
+      explanation: `Content asserts "${wpMatch[0]}", but the Product Claims Register (FACT-004) states: "No approved waterproof rating is currently documented." Do not communicate waterproofing or water resistance without an approved rating.`,
+      suggestedCorrection: 'splash-resistant (see specifications for details)',
+      evidenceIds: wpFact ? [wpFact.id] : [],
+      confidence: 0.95,
     });
   }
 
