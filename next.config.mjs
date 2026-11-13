@@ -8,7 +8,7 @@ const nextConfig = {
   experimental: {},
   serverExternalPackages: ["pdf-parse", "mammoth"],
   images: {
-    domains: [],
+    domains: ["images.unsplash.com"],
   },
   webpack: (config) => {
     config.resolve.alias['@'] = path.resolve(__dirname);

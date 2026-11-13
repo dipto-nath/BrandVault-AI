@@ -1,0 +1,263 @@
+"use client";
+
+import { motion, useInView } from "framer-motion";
+import { ArrowRight } from "lucide-react";
+import Link from "next/link";
+import { useRef } from "react";
+
+/* ---------------- WordsPullUp ---------------- */
+interface WordsPullUpProps {
+  text: string;
+  className?: string;
+  showAsterisk?: boolean;
+  style?: React.CSSProperties;
+}
+
+export const WordsPullUp = ({
+  text,
+  className = "",
+  showAsterisk = false,
+  style,
+}: WordsPullUpProps) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const isInView = useInView(ref, { once: true });
+  const words = text.split(" ");
+
+  return (
+    <div ref={ref} className={`inline-flex flex-wrap ${className}`} style={style}>
+      {words.map((word, i) => {
+        const isLast = i === words.length - 1;
+        return (
+          <motion.span
+            key={i}
+            initial={{ y: 20, opacity: 0 }}
+            animate={isInView ? { y: 0, opacity: 1 } : {}}
+            transition={{ duration: 0.6, delay: i * 0.08, ease: [0.16, 1, 0.3, 1] }}
+            className="inline-block relative"
+            style={{ marginRight: isLast ? 0 : "0.25em" }}
+          >
+            {word}
+            {showAsterisk && isLast && (
+              <span
+                className="absolute top-[0.1em] -right-[0.38em] text-[0.42em] leading-none select-none font-normal"
+                style={{ color: "#E1E0CC" }}
+              >
+                *
+              </span>
+            )}
+          </motion.span>
+        );
+      })}
+    </div>
+  );
+};
+
+/* ---------------- WordsPullUpMultiStyle ---------------- */
+interface Segment {
+  text: string;
+  className?: string;
+}
+
+interface WordsPullUpMultiStyleProps {
+  segments: Segment[];
+  className?: string;
+  style?: React.CSSProperties;
+}
+
+export const WordsPullUpMultiStyle = ({
+  segments,
+  className = "",
+  style,
+}: WordsPullUpMultiStyleProps) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const isInView = useInView(ref, { once: true });
+
+  const words: { word: string; className?: string }[] = [];
+  segments.forEach((seg) => {
+    seg.text.split(" ").forEach((w) => {
+      if (w) words.push({ word: w, className: seg.className });
+    });
+  });
+
+  return (
+    <div ref={ref} className={`inline-flex flex-wrap justify-center ${className}`} style={style}>
+      {words.map((w, i) => (
+        <motion.span
+          key={i}
+          initial={{ y: 20, opacity: 0 }}
+          animate={isInView ? { y: 0, opacity: 1 } : {}}
+          transition={{ duration: 0.6, delay: i * 0.08, ease: [0.16, 1, 0.3, 1] }}
+          className={`inline-block ${w.className ?? ""}`}
+          style={{ marginRight: "0.25em" }}
+        >
+          {w.word}
+        </motion.span>
+      ))}
+    </div>
+  );
+};
+
+/* ---------------- Hero ---------------- */
+export interface NavItem {
+  label: string;
+  href: string;
+}
+
+export interface PrismaHeroProps {
+  title?: string;
+  description?: string;
+  ctaText?: string;
+  ctaHref?: string;
+  secondaryCtaText?: string;
+  secondaryCtaHref?: string;
+  navItems?: NavItem[];
+  videoSrc?: string;
+}
+
+const defaultNavItems: NavItem[] = [
+  { label: "Overview", href: "/overview" },
+  { label: "Reviews", href: "/reviews" },
+  { label: "Knowledge", href: "/knowledge" },
+  { label: "Guidelines", href: "/guidelines" },
+  { label: "Passports", href: "/passports" },
+  { label: "Insights", href: "/insights" },
+];
+
+const PrismaHero = ({
+  title = "BrandVault",
+  description = "BrandVault AI is a pre-publication review gate for brand content. It verifies claims against approved knowledge, explains every finding with traceable citations, and keeps every decision accountable.",
+  ctaText = "Explore Platform",
+  ctaHref = "/overview",
+  secondaryCtaText = "Open Demo",
+  secondaryCtaHref = "/demo",
+  navItems = defaultNavItems,
+  videoSrc = "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260405_170732_8a9ccda6-5cff-4628-b164-059c500a2b41.mp4",
+}: PrismaHeroProps) => {
+  return (
+    <section className="h-screen w-full">
+      <div className="relative h-full w-full overflow-hidden rounded-2xl md:rounded-[2rem] bg-[#141210]">
+        
+        {/* Background video */}
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 h-full w-full object-cover"
+          src={videoSrc}
+        />
+
+        {/* Noise overlay */}
+        <div
+          className="pointer-events-none absolute inset-0 opacity-60 mix-blend-overlay"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.08'/%3E%3C/svg%3E")`,
+          }}
+        />
+
+        {/* Gradient overlay */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/70" />
+
+        {/* Navbar */}
+        <nav className="absolute left-1/2 top-0 z-20 -translate-x-1/2">
+          <div className="flex items-center gap-2 sm:gap-4 md:gap-8 rounded-b-2xl bg-black/95 backdrop-blur-sm px-4 py-2.5 md:rounded-b-3xl md:px-8">
+            <Link
+              href="/"
+              className="flex items-center gap-2 pr-2 sm:pr-3 border-r border-white/15"
+            >
+              <div className="w-2 h-2 rounded-full bg-[#52795F]" />
+              <span className="text-[11px] font-bold tracking-tight text-[#E1E0CC]">
+                BrandVault
+              </span>
+            </Link>
+
+            {navItems.map((item) => (
+              <Link
+                key={item.label}
+                href={item.href}
+                className="text-[10px] sm:text-xs md:text-sm transition-colors whitespace-nowrap"
+                style={{ color: "rgba(225, 224, 204, 0.75)" }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "#E1E0CC")}
+                onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(225, 224, 204, 0.75)")}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        </nav>
+
+        {/* Hero content */}
+        <div className="absolute bottom-0 left-0 right-0 px-5 pb-6 sm:px-8 sm:pb-8 md:px-12 md:pb-12 lg:px-14 lg:pb-12">
+          <div className="grid grid-cols-12 items-end gap-6 lg:gap-8">
+            
+            {/* Wordmark Column: strictly sized so it never overflows */}
+            <div className="col-span-12 lg:col-span-7 min-w-0">
+              <h1
+                className="font-sans font-medium leading-[0.88] tracking-[-0.07em] select-none"
+                style={{
+                  fontSize: "clamp(3.5rem, 7.8vw, 9.5rem)",
+                  color: "#E1E0CC",
+                }}
+              >
+                <WordsPullUp text={title} showAsterisk />
+              </h1>
+            </div>
+
+            {/* Content Column: cleanly positioned with dedicated width */}
+            <div className="col-span-12 lg:col-span-5 flex flex-col gap-4 sm:gap-5 pb-1 lg:pb-3 max-w-lg lg:ml-auto">
+              
+              <motion.p
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.8, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                className="text-xs sm:text-sm md:text-[15px] font-normal leading-relaxed"
+                style={{ color: "rgba(225, 224, 204, 0.85)" }}
+              >
+                {description}
+              </motion.p>
+
+              <motion.div
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.8, delay: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                className="flex items-center gap-3 pt-1"
+              >
+                <Link
+                  href={ctaHref}
+                  className="group inline-flex items-center gap-2 self-start rounded-full py-1 pl-5 pr-1.5 text-xs sm:text-sm font-medium transition-all hover:gap-3"
+                  style={{ background: "#E1E0CC", color: "#17212B" }}
+                >
+                  {ctaText}
+                  <span className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full bg-black transition-transform group-hover:scale-105">
+                    <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" style={{ color: "#E1E0CC" }} />
+                  </span>
+                </Link>
+
+                {secondaryCtaText && (
+                  <Link
+                    href={secondaryCtaHref}
+                    className="inline-flex items-center justify-center px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-colors"
+                    style={{
+                      background: "rgba(225, 224, 204, 0.12)",
+                      color: "#E1E0CC",
+                      border: "1px solid rgba(225, 224, 204, 0.2)",
+                    }}
+                    onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "rgba(225, 224, 204, 0.22)")}
+                    onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "rgba(225, 224, 204, 0.12)")}
+                  >
+                    {secondaryCtaText}
+                  </Link>
+                )}
+              </motion.div>
+
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+  );
+};
+
+export { PrismaHero };
+export default PrismaHero;
