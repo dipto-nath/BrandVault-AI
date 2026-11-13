@@ -7,19 +7,23 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 }
 
 export function Button({ className, variant = 'primary', size = 'default', ...props }: ButtonProps) {
-  const base = 'btn font-sans transition-colors';
+  const base = 'btn font-sans transition-all';
   const variants: Record<string, string> = {
     primary: 'btn-primary',
-    accent: 'btn-accent',
+    accent:  'btn-accent',
     outline: 'btn-outline',
-    ghost: 'btn-ghost',
-    danger: 'btn-outline text-critical hover:bg-critical-soft hover:text-critical border-critical',
+    ghost:   'btn-ghost',
+    danger:  'btn-outline',
   };
   const sizes: Record<string, string> = {
-    default: 'btn',
-    sm: 'btn-sm',
+    default: '',
+    sm:      'btn-sm',
   };
   return (
-    <button className={cn(base, variants[variant], sizes[size], className)} {...props} />
+    <button
+      className={cn(base, variants[variant], sizes[size], className)}
+      style={variant === 'danger' ? { color: 'var(--critical)', borderColor: 'rgba(224,82,82,0.4)' } : undefined}
+      {...props}
+    />
   );
 }

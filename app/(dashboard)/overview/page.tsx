@@ -374,22 +374,24 @@ function StatCard({
   badgeColor?: string;
 }) {
   return (
-    <Card className="p-4 bg-surface border border-border">
+    <div className="card p-5 relative overflow-hidden flex flex-col justify-between min-h-[120px]">
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs font-semibold text-ink-secondary uppercase tracking-wider">
           {title}
         </span>
-        <div className="w-7 h-7 rounded-md bg-surface-subtle flex items-center justify-center">
+        <div className="w-8 h-8 rounded-lg bg-surface-subtle flex items-center justify-center shrink-0">
           {icon}
         </div>
       </div>
-      <div className="text-2xl font-bold tnums text-ink-dark mb-0.5">
-        {value}
+      <div>
+        <div className={`text-2xl sm:text-3xl font-bold font-sans tnums leading-tight ${badgeColor || 'text-ink-dark'}`}>
+          {value}
+        </div>
+        <div className="text-[11px] text-ink-secondary truncate mt-1">
+          {description}
+        </div>
       </div>
-      <div className="text-[11px] text-ink-secondary truncate">
-        {description}
-      </div>
-    </Card>
+    </div>
   );
 }
 

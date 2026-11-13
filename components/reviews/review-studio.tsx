@@ -250,13 +250,13 @@ export function ReviewStudio({
           onClick={() => setActiveTab('findings')}
           className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${
             activeTab === 'findings'
-              ? 'border-accent text-accent'
+              ? 'border-accent text-ink-dark font-bold'
               : 'border-transparent text-ink-secondary hover:text-ink-dark'
           }`}
         >
           <FileText className="w-4 h-4" />
           <span>Brand Findings</span>
-          <span className="px-1.5 py-0.2 rounded-full text-xs bg-surface-subtle">
+          <span className="px-2 py-0.5 rounded-full text-xs bg-surface-subtle font-semibold text-ink-dark">
             {findings.length}
           </span>
         </button>
@@ -265,13 +265,13 @@ export function ReviewStudio({
           onClick={() => setActiveTab('claims')}
           className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${
             activeTab === 'claims'
-              ? 'border-accent text-accent'
+              ? 'border-accent text-ink-dark font-bold'
               : 'border-transparent text-ink-secondary hover:text-ink-dark'
           }`}
         >
           <ShieldAlert className="w-4 h-4" />
           <span>Factual Claims</span>
-          <span className="px-1.5 py-0.2 rounded-full text-xs bg-surface-subtle">
+          <span className="px-2 py-0.5 rounded-full text-xs bg-surface-subtle font-semibold text-ink-dark">
             {claims.length}
           </span>
         </button>
@@ -280,7 +280,7 @@ export function ReviewStudio({
           onClick={() => setActiveTab('diff')}
           className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${
             activeTab === 'diff'
-              ? 'border-accent text-accent'
+              ? 'border-accent text-ink-dark font-bold'
               : 'border-transparent text-ink-secondary hover:text-ink-dark'
           }`}
         >
@@ -292,7 +292,7 @@ export function ReviewStudio({
           onClick={() => setActiveTab('approval')}
           className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${
             activeTab === 'approval'
-              ? 'border-accent text-accent'
+              ? 'border-accent text-ink-dark font-bold'
               : 'border-transparent text-ink-secondary hover:text-ink-dark'
           }`}
         >
