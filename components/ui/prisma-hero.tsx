@@ -130,7 +130,7 @@ const defaultNavItems: NavItem[] = [
 ];
 
 const PrismaHero = ({
-  title = "BrandVault AI",
+  title = "BrandVault",
   description = "BrandVault AI is a pre-publication review gate for brand content. It verifies claims against approved knowledge, explains every finding with traceable citations, and keeps every decision accountable.",
   ctaText = "Explore Platform",
   ctaHref = "/overview",
