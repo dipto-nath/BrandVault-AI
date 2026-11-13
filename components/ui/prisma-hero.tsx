@@ -158,27 +158,21 @@ const PrismaHero = ({
         {/* Gradient overlay */}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/70" />
 
-        {/* Navbar */}
-        <nav className="absolute left-1/2 top-0 z-20 -translate-x-1/2">
-          <div className="flex items-center gap-2 sm:gap-4 md:gap-8 rounded-b-2xl bg-black/95 backdrop-blur-sm px-4 py-2.5 md:rounded-b-3xl md:px-8">
+        {/* Navbar — styled to precisely match the clean, warm-ivory editorial reference */}
+        <nav className="absolute left-1/2 top-0 z-20 -translate-x-1/2 max-w-[96vw]">
+          <div className="flex items-center gap-5 sm:gap-8 md:gap-12 lg:gap-14 rounded-b-[24px] md:rounded-b-[28px] bg-black px-6 sm:px-9 md:px-12 py-3.5 md:py-4.5 font-jakarta overflow-x-auto no-scrollbar">
             <Link
               href="/"
-              className="flex items-center gap-2 pr-2 sm:pr-3 border-r border-white/15"
+              className="text-[14px] sm:text-[15px] md:text-[16px] font-medium tracking-tight text-[#EFECE1] hover:text-white transition-colors duration-200 whitespace-nowrap"
             >
-              <div className="w-2 h-2 rounded-full bg-[#52795F]" />
-              <span className="text-[11px] font-bold tracking-tight text-[#E1E0CC]">
-                BrandVault
-              </span>
+              BrandVault
             </Link>
 
             {navItems.map((item) => (
               <Link
                 key={item.label}
                 href={item.href}
-                className="text-[10px] sm:text-xs md:text-sm transition-colors whitespace-nowrap"
-                style={{ color: "rgba(225, 224, 204, 0.75)" }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "#E1E0CC")}
-                onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(225, 224, 204, 0.75)")}
+                className="text-[13px] sm:text-[14.5px] md:text-[15.5px] font-normal tracking-tight text-[#E8E4D5]/90 hover:text-white transition-colors duration-200 whitespace-nowrap"
               >
                 {item.label}
               </Link>

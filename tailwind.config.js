@@ -65,6 +65,7 @@ module.exports = {
       fontFamily: {
         sans: ["var(--font-geist)", "system-ui", "sans-serif"],
         serif: ["var(--font-newsreader)", "Georgia", "serif"],
+        jakarta: ["var(--font-jakarta)", "system-ui", "sans-serif"],
       },
       fontSize: {
         xs: ["0.75rem", { lineHeight: "1.4" }],
