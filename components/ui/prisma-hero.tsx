@@ -135,7 +135,7 @@ const PrismaHero = ({
 }: PrismaHeroProps) => {
   return (
     <section className="h-screen w-full">
-      <div className="relative h-full w-full overflow-hidden rounded-2xl md:rounded-[2rem] bg-[#141210]">
+      <div className="relative h-full w-full overflow-hidden bg-[#141210]">
         
         {/* Background video */}
         <video
