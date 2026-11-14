@@ -8,6 +8,21 @@ const FeedbackSchema = z.object({
   reason: z.string().optional(),
 });
 
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  try {
+    const ctx = await getRequestContext();
+    const finding = await storage.getFinding(id);
+    if (!finding || finding.workspace_id !== ctx.workspaceId) {
+      return NextResponse.json({ error: 'Finding not found' }, { status: 404 });
+    }
+    const feedback = await storage.listFindingFeedback(id);
+    return NextResponse.json(feedback);
+  } catch (err: any) {
+    return NextResponse.json({ error: err?.message || 'Failed to fetch feedback' }, { status: 500 });
+  }
+}
+
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
