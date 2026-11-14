@@ -362,7 +362,7 @@ function FindingCard({
         </div>
 
         {/* Finding Message */}
-        <div className="text-sm text-ink leading-relaxed">{finding.message}</div>
+        <div className="text-sm text-ink leading-relaxed">{finding.explanation}</div>
 
         {/* Suggested Correction */}
         {finding.suggested_correction && (
@@ -392,20 +392,19 @@ function FindingCard({
                           {ev.approved_facts.fact_code}: {ev.approved_facts.title}
                         </div>
                       )}
-                      {ev.evidence_text && (
+                      {ev.evidence_excerpt && (
                         <p className="text-sm text-ink leading-relaxed">
-                          "{ev.evidence_text}"
+                          "{ev.evidence_excerpt}"
                         </p>
                       )}
-                      {ev.source_reference && (
-                        <span className="text-xs text-ink-secondary">Source: {ev.source_reference}</span>
+                      {ev.source_documents && (
+                        <span className="text-xs text-ink-secondary">Source: {ev.source_documents.source_name}</span>
                       )}
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      {ev.match_type === 'SUPPORTED' && <Badge variant="low">Supported</Badge>}
-                      {ev.match_type === 'CONTRADICTED' && <Badge variant="high">Contradicted</Badge>}
-                      {ev.match_type === 'PARTIAL' && <Badge variant="medium">Partial</Badge>}
-                      {ev.match_type === 'UNVERIFIED' && <Badge variant="neutral">Unverified</Badge>}
+                      {(ev.evidence_relation as string) === 'SUPPORTS' && <Badge variant="low">Supports</Badge>}
+                      {(ev.evidence_relation as string) === 'CONTRADICTS' && <Badge variant="high">Contradicts</Badge>}
+                      {(ev.evidence_relation as string) === 'RELATED' && <Badge variant="medium">Related</Badge>}
                     </div>
                   </div>
                 </div>
@@ -439,7 +438,7 @@ function ClaimsPanel({ claims }: { claims: ReviewStudioProps['claims'] }) {
             <Th className="w-28">Type</Th>
             <Th className="w-32">Status</Th>
             <Th className="w-28">Confidence</Th>
-            <Th className="w-32">Risk</Th>
+            <Th className="w-32">Explanation</Th>
           </Tr>
         </Thead>
         <Tbody>
@@ -447,9 +446,9 @@ function ClaimsPanel({ claims }: { claims: ReviewStudioProps['claims'] }) {
             <Tr key={claim.id} className="hover:bg-surface-hover">
               <Td className="text-sm text-ink-dark max-w-xs truncate">{claim.claim_text}</Td>
               <Td className="text-xs text-ink-secondary">{claim.claim_type}</Td>
-              <Td><Badge variant={getStatusBadge(claim.status)}>{claim.status}</Badge></Td>
+              <Td><Badge variant={getStatusBadge(claim.verification_status)}>{claim.verification_status}</Badge></Td>
               <Td className="text-xs text-ink-secondary">{Math.round((claim.confidence || 0) * 100)}%</Td>
-              <Td><Badge variant={getRiskBadge(claim.risk_level || 'LOW')}>{claim.risk_level || 'LOW'}</Badge></Td>
+              <Td className="text-xs text-ink-secondary truncate max-w-[200px]">{claim.explanation || '—'}</Td>
             </Tr>
           ))}
         </Tbody>
