@@ -20,6 +20,7 @@ module.exports = {
         paper: "var(--paper)",
         surface: "var(--surface)",
         "surface-2": "var(--surface-2)",
+        "surface-hover": "var(--surface-hover)",
         line: "var(--line)",
         ink: "var(--ink)",
         "ink-2": "var(--ink-2)",
