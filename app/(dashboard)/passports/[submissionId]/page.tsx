@@ -26,11 +26,11 @@ export default async function PassportDetailPage({
   }
 
   const [claims, rawFindings, decisions, versions, runs, auditLogs, allFacts] = await Promise.all([
-    storage.listClaims(submissionId),
-    storage.listFindings(submissionId),
-    storage.listReviewDecisions(submissionId),
-    storage.listVersions(submissionId),
-    storage.listAnalysisRuns(submissionId),
+    storage.listClaims(submission.id),
+    storage.listFindings(submission.id),
+    storage.listReviewDecisions(submission.id),
+    storage.listVersions(submission.id),
+    storage.listAnalysisRuns(submission.id),
     storage.listAuditLogs(submission.workspace_id),
     storage.listFacts(submission.workspace_id),
   ]);
@@ -59,7 +59,7 @@ export default async function PassportDetailPage({
       versions={versions}
       runs={runs}
       auditLogs={auditLogs}
-      workspaceName="NexaTech"
+      workspaceName="NexTech"
     />
   );
 }

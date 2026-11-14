@@ -41,7 +41,7 @@ function splitAtomicClauses(text: string): string[] {
 
 function looksFactual(sentence: string): boolean {
   const lower = sentence.toLowerCase();
-  return /\d/.test(sentence) || /nova|nexatech|battery|weight|gram|hour|waterproof|launch|material|aluminium/i.test(lower);
+  return /\d/.test(sentence) || /nova|nextech|nexatech|battery|weight|gram|hour|waterproof|launch|material|aluminium/i.test(lower);
 }
 
 function deterministicClaimExtraction(content: string): DeterministicClaim[] {
@@ -166,7 +166,7 @@ function deterministicVerify(claimText: string, evidence: ApprovedFact[]): { sta
     if (dateFact) {
       return {
         status: 'SUPPORTED',
-        explanation: 'Approved NexaTech Launch Plan (FACT-005) confirms launch date is 15 December 2026.',
+        explanation: 'Approved NexTech Launch Plan (FACT-005) confirms launch date is 15 December 2026.',
         evidenceIds: [dateFact.id],
         confidence: 0.95,
       };

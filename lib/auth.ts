@@ -34,7 +34,7 @@ export async function getRequestContext(): Promise<RequestContext> {
     const profile = await storage.getProfile(DEMO_USER_ID);
     return {
       userId: DEMO_USER_ID,
-      userEmail: profile?.email ?? 'demo@nexatech.example',
+      userEmail: profile?.email ?? 'demo@nextech.example',
       userName: profile?.full_name ?? 'Demo Reviewer',
       workspaceId: workspace.id,
       workspaceSlug: workspace.slug,

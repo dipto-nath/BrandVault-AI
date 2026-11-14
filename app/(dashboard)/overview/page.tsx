@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { FlowButton } from '@/components/ui/flow-button';
 import { EmptyState } from '@/components/ui/empty-state';
 import Link from 'next/link';
-import { formatRelative } from '@/lib/utils';
+import { formatRelative, getSubmissionReference, getPassportReference } from '@/lib/utils';
 import {
   FileText, Clock, ShieldAlert, CheckCircle2, XCircle, AlertTriangle,
   ArrowRight, Shield, Database, Sparkles, BookOpen, TrendingUp, AlertCircle
@@ -21,7 +21,7 @@ export default async function OverviewPage() {
       : Promise.resolve({ total: 0, pending: 0, approved: 0, rejected: 0, highRisk: 0, recent: [] }),
     workspaceId ? storage.listGuidelines(workspaceId, { active: true }) : Promise.resolve([]),
     workspaceId ? storage.listFacts(workspaceId, { active: true }) : Promise.resolve([]),
-    workspaceId ? storage.listFindings('') : Promise.resolve([]),
+    workspaceId ? storage.listFindings() : Promise.resolve([]),
     workspaceId ? storage.listSubmissions(workspaceId) : Promise.resolve([]),
   ]);
 
@@ -60,6 +60,8 @@ export default async function OverviewPage() {
   const sourceDocuments = await (workspaceId ? storage.listDocuments(workspaceId) : Promise.resolve([]));
   const approvedSources = sourceDocuments.filter(d => d.document_status === 'APPROVED').length;
   const freshnessPercent = activeFacts > 0 ? Math.round((facts.filter(f => !f.expires_at || new Date(f.expires_at) > new Date()).length / activeFacts) * 100) : 100;
+  const freshnessValue = activeFacts === 0 ? '—' : `${freshnessPercent}%`;
+  const latestCertified = submissions.find(s => s.status === 'APPROVED');
 
   return (
     <div className='space-y-6 animate-fade-in'>
@@ -94,28 +96,42 @@ export default async function OverviewPage() {
           </div>
           
           {/* Mini passport preview - repositioned in the middle zone so David's statue on the right remains clear */}
-          <div className='flex justify-center shrink-0 w-full sm:w-[270px] -rotate-2 hover:rotate-0 transition-transform duration-300 mx-auto lg:mx-0'>
-            <div className='passport-card passport-card-approved w-full bg-paper/95 backdrop-blur-md shadow-md border border-line/90'>
-              <div className='p-4 sm:p-5'>
-                <div className='flex items-center gap-2 mb-2'>
-                  <span className='w-2 h-2 rounded-full bg-supported' />
-                  <span className='text-[10px] font-semibold uppercase tracking-wider text-ink-3'>Certified</span>
-                </div>
-                <h3 className='text-base font-bold text-ink font-serif mb-0.5 truncate'>Nova Product Launch</h3>
-                <p className='text-xs text-ink-2 mb-3 truncate'>Instagram · Approved · Low risk</p>
-                <div className='flex items-center justify-between pt-2.5 border-t border-line'>
-                  <span className='text-xs font-mono text-ink-3'>BVP-2026-0001</span>
-                  <div className='stamp stamp-approved scale-90 origin-right'>
-                    <div className='stamp-circle' />
-                    <div className='stamp-text'>APPROVED</div>
+          {latestCertified ? (
+            <Link
+              href={'/passports/' + (latestCertified.passport_reference || latestCertified.id)}
+              className='flex justify-center shrink-0 w-full sm:w-[270px] -rotate-2 hover:rotate-0 transition-transform duration-300 mx-auto lg:mx-0 group cursor-pointer'
+              aria-label={`View evidence passport for ${latestCertified.title}`}
+            >
+              <div className='passport-card passport-card-approved w-full bg-paper/95 backdrop-blur-md shadow-md border border-line/90 group-hover:shadow-lg transition-shadow'>
+                <div className='p-4 sm:p-5'>
+                  <div className='flex items-center gap-2 mb-2'>
+                    <span className='w-2 h-2 rounded-full bg-supported' />
+                    <span className='text-[10px] font-semibold uppercase tracking-wider text-ink-3'>Certified</span>
                   </div>
+                  <h3 className='text-base font-bold text-ink font-serif mb-0.5 truncate'>{latestCertified.title}</h3>
+                  <p className='text-xs text-ink-2 mb-3 truncate'>{latestCertified.channel || latestCertified.content_type} · Approved · {latestCertified.risk_level || 'Low'} risk</p>
+                  <div className='flex items-center justify-between pt-2.5 border-t border-line'>
+                    <span className='text-xs font-mono text-ink-3'>{getPassportReference(latestCertified)}</span>
+                    <div className='stamp stamp-approved scale-90 origin-right'>
+                      <div className='stamp-circle' />
+                      <div className='stamp-text'>APPROVED</div>
+                    </div>
+                  </div>
+                  <p className='font-handwritten text-[11px] text-ink-3 italic mt-2.5 text-center'>
+                    "Every claim here can be checked."
+                  </p>
                 </div>
-                <p className='font-handwritten text-[11px] text-ink-3 italic mt-2.5 text-center'>
-                  "Every claim here can be checked."
-                </p>
+              </div>
+            </Link>
+          ) : (
+            <div className='flex justify-center shrink-0 w-full sm:w-[270px] mx-auto lg:mx-0'>
+              <div className='w-full bg-paper/85 backdrop-blur-md p-5 rounded-xl border border-dashed border-line text-center'>
+                <Shield className='w-6 h-6 text-ink-3 mx-auto mb-2 opacity-50' />
+                <p className='text-xs font-semibold text-ink'>No certified passports yet</p>
+                <p className='text-[11px] text-ink-3 mt-1'>Approve a submission to mint an evidence passport.</p>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Reserved visual breathing room for David's classical bust on the right */}
           <div className='hidden lg:block lg:w-[260px] xl:w-[300px] shrink-0 pointer-events-none' aria-hidden='true' />
@@ -177,7 +193,7 @@ export default async function OverviewPage() {
           {needsAttention.length > 0 ? (
             <div className='space-y-3'>
               {needsAttention.map((s) => (
-                <AttentionItem key={s.id} submission={s} />
+                <AttentionItem key={s.id} submission={s} allFindings={allFindings} />
               ))}
             </div>
           ) : (
@@ -215,8 +231,8 @@ export default async function OverviewPage() {
             />
             <KnowledgeHealthRow
               label='Freshness'
-              value={'${freshnessPercent}%'}
-              isProgress
+              value={freshnessValue}
+              isProgress={activeFacts > 0}
               progressValue={freshnessPercent}
             />
           </div>
@@ -263,12 +279,14 @@ export default async function OverviewPage() {
                           {s.title}
                         </Link>
                         <span className='id-chip mt-1 inline-block'>
-                          REV-{s.id.slice(0, 8).toUpperCase()}
+                          {getSubmissionReference(s)}
                         </span>
                       </td>
                       <td className='py-3.5 px-4 text-xs text-ink-2'>
                         <span className='font-medium text-ink block'>{s.content_type}</span>
-                        <span className='text-[11px] text-ink-3'>{s.channel}</span>
+                        {s.channel && !s.content_type.toLowerCase().includes(s.channel.toLowerCase()) && (
+                          <span className='inline-block px-1.5 py-0.5 mt-0.5 rounded text-[10px] bg-surface-2 text-ink-3 border border-line font-medium'>{s.channel}</span>
+                        )}
                       </td>
                       <td className='py-3.5 px-4'>
                         <Badge variant={statusToVariant(s.status)}>
@@ -285,19 +303,20 @@ export default async function OverviewPage() {
                       </td>
                       <td className='py-3.5 px-4 text-right'>
                         <div className='flex items-center justify-end gap-1.5'>
-                          <Link href={'/reviews/' + s.id}>
+                          <Link href={'/reviews/' + (s.reference || s.id)}>
                             <Button variant='ghost' size='sm' className='h-8 px-3 text-xs font-semibold hover:bg-surface-2'>
                               Review
                             </Button>
                           </Link>
-                          <Link href={'/passports/' + s.id}>
+                          <Link href={'/passports/' + (s.passport_reference || s.id)} aria-label={`Open passport for ${s.title}`}>
                             <Button
                               variant='ghost'
                               size='sm'
-                              className='h-8 px-2 text-xs text-brand hover:bg-brand-soft flex items-center gap-1.5 ml-auto font-semibold'
-                              title='View Brand Evidence Passport'
+                              className='h-8 px-2.5 text-xs text-brand hover:bg-brand-soft flex items-center gap-1.5 ml-auto font-semibold'
+                              title={`View Brand Evidence Passport for ${s.title}`}
                             >
                               <Shield className='w-3.5 h-3.5' />
+                              <span>Passport</span>
                             </Button>
                           </Link>
                         </div>
@@ -360,12 +379,14 @@ function StatCard({
   );
 }
 
-function AttentionItem({ submission }: { submission: any }) {
-  const findings = submission.findings || [];
-  const evidenceSummary = findings.filter((f: any) => f.verification_status === 'CONTRADICTED').length + ' contradicted · ' + findings.filter((f: any) => f.verification_status === 'UNVERIFIED').length + ' unverified';
+function AttentionItem({ submission, allFindings = [] }: { submission: any; allFindings?: any[] }) {
+  const subFindings = allFindings.filter((f: any) => f.submission_id === submission.id);
+  const contradicted = subFindings.filter((f: any) => f.finding_type === 'FACTUAL_CONTRADICTION' || f.title?.toLowerCase().includes('contradict')).length;
+  const unverified = subFindings.filter((f: any) => f.finding_type === 'UNVERIFIED_CLAIM' || f.title?.toLowerCase().includes('unverified') || f.title?.toLowerCase().includes('superlative') || f.title?.toLowerCase().includes('benchmark')).length;
+  const evidenceSummary = `${contradicted} contradicted · ${unverified} unverified`;
   
   return (
-    <Link href={'/reviews/' + submission.id} className='card p-4 hover:shadow-lg hover:border-line transition-all duration-200 group flex items-center justify-between gap-4'>
+    <Link href={'/reviews/' + (submission.reference || submission.id)} className='card p-4 hover:shadow-lg hover:border-line transition-all duration-200 group flex items-center justify-between gap-4'>
       <div className='flex-1 min-w-0'>
         <h3 className='font-semibold text-ink truncate group-hover:text-brand transition-colors'>{submission.title}</h3>
         <div className='flex items-center gap-2 mt-1.5 text-xs text-ink-3'>

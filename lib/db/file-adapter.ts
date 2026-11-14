@@ -15,7 +15,7 @@ const DATA_DIR = join(process.cwd(), '.brandvault');
 const DATA_FILE = join(DATA_DIR, 'store.json');
 const DEMO_WORKSPACE_ID = '11111111-1111-1111-1111-111111111111';
 const DEMO_USER_ID = '22222222-2222-2222-2222-222222222222';
-const DEMO_WORKSPACE_SLUG = 'nexatech';
+const DEMO_WORKSPACE_SLUG = 'nextech';
 
 function uid(): string {
   return createHash('sha1').update(String(Date.now()) + Math.random()).digest('hex').slice(0, 32);
@@ -302,7 +302,7 @@ export class FileStorage implements Storage {
     if (opts?.limit) arr = arr.slice(0, Number(opts.limit));
     return clone(arr);
   }
-  async getSubmission(id: string): Promise<ContentSubmission | null> { return this.store().submissions.find((s) => s.id === id) ?? null; }
+  async getSubmission(id: string): Promise<ContentSubmission | null> { return this.store().submissions.find((s) => s.id === id || s.reference === id || s.passport_reference === id) ?? null; }
   async createSubmission(data: Omit<ContentSubmission, 'id' | 'created_at' | 'updated_at' | 'submitted_at'> & { created_by?: string | null }): Promise<ContentSubmission> {
     const store = this.store(); const s: ContentSubmission = { id: uid(), workspace_id: data.workspace_id, title: data.title, content_type: data.content_type, channel: data.channel, original_content: data.original_content, current_content: data.current_content, status: data.status ?? 'DRAFT', risk_level: null, created_by: data.created_by ?? null, reviewer_id: null, created_at: now(), updated_at: now(), submitted_at: null };
     store.submissions.push(s); persist(store); return clone(s);
@@ -341,7 +341,7 @@ export class FileStorage implements Storage {
     for (const f of findings) { const x: Finding = { id: uid(), workspace_id: f.workspace_id, submission_id: f.submission_id, analysis_run_id: f.analysis_run_id, claim_id: f.claim_id ?? null, finding_type: f.finding_type, severity: f.severity, rule_id: f.rule_id ?? null, title: f.title, excerpt: f.excerpt, explanation: f.explanation, suggested_correction: f.suggested_correction ?? null, confidence: f.confidence, status: f.status ?? 'OPEN', created_at: now() }; store.findings.push(x); out.push(clone(x)); }
     persist(store); return out;
   }
-  async listFindings(submissionId: string): Promise<Finding[]> { return clone(this.store().findings.filter((f) => f.submission_id === submissionId)); }
+  async listFindings(submissionId?: string): Promise<Finding[]> { if (!submissionId) return clone(this.store().findings); return clone(this.store().findings.filter((f) => f.submission_id === submissionId)); }
   async getFinding(id: string): Promise<Finding | null> { return this.store().findings.find((f) => f.id === id) ?? null; }
   async createFindingEvidence(evidence: Array<Omit<FindingEvidence, 'id' | 'created_at'>>): Promise<FindingEvidence[]> {
     const store = this.store(); const out: FindingEvidence[] = [];
@@ -390,12 +390,21 @@ export class FileStorage implements Storage {
   async dashboardStats(workspaceId: string): Promise<DashboardStats> {
     const subs = filterByWorkspace(this.store().submissions, workspaceId);
     const recent = [...subs].sort((a, b) => (b.updated_at || b.created_at).localeCompare(a.updated_at || a.created_at)).slice(0, 8);
+    const pendingSubs = subs.filter((s) => s.status === 'NEEDS_REVIEW' || s.status === 'CHANGES_REQUESTED');
+    const pendingSubIds = new Set(pendingSubs.map((s) => s.id));
+    const openHighFindings = this.store().findings.filter(
+      (f) =>
+        f.workspace_id === workspaceId &&
+        f.status === 'OPEN' &&
+        f.severity === 'HIGH' &&
+        pendingSubIds.has(f.submission_id)
+    );
     return {
       total: subs.length,
-      pending: subs.filter((s) => s.status === 'NEEDS_REVIEW' || s.status === 'CHANGES_REQUESTED').length,
+      pending: pendingSubs.length,
       approved: subs.filter((s) => s.status === 'APPROVED').length,
       rejected: subs.filter((s) => s.status === 'REJECTED').length,
-      highRisk: subs.filter((s) => s.risk_level === 'HIGH').length,
+      highRisk: openHighFindings.length,
       recent: clone(recent),
     };
   }

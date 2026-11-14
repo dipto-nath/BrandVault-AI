@@ -92,6 +92,8 @@ export interface SourceDocument {
 export interface ContentSubmission {
   id: string;
   workspace_id: string;
+  reference?: string;
+  passport_reference?: string;
   title: string;
   content_type: string;
   channel: string;

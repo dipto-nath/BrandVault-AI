@@ -5,9 +5,23 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import React, { useState, createContext, useContext } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Menu, X, LayoutDashboard, ClipboardList, BookOpen, FileCheck2, BarChart2, Settings, Shield, ChevronRight } from "lucide-react";
+import {
+  Menu,
+  X,
+  LayoutDashboard,
+  ClipboardList,
+  BookOpen,
+  FileCheck2,
+  BarChart2,
+  Settings,
+  Shield,
+  FileText,
+  ChevronLeft,
+  ChevronRight,
+  Sparkles,
+} from "lucide-react";
 
-interface NavLink {
+export interface NavLink {
   label: string;
   href: string;
   icon: React.ReactNode;
@@ -17,6 +31,10 @@ interface SidebarContextProps {
   open: boolean;
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
   animate: boolean;
+  isHovered: boolean;
+  setIsHovered: React.Dispatch<React.SetStateAction<boolean>>;
+  pinned: boolean;
+  setPinned: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const SidebarContext = createContext<SidebarContextProps | undefined>(undefined);
@@ -41,12 +59,25 @@ export const SidebarProvider = ({
   animate?: boolean;
 }) => {
   const [openState, setOpenState] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const [pinned, setPinned] = useState(false);
 
-  const open = openProp !== undefined ? openProp : openState;
+  // If pinned, open is true. If not pinned, open reflects hover state or openProp
+  const effectiveOpen = pinned ? true : (isHovered || (openProp !== undefined ? openProp : openState));
   const setOpen = setOpenProp !== undefined ? setOpenProp : setOpenState;
 
   return (
-    <SidebarContext.Provider value={{ open, setOpen, animate }}>
+    <SidebarContext.Provider
+      value={{
+        open: effectiveOpen,
+        setOpen,
+        animate,
+        isHovered,
+        setIsHovered,
+        pinned,
+        setPinned,
+      }}
+    >
       {children}
     </SidebarContext.Provider>
   );
@@ -70,7 +101,7 @@ export const Sidebar = ({
   );
 };
 
-export const SidebarBody = (props: React.ComponentProps<typeof motion.div>) => {
+export const SidebarBody = (props: Omit<React.ComponentProps<typeof motion.div>, "children"> & { children?: React.ReactNode }) => {
   return (
     <>
       <DesktopSidebar {...props} />
@@ -83,23 +114,51 @@ export const DesktopSidebar = ({
   className,
   children,
   ...props
-}: React.ComponentProps<typeof motion.div>) => {
-  const { open, setOpen, animate } = useSidebar();
+}: Omit<React.ComponentProps<typeof motion.div>, "children"> & { children?: React.ReactNode }) => {
+  const { open, setIsHovered, pinned, setPinned } = useSidebar();
+
   return (
-    <motion.div
+    <motion.aside
       className={cn(
-        "h-full px-4 py-4 hidden lg:flex lg:flex-col bg-surface-2 border-r border-line w-[248px] flex-shrink-0",
+        "h-full px-3 py-4 hidden lg:flex lg:flex-col bg-surface-2 border-r border-line flex-shrink-0 relative select-none shadow-sm",
         className
       )}
+      initial={false}
       animate={{
-        width: animate ? (open ? "248px" : "72px") : "248px",
+        width: open ? 250 : 68,
       }}
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
+      transition={{
+        duration: 0.28,
+        ease: [0.22, 1, 0.36, 1], // fluid cubic-bezier slide
+      }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       {...props}
     >
       {children}
-    </motion.div>
+
+      {/* Pin / Toggle tab on edge */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setPinned(!pinned);
+        }}
+        className={cn(
+          "absolute -right-3 top-7 w-6 h-6 rounded-full bg-surface border border-line flex items-center justify-center text-ink-3 hover:text-brand hover:border-brand shadow-xs transition-all z-40 focus-ring cursor-pointer",
+          !open && "opacity-0 pointer-events-none hover:opacity-100 group-hover:opacity-100"
+        )}
+        title={pinned ? "Unpin sidebar (slide on hover)" : "Pin sidebar open"}
+        aria-label={pinned ? "Unpin sidebar" : "Pin sidebar open"}
+      >
+        <motion.div
+          animate={{ rotate: pinned ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          <ChevronLeft className="w-3.5 h-3.5" />
+        </motion.div>
+      </button>
+    </motion.aside>
   );
 };
 
@@ -110,21 +169,19 @@ export const MobileSidebar = ({
 }: React.ComponentProps<"div">) => {
   const { open, setOpen } = useSidebar();
   return (
-    <>
-      <div
-        className={cn(
-          "h-16 px-4 py-4 flex flex-row lg:hidden items-center justify-between bg-surface-2 border-b border-line w-full"
-        )}
-        {...props}
-      >
-        <div className="flex justify-end z-20 w-full">
-          <Menu
-            className="text-ink-2 cursor-pointer hover:text-ink"
-            onClick={() => setOpen(!open)}
-          />
-        </div>
+    <div
+      className={cn(
+        "h-16 px-4 py-4 flex flex-row lg:hidden items-center justify-between bg-surface-2 border-b border-line w-full"
+      )}
+      {...props}
+    >
+      <div className="flex justify-end z-20 w-full">
+        <Menu
+          className="text-ink-2 cursor-pointer hover:text-ink"
+          onClick={() => setOpen(!open)}
+        />
       </div>
-    </>
+    </div>
   );
 };
 
@@ -135,60 +192,99 @@ export const SidebarLink = ({
   link: NavLink;
   onClick?: () => void;
 }) => {
-  const { open, animate } = useSidebar();
+  const { open } = useSidebar();
   const pathname = usePathname();
-  const isActive = pathname === link.href || (link.href !== "/" && pathname.startsWith(link.href + "/"));
+  const isActive =
+    pathname === link.href ||
+    (link.href !== "/overview" && pathname.startsWith(link.href + "/"));
 
   return (
     <Link
       href={link.href}
       onClick={onClick}
       className={cn(
-        "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors focus-ring sidebar-nav-item",
-        isActive && "sidebar-nav-item-active"
+        "group relative flex items-center h-10 rounded-lg transition-all duration-200 focus-ring overflow-hidden",
+        open ? "px-3 gap-3" : "px-0 justify-center",
+        isActive
+          ? "bg-brand text-white shadow-sm shadow-brand/20 font-semibold"
+          : "text-ink-2 hover:text-ink hover:bg-surface/80"
       )}
+      title={!open ? link.label : undefined}
     >
-      <span className="w-5 h-5 flex-shrink-0 text-current">{link.icon}</span>
-      <motion.span
-        initial={{ opacity: 0, x: -10 }}
-        animate={{ opacity: open ? 1 : 0, x: open ? 0 : -10 }}
-        transition={{ duration: 0.15, ease: "easeInOut" }}
-        className="font-medium text-sm whitespace-pre overflow-hidden"
-      >
-        {link.label}
-      </motion.span>
+      {/* Icon with smooth scale / transition */}
+      <span className={cn(
+        "w-5 h-5 flex items-center justify-center shrink-0 transition-transform duration-200",
+        isActive ? "text-white" : "text-ink-3 group-hover:text-ink group-hover:scale-105"
+      )}>
+        {link.icon}
+      </span>
+
+      {/* Sliding text label */}
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.span
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -8 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            className="text-sm font-medium whitespace-nowrap overflow-hidden leading-none tracking-normal truncate"
+          >
+            {link.label}
+          </motion.span>
+        )}
+      </AnimatePresence>
+
+      {/* Active pill indicator when collapsed */}
+      {isActive && !open && (
+        <span className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-brand rounded-r" />
+      )}
     </Link>
   );
 };
 
 export const NAV_LINKS: NavLink[] = [
-  { href: "/overview", label: "Overview", icon: <LayoutDashboard className="w-5 h-5 flex-shrink-0" /> },
-  { href: "/reviews", label: "Content Reviews", icon: <ClipboardList className="w-5 h-5 flex-shrink-0" /> },
-  { href: "/guidelines", label: "Brand Guidelines", icon: <Shield className="w-5 h-5 flex-shrink-0" /> },
-  { href: "/knowledge", label: "Approved Knowledge", icon: <BookOpen className="w-5 h-5 flex-shrink-0" /> },
-  { href: "/passports", label: "Evidence Passports", icon: <FileCheck2 className="w-5 h-5 flex-shrink-0" /> },
-  { href: "/insights", label: "Governance Insights", icon: <BarChart2 className="w-5 h-5 flex-shrink-0" /> },
-  { href: "/settings", label: "Settings", icon: <Settings className="w-5 h-5 flex-shrink-0" /> },
+  { href: "/overview", label: "Overview", icon: <LayoutDashboard className="w-5 h-5 shrink-0" /> },
+  { href: "/reviews", label: "Content Reviews", icon: <ClipboardList className="w-5 h-5 shrink-0" /> },
+  { href: "/findings", label: "Findings", icon: <FileText className="w-5 h-5 shrink-0" /> },
+  { href: "/guidelines", label: "Brand Guidelines", icon: <Shield className="w-5 h-5 shrink-0" /> },
+  { href: "/knowledge", label: "Approved Knowledge", icon: <BookOpen className="w-5 h-5 shrink-0" /> },
+  { href: "/passports", label: "Evidence Passports", icon: <FileCheck2 className="w-5 h-5 shrink-0" /> },
+  { href: "/insights", label: "Governance Insights", icon: <BarChart2 className="w-5 h-5 shrink-0" /> },
+  { href: "/settings", label: "Settings", icon: <Settings className="w-5 h-5 shrink-0" /> },
 ];
 
 export const Logo = () => {
-  const { open, animate } = useSidebar();
+  const { open } = useSidebar();
   return (
     <Link
       href="/overview"
-      className="flex items-center gap-3 px-3 py-2 mb-2 relative z-20"
+      className={cn(
+        "flex items-center h-11 rounded-lg transition-all duration-200 mb-4 relative z-20 overflow-hidden",
+        open ? "px-2 gap-3" : "px-0 justify-center"
+      )}
     >
-      <div className="flex items-center justify-center w-9 h-9 rounded-lg flex-shrink-0 bg-brand shadow-lg shadow-brand/30">
+      <div className="flex items-center justify-center w-9 h-9 rounded-xl shrink-0 bg-brand text-white shadow-md shadow-brand/25 transition-transform duration-200 hover:scale-105">
         <Shield className="w-5 h-5 text-white" />
       </div>
-      <motion.span
-        initial={{ opacity: 0, x: -10 }}
-        animate={{ opacity: open ? 1 : 0, x: open ? 0 : -10 }}
-        transition={{ duration: 0.15, ease: "easeInOut" }}
-        className="font-bold text-base tracking-tight text-ink whitespace-pre overflow-hidden font-serif"
-      >
-        BrandVault <span className="text-xs font-semibold bg-brand-soft text-brand px-1.5 py-0.5 rounded-full ml-1">AI</span>
-      </motion.span>
+
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, x: -12 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -8 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="flex items-center gap-1.5 truncate"
+          >
+            <span className="font-bold text-base tracking-tight text-ink font-serif">
+              BrandVault
+            </span>
+            <span className="text-[10px] font-bold bg-brand-soft text-brand px-1.5 py-0.5 rounded-full uppercase tracking-wider font-sans">
+              AI
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </Link>
   );
 };
@@ -197,9 +293,9 @@ export const LogoIcon = () => {
   return (
     <Link
       href="/overview"
-      className="flex items-center justify-center px-3 py-2 mb-2 relative z-20"
+      className="flex items-center justify-center h-11 mb-4 relative z-20"
     >
-      <div className="flex items-center justify-center w-9 h-9 rounded-lg flex-shrink-0 bg-brand shadow-lg shadow-brand/30">
+      <div className="flex items-center justify-center w-9 h-9 rounded-xl shrink-0 bg-brand text-white shadow-md shadow-brand/25">
         <Shield className="w-5 h-5 text-white" />
       </div>
     </Link>
@@ -215,59 +311,53 @@ export const UserSection = ({
   userName?: string;
   userRole?: string;
 }) => {
-  const { open, animate } = useSidebar();
+  const { open } = useSidebar();
 
   return (
-    <div className="mt-auto pt-4 border-t border-line">
-      <div className="flex items-center gap-3 px-3 py-2">
-        <div className="flex items-center justify-center w-8 h-8 rounded-full flex-shrink-0 bg-surface border border-line">
+    <div className="mt-auto pt-3 border-t border-line">
+      <div className={cn(
+        "flex items-center transition-all duration-200 rounded-lg p-1.5",
+        open ? "gap-2.5" : "justify-center"
+      )}>
+        <div className="flex items-center justify-center w-8 h-8 rounded-full shrink-0 bg-surface border border-line text-brand font-bold text-xs shadow-2xs">
           <Shield className="w-4 h-4 text-brand" />
         </div>
-        <motion.div
-          animate={{
-            display: animate ? (open ? "block" : "none") : "block",
-            opacity: animate ? (open ? 1 : 0) : 1,
-          }}
-          className="min-w-0 overflow-hidden"
-        >
-          <div className="text-sm font-semibold text-ink leading-tight truncate">
-            {workspaceName}
-          </div>
-          <div className="text-xs text-ink-3 leading-tight truncate">
-            {userName} · {userRole}
-          </div>
-        </motion.div>
+
+        <AnimatePresence initial={false}>
+          {open && (
+            <motion.div
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -6 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              className="min-w-0 overflow-hidden leading-tight flex-1"
+            >
+              <div className="text-xs font-bold text-ink truncate">
+                {workspaceName}
+              </div>
+              <div className="text-[11px] text-ink-3 truncate mt-0.5">
+                {userName} · {userRole}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-      <motion.div
-        animate={{
-          display: animate ? (open ? "flex" : "none") : "flex",
-          opacity: animate ? (open ? 1 : 0) : 1,
-        }}
-        className="px-3 py-3 mt-4"
-      >
-        <p className="workspace-card-note text-center">
-          "Verify. Validate. Build trust."
-        </p>
-      </motion.div>
+
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <p className="font-handwritten text-[11px] text-ink-3 italic mt-2 text-center">
+              "Verify. Validate. Build trust."
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
-  );
-};
-
-export const WorkspaceStatus = () => {
-  const { open, animate } = useSidebar();
-
-  return (
-    <motion.div
-      animate={{
-        display: animate ? (open ? "flex" : "none") : "flex",
-        opacity: animate ? (open ? 1 : 0) : 1,
-      }}
-      className="px-3 py-2 mb-4"
-    >
-      <div className="flex items-center gap-2">
-        <span className="w-2 h-2 rounded-full bg-supported flex-shrink-0" />
-        <span className="text-xs font-medium text-ink-2">Workspace Active</span>
-      </div>
-    </motion.div>
   );
 };

@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, Tbody, Td, Th, Thead, Tr } from '@/components/ui/table';
-import { formatDateTime, getStatusLabel } from '@/lib/utils';
+import { formatDateTime, getStatusLabel, getSubmissionReference, getPassportReference } from '@/lib/utils';
 import type {
   ContentSubmission, ExtractedClaim, Finding, AnalysisRun,
   ReviewDecisionRecord, ContentVersion, FindingEvidence, ApprovedFact
@@ -183,12 +183,12 @@ export function ReviewStudio({
               <span>·</span>
               <span>Submitted {formatDateTime(submission.created_at)}</span>
               <span>·</span>
-              <span className="font-mono">REV-{submission.id.slice(0, 8).toUpperCase()}</span>
+              <span className="font-mono">{getSubmissionReference(submission)}</span>
             </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Link href={`/passports/${submission.id}`}>
+          <Link href={`/passports/${submission.passport_reference || submission.id}`}>
             <Button variant="outline" size="sm" className="flex items-center gap-1.5 text-xs">
               <Shield className="w-3.5 h-3.5" />
               <span>View Passport</span>
@@ -349,7 +349,7 @@ function FindingCard({
               <Badge variant={getRiskBadge(finding.severity)}>{finding.severity}</Badge>
             </div>
             {finding.rule_id && (
-              <span className="font-mono text-xs text-ink-secondary">Rule: {finding.rule_id.slice(0, 8).toUpperCase()}</span>
+              <span className="font-mono text-xs text-ink-secondary">Policy: {finding.rule_id.startsWith('0000') ? 'RULE-SPEC' : finding.rule_id}</span>
             )}
           </div>
           <Link
