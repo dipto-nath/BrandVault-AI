@@ -193,6 +193,10 @@
     font-variant-numeric: tabular-nums;
   }
 
+  .font-jakarta { font-family: var(--font-jakarta), system-ui, -apple-system, sans-serif !important; }
+  .font-rounded { font-family: var(--font-rounded), system-ui, -apple-system, sans-serif !important; }
+  .font-outfit { font-family: var(--font-outfit), system-ui, -apple-system, sans-serif !important; }
+
   a { 
     text-decoration: none; 
     color: inherit;
