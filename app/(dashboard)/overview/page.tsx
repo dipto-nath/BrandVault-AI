@@ -2,6 +2,7 @@ import { storage } from '@/lib/db/adaptor';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { FlowButton } from '@/components/ui/flow-button';
 import { EmptyState } from '@/components/ui/empty-state';
 import Link from 'next/link';
 import { formatRelative } from '@/lib/utils';
@@ -62,55 +63,62 @@ export default async function OverviewPage() {
 
   return (
     <div className='space-y-6 animate-fade-in'>
-      {/* Hero Band */}
-      <div className='hero-band hero-band-torn-bottom relative'>
-        <div className='flex flex-col lg:flex-row lg:items-center justify-between gap-6 lg:gap-8'>
-          <div className='lg:w-2/3'>
-            <span className='eyebrow'>Production workspace</span>
-            <h1 className='text-[36px] sm:text-[40px] font-bold text-ink mb-3 font-serif leading-tight'>
+      {/* Hero Band with Classical Background */}
+      <div className='hero-band hero-band-torn-bottom relative min-h-[300px] flex items-center'>
+        {/* Subtle lighting / readability overlay */}
+        <div className='absolute inset-0 bg-gradient-to-r from-paper/60 via-paper/20 to-transparent pointer-events-none' />
+
+        <div className='relative z-10 w-full flex flex-col lg:flex-row lg:items-center justify-between gap-6'>
+          {/* Main Title & CTAs - adjusted to the left/center-left with column breathing room */}
+          <div className='flex-1 min-w-0 lg:max-w-[460px] xl:max-w-[500px] pl-1 sm:pl-3'>
+            <div className='inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-brand-soft/80 border border-brand/20 backdrop-blur-sm mb-3'>
+              <span className='w-2 h-2 rounded-full bg-supported animate-pulse' />
+              <span className='text-[11px] font-semibold uppercase tracking-wider text-brand font-sans'>Production workspace</span>
+            </div>
+            <h1 className='text-[32px] sm:text-[36px] xl:text-[40px] font-bold text-ink mb-3 font-serif leading-[1.15] tracking-tight'>
               NexTech brand governance
             </h1>
-            <p className='text-ink-2 text-base max-w-xl leading-relaxed mb-6'>
+            <p className='text-ink-2 text-sm sm:text-base leading-relaxed mb-6 font-medium'>
               Every claim checked against approved sources before it goes live.
             </p>
             <div className='flex flex-wrap items-center gap-3'>
               <Link href='/reviews/new'>
-                <Button className='btn-primary flex items-center gap-2 shadow-sm shadow-brand/20'>
-                  <Sparkles className='w-4 h-4 text-white' />
-                  <span>Submit for review</span>
-                </Button>
+                <FlowButton text="Submit for review" />
               </Link>
               <Link href='/passports'>
-                <Button variant='secondary' size='sm' className='bg-surface-2 hover:bg-surface-hover border-line'>
+                <Button variant='secondary' size='sm' className='bg-surface/90 hover:bg-surface border-line backdrop-blur-sm shadow-xs'>
                   View passports
                 </Button>
               </Link>
             </div>
           </div>
           
-          {/* Mini passport preview */}
-          <div className='lg:w-1/3 flex justify-center lg:justify-end -rotate-2 lg:-rotate-3'>
-            <div className='passport-card passport-card-approved w-full max-w-xs opacity-90'>
-              <div className='p-5'>
-                <div className='flex items-center gap-2 mb-3'>
+          {/* Mini passport preview - repositioned in the middle zone so David's statue on the right remains clear */}
+          <div className='flex justify-center shrink-0 w-full sm:w-[270px] -rotate-2 hover:rotate-0 transition-transform duration-300 mx-auto lg:mx-0'>
+            <div className='passport-card passport-card-approved w-full bg-paper/95 backdrop-blur-md shadow-md border border-line/90'>
+              <div className='p-4 sm:p-5'>
+                <div className='flex items-center gap-2 mb-2'>
                   <span className='w-2 h-2 rounded-full bg-supported' />
-                  <span className='text-[11px] font-semibold uppercase tracking-wider text-ink-3'>Certified</span>
+                  <span className='text-[10px] font-semibold uppercase tracking-wider text-ink-3'>Certified</span>
                 </div>
-                <h3 className='text-lg font-bold text-ink font-serif mb-1'>Nova Product Launch</h3>
-                <p className='text-sm text-ink-2 mb-4'>Instagram · Approved · Low risk</p>
-                <div className='flex items-center justify-between pt-3 border-t border-line'>
+                <h3 className='text-base font-bold text-ink font-serif mb-0.5 truncate'>Nova Product Launch</h3>
+                <p className='text-xs text-ink-2 mb-3 truncate'>Instagram · Approved · Low risk</p>
+                <div className='flex items-center justify-between pt-2.5 border-t border-line'>
                   <span className='text-xs font-mono text-ink-3'>BVP-2026-0001</span>
-                  <div className='stamp stamp-approved'>
+                  <div className='stamp stamp-approved scale-90 origin-right'>
                     <div className='stamp-circle' />
                     <div className='stamp-text'>APPROVED</div>
                   </div>
                 </div>
-                <p className='font-handwritten text-[12px] text-ink-3 italic mt-3 text-center'>
+                <p className='font-handwritten text-[11px] text-ink-3 italic mt-2.5 text-center'>
                   "Every claim here can be checked."
                 </p>
               </div>
             </div>
           </div>
+
+          {/* Reserved visual breathing room for David's classical bust on the right */}
+          <div className='hidden lg:block lg:w-[260px] xl:w-[300px] shrink-0 pointer-events-none' aria-hidden='true' />
         </div>
       </div>
 

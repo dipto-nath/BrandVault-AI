@@ -191,8 +191,21 @@
   .passport-card-rejected { border-left-color: var(--contradicted); }
   .passport-card-pending { border-left-color: var(--unverified); }
   
-  .hero-band { @apply relative rounded-2xl p-8 sm:p-12 overflow-hidden; background-color: var(--brand-soft); border: 1px solid var(--line); }
-  .hero-band::before { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0.04; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E"); }
+  .hero-band { 
+    @apply relative rounded-2xl p-6 sm:p-8 lg:p-10 overflow-hidden border border-line shadow-sm; 
+    background-color: #dbe3f7;
+    background-image: url('/hero-bg.jpg');
+    background-size: cover;
+    background-position: right center;
+    background-repeat: no-repeat;
+  }
+  .hero-band::before { 
+    content: ''; 
+    position: absolute; 
+    inset: 0; 
+    pointer-events: none; 
+    background: linear-gradient(90deg, rgba(251, 247, 239, 0.82) 0%, rgba(251, 247, 239, 0.55) 35%, rgba(227, 234, 250, 0.15) 60%, rgba(255, 255, 255, 0) 75%);
+  }
   .hero-band-torn-bottom { position: relative; }
   .hero-band-torn-bottom::after { content: ''; position: absolute; bottom: -8px; left: 0; right: 0; height: 16px; background: linear-gradient(180deg, var(--brand-soft) 0%, transparent 100%); mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 16' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0,0 C20,8 30,8 50,8 C70,8 80,8 100,8 L100,16 L0,16 Z'/%3E%3C/svg%3E"); mask-size: 100% 100%; pointer-events: none; }
   
