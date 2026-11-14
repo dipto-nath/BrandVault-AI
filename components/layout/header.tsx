@@ -16,7 +16,7 @@ export function Header({
     const paths: Record<string, string> = {
       '/overview': 'Overview',
       '/reviews': 'Content Reviews',
-      '/reviews/new': 'New Review Studio',
+      '/reviews/new': 'Review Studio',
       '/findings': 'Findings Registry',
       '/guidelines': 'Brand Guidelines',
       '/knowledge': 'Approved Knowledge',
@@ -78,9 +78,12 @@ export function Header({
           </div>
 
           {/* Live Engine Indicator */}
-          <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-success-soft/70 border border-success/20 text-[11px] font-medium text-success">
-            <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
-            <span>Audit Engine Active</span>
+          <div
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-supported-soft/80 border border-supported-border text-[11px] font-medium text-supported transition-all"
+            title="Real-time multi-stage verification against approved specifications and brand guidelines"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-supported animate-pulse" />
+            <span>AI checks: on</span>
           </div>
 
           {/* Notifications */}
