@@ -26,9 +26,10 @@ export async function getRequestContext(): Promise<RequestContext> {
   const storage = getStorage();
 
   if (demo || !hasSupabaseConfig()) {
-    const workspace = demoWs
-      ? await storage.getWorkspaceBySlug(demoWs)
-      : await storage.getDemoWorkspace();
+    let workspace = demoWs ? await storage.getWorkspaceBySlug(demoWs) : null;
+    if (!workspace) {
+      workspace = await storage.getDemoWorkspace();
+    }
     if (!workspace) throw new Error('Demo workspace not available');
     await storage.ensureMember(workspace.id, DEMO_USER_ID, 'ADMIN');
     const profile = await storage.getProfile(DEMO_USER_ID);

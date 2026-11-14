@@ -222,8 +222,15 @@ function filterByWorkspace<T extends { workspace_id: string }>(arr: T[], workspa
 
 export class FileStorage implements Storage {
   private store(): Store { return getStore(); }
-  async getWorkspaceBySlug(slug: string): Promise<Workspace | null> { return this.store().workspaces.find((w) => w.slug === slug) ?? null; }
-  async getDemoWorkspace(): Promise<Workspace | null> { return this.getWorkspaceBySlug(DEMO_WORKSPACE_SLUG); }
+  async getWorkspaceBySlug(slug: string): Promise<Workspace | null> {
+    const s = (slug || '').toLowerCase();
+    return this.store().workspaces.find((w) => w.slug.toLowerCase() === s || (s === 'nexatech' && w.slug.toLowerCase() === 'nextech')) ?? null;
+  }
+  async getDemoWorkspace(): Promise<Workspace | null> {
+    const ws = await this.getWorkspaceBySlug(DEMO_WORKSPACE_SLUG);
+    if (ws) return ws;
+    return this.store().workspaces[0] ?? null;
+  }
   async createWorkspace(data: { name: string; slug: string; description?: string }): Promise<Workspace> {
     const store = this.store(); const w: Workspace = { id: uid(), name: data.name, slug: data.slug, description: data.description ?? null, logo_url: null, created_at: now(), updated_at: now() };
     store.workspaces.push(w); persist(store); return clone(w);
