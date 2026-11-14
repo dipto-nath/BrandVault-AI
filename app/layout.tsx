@@ -1,37 +1,30 @@
 import type { Metadata } from 'next';
-import { Geist, Newsreader, Plus_Jakarta_Sans, Nunito, Outfit } from 'next/font/google';
+import { Fraunces, Inter, Caveat, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 
-const geist = Geist({
+const fraunces = Fraunces({
   subsets: ['latin'],
-  variable: '--font-geist',
+  variable: '--font-fraunces',
+  display: 'swap',
+  weight: ['400', '500', '600', '700', '800', '900'],
+});
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
   display: 'swap',
   weight: ['400', '500', '600', '700'],
 });
-const plusJakarta = Plus_Jakarta_Sans({
+const caveat = Caveat({
   subsets: ['latin'],
-  variable: '--font-jakarta',
+  variable: '--font-caveat',
   display: 'swap',
   weight: ['400', '500', '600', '700'],
 });
-const nunito = Nunito({
+const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
-  variable: '--font-rounded',
+  variable: '--font-jetbrains-mono',
   display: 'swap',
-  weight: ['500', '600', '700', '800'],
-});
-const outfit = Outfit({
-  subsets: ['latin'],
-  variable: '--font-outfit',
-  display: 'swap',
-  weight: ['500', '600', '700', '800'],
-});
-const newsreader = Newsreader({
-  subsets: ['latin'],
-  style: ['normal', 'italic'],
-  weight: ['400', '500', '600'],
-  variable: '--font-newsreader',
-  display: 'swap',
+  weight: ['400', '500', '600', '700'],
 });
 
 export const metadata: Metadata = {
@@ -43,7 +36,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geist.variable} ${plusJakarta.variable} ${nunito.variable} ${outfit.variable} ${newsreader.variable} antialiased`}
+        className={`${fraunces.variable} ${inter.variable} ${caveat.variable} ${jetbrainsMono.variable} antialiased`}
       >
         {children}
       </body>

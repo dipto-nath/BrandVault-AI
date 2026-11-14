@@ -99,24 +99,43 @@ export function InsightsManager({
 
   return (
     <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border/60">
+        <div>
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="w-2 h-2 rounded-full bg-accent ring-4 ring-accent/20" />
+            <span className="text-xs font-bold text-accent uppercase tracking-wider">
+              Governance Analytics & Drift
+            </span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold font-jakarta text-ink-dark tracking-tight">
+            Governance Insights & Adaptive Intelligence
+          </h1>
+          <p className="text-sm text-ink-secondary mt-1 max-w-2xl leading-relaxed">
+            Continuous governance analytics tracking policy drift, repetitive reviewer overrides, and automated AI rule evolution.
+          </p>
+        </div>
+      </div>
+
       {/* ── Continuous Brand Intelligence Banner ── */}
-      <div className="card bg-navy-900 border-navy-700 text-white p-6 md:flex md:items-center md:justify-between gap-4">
+      <div className="card bg-navy-900 border border-navy-700/80 rounded-xl text-white p-6 shadow-md md:flex md:items-center md:justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-lg bg-accent/20 border border-accent/30 flex items-center justify-center shrink-0">
             <Sparkles className="w-5 h-5 text-accent" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold">Continuous Brand Intelligence</h3>
-            <p className="text-navy-300 text-sm">AI-powered governance loop detecting drift, contradictions & policy gaps</p>
+            <h3 className="text-lg font-bold font-jakarta tracking-tight">Continuous Brand Intelligence Loop</h3>
+            <p className="text-navy-300 text-sm mt-0.5">AI-powered governance engine actively detecting policy drift, specification gaps & claim contradictions</p>
           </div>
         </div>
-        <div className="flex items-center gap-2 text-sm text-navy-300">
-          <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-success" />
-            Live
+        <div className="flex items-center gap-2.5 text-xs text-navy-300 bg-navy-800/80 px-3 py-1.5 rounded-lg border border-navy-700 mt-4 md:mt-0">
+          <span className="flex items-center gap-1.5 text-success font-semibold">
+            <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
+            Active Sync
           </span>
-          <span>Last sync: 2 min ago</span>
-          <ArrowUpRight className="w-4 h-4" />
+          <span className="text-navy-400">·</span>
+          <span>Adaptive rules ready</span>
+          <ArrowUpRight className="w-4 h-4 text-accent ml-1" />
         </div>
       </div>
 
@@ -321,32 +340,32 @@ function MetricCard({
   waveColor: string;
 }) {
   return (
-    <div className="card p-5 relative overflow-hidden flex flex-col justify-between min-h-[125px]">
+    <div className="card p-5 relative overflow-hidden flex flex-col justify-between min-h-[128px] bg-surface border border-border rounded-xl shadow-sm hover:shadow-md hover:border-border-strong transition-all duration-200">
       {/* Top row: Icon badge */}
       <div className="flex items-center justify-between mb-2 z-10">
-        <div className={`w-9 h-9 rounded-lg ${iconBg} flex items-center justify-center shrink-0`}>
+        <div className={`w-8 h-8 rounded-lg ${iconBg} flex items-center justify-center shrink-0 border border-border/40`}>
           {icon}
         </div>
       </div>
 
       {/* Middle row: Title & Big Number */}
       <div className="z-10">
-        <div className="text-xs font-medium text-ink-secondary mb-0.5">
+        <div className="text-[11px] font-bold uppercase tracking-wider text-ink-secondary mb-1 font-jakarta">
           {title}
         </div>
-        <div className="text-2xl sm:text-3xl font-bold font-sans text-ink-dark tnums leading-tight">
+        <div className="text-3xl font-bold font-jakarta text-ink-dark tnums leading-none tracking-tight">
           {value}
         </div>
       </div>
 
       {/* Bottom row: Trend vs last week */}
-      <div className={`text-xs font-semibold ${subChangeColor} mt-2 z-10 flex items-center gap-1`}>
+      <div className={`text-xs font-semibold ${subChangeColor} mt-2.5 z-10 flex items-center gap-1 font-sans`}>
         {subChange}
       </div>
 
       {/* Decorative Wave in Bottom-Right Corner */}
       <svg
-        className="wave-svg w-32 h-14"
+        className="wave-svg w-32 h-14 opacity-70"
         viewBox="0 0 120 50"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"

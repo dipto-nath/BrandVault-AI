@@ -128,30 +128,38 @@ export function KnowledgeManager({
   return (
     <div className="space-y-6">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border/60">
         <div>
-          <h2 className="text-xl font-bold text-ink-dark">Approved Brand Knowledge Base</h2>
-          <p className="text-xs text-ink-secondary mt-0.5">
-            Authoritative source material and verified specifications used by BrandVault AI.
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="w-2 h-2 rounded-full bg-accent ring-4 ring-accent/20" />
+            <span className="text-xs font-bold text-accent uppercase tracking-wider">
+              Ground Truth Repository
+            </span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold font-jakarta text-ink-dark tracking-tight">
+            Approved Brand Knowledge Base
+          </h1>
+          <p className="text-sm text-ink-secondary mt-1 max-w-2xl leading-relaxed">
+            Authoritative source material, verified hardware specifications, and certified product claims used by BrandVault AI for evidence-backed verification.
           </p>
         </div>
-        <Button onClick={() => setFactModalOpen(true)} className="btn-primary text-xs flex items-center gap-1.5">
-          <Plus className="w-3.5 h-3.5" />
+        <Button onClick={() => setFactModalOpen(true)} className="btn-primary text-xs flex items-center gap-2 shadow-sm shadow-accent/20">
+          <Plus className="w-4 h-4 text-white" />
           <span>Add Approved Fact</span>
         </Button>
       </div>
 
       {/* Facts Table Card */}
-      <Card className="bg-surface border border-border">
-        <CardHeader className="pb-3 border-b border-border/60">
+      <Card className="bg-surface border border-border rounded-xl shadow-sm overflow-hidden">
+        <CardHeader className="p-4 bg-surface-subtle/50 border-b border-border">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Database className="w-4 h-4 text-accent" />
-              <CardTitle className="text-base font-bold text-ink-dark">
+              <CardTitle className="text-base font-bold text-ink-dark font-jakarta tracking-tight">
                 Verified Facts & Specifications ({facts.length})
               </CardTitle>
             </div>
-            <span className="text-xs text-ink-secondary">
+            <span className="text-xs font-semibold text-accent uppercase tracking-wider bg-accent-soft/60 px-2 py-0.5 rounded border border-accent/20">
               Authoritative Ground Truth
             </span>
           </div>
@@ -159,19 +167,19 @@ export function KnowledgeManager({
         <div className="overflow-x-auto">
           <Table>
             <Thead>
-              <Tr>
-                <Th className="w-32">Fact Code</Th>
-                <Th>Title & Verified Fact</Th>
-                <Th className="w-40">Entity</Th>
-                <Th className="w-48">Source Document</Th>
-                <Th className="w-28">Status</Th>
-                <Th className="w-20 text-right">Details</Th>
+              <Tr className="bg-surface-subtle/80 border-b border-border">
+                <Th className="w-36 py-3 px-4 text-xs font-bold uppercase tracking-wider text-ink-secondary">Fact Code</Th>
+                <Th className="py-3 px-4 text-xs font-bold uppercase tracking-wider text-ink-secondary">Title & Verified Fact</Th>
+                <Th className="w-40 py-3 px-4 text-xs font-bold uppercase tracking-wider text-ink-secondary">Entity</Th>
+                <Th className="w-48 py-3 px-4 text-xs font-bold uppercase tracking-wider text-ink-secondary">Source Document</Th>
+                <Th className="w-28 py-3 px-4 text-xs font-bold uppercase tracking-wider text-ink-secondary">Status</Th>
+                <Th className="w-20 py-3 px-4 text-xs font-bold uppercase tracking-wider text-ink-secondary text-right">Details</Th>
               </Tr>
             </Thead>
             <Tbody>
               {facts.length === 0 ? (
                 <Tr>
-                  <Td className="py-8 text-center text-sm text-ink-secondary">
+                  <Td colSpan={6} className="py-12 text-center text-sm text-ink-secondary">
                     No approved facts found. Add your first fact to begin evidence verification.
                   </Td>
                 </Tr>
@@ -179,42 +187,46 @@ export function KnowledgeManager({
                 facts.map((fact) => {
                   const isExpanded = expandedId === fact.id;
                   return (
-                    <Tr key={fact.id} className="hover:bg-surface-subtle/40">
-                      <Td className="font-mono text-xs font-bold text-ink-dark">
-                        {fact.fact_code}
+                    <Tr key={fact.id} className="hover:bg-surface-hover/60 border-b border-border-soft transition-colors">
+                      <Td className="py-3 px-4 font-mono text-xs font-bold text-ink-dark">
+                        <span className="bg-surface-subtle px-2 py-1 rounded border border-border">
+                          {fact.fact_code}
+                        </span>
                       </Td>
-                      <Td>
-                        <div className="font-semibold text-ink-dark text-sm mb-0.5">
+                      <Td className="py-3 px-4">
+                        <div className="font-bold text-ink-dark text-sm mb-1 tracking-tight">
                           {fact.title}
                         </div>
-                        <p className="text-xs text-ink-secondary line-clamp-2 leading-relaxed">
+                        <p className="text-xs text-ink-secondary leading-relaxed">
                           {fact.fact_text}
                         </p>
                         {isExpanded && (
-                          <div className="mt-3 p-3 rounded-md bg-surface-subtle border border-border space-y-1.5 text-xs">
+                          <div className="mt-3 p-3.5 rounded-lg bg-surface-subtle border border-border space-y-2 text-xs">
                             {fact.source_reference && (
-                              <div>
-                                <span className="font-semibold text-ink-secondary">Citation: </span>
-                                <span className="font-mono text-ink-dark">{fact.source_reference}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-ink-secondary uppercase text-[10px] tracking-wider">Citation:</span>
+                                <span className="font-mono text-ink-dark font-medium">{fact.source_reference}</span>
                               </div>
                             )}
                             {fact.source_excerpt && (
-                              <div>
-                                <span className="font-semibold text-ink-secondary">Source Excerpt: </span>
-                                <span className="text-ink-dark">&ldquo;{fact.source_excerpt}&rdquo;</span>
+                              <div className="p-2.5 rounded bg-surface border border-border/80">
+                                <span className="font-bold text-accent uppercase text-[10px] tracking-wider block mb-1">Source Excerpt</span>
+                                <span className="text-ink-dark italic font-serif">&ldquo;{fact.source_excerpt}&rdquo;</span>
                               </div>
                             )}
                             {fact.effective_from && (
-                              <div>
-                                <span className="font-semibold text-ink-secondary">Effective Date: </span>
-                                <span className="text-ink-dark">{fact.effective_from}</span>
+                              <div className="flex items-center gap-2 text-ink-muted">
+                                <span className="font-medium text-[11px]">Effective Date:</span>
+                                <span className="text-ink-secondary font-medium">{fact.effective_from}</span>
                               </div>
                             )}
                           </div>
                         )}
                       </Td>
-                      <Td className="text-xs font-medium text-ink-secondary">
-                        {fact.entity_name || 'NexaTech Nova'}
+                      <Td className="py-3 px-4 text-xs font-medium text-ink-secondary">
+                        <span className="bg-surface-subtle px-2 py-0.5 rounded text-[11px] font-semibold text-ink-dark border border-border">
+                          {fact.entity_name || 'NexaTech Nova'}
+                        </span>
                       </Td>
                       <Td className="text-xs text-ink-secondary">
                         <span className="font-medium text-ink-dark block truncate">

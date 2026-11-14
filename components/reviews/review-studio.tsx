@@ -164,11 +164,11 @@ export function ReviewStudio({
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-2">
         <div className="flex items-start gap-4">
           <Link
-            href={`/reviews/${submission.id}`}
-            className="btn-ghost btn-icon-sm text-ink-secondary hover:text-ink-dark"
-            aria-label="Back to reviews"
+            href="/reviews"
+            className="p-2 rounded-lg text-ink-secondary hover:text-ink-dark hover:bg-surface-hover transition-colors"
+            aria-label="Back to reviews list"
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="w-5 h-5" />
           </Link>
           <div>
             <div className="flex items-center gap-2 mb-1">

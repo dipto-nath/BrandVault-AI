@@ -2,14 +2,15 @@
 
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import React, { useState, createContext, useContext } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Menu, X, Shield, LayoutDashboard, ClipboardList, BookOpen, FileCheck2, BarChart2, Settings, User } from "lucide-react";
+import { Menu, X, LayoutDashboard, ClipboardList, BookOpen, FileCheck2, BarChart2, Settings, Shield, ChevronRight } from "lucide-react";
 
-interface Links {
+interface NavLink {
   label: string;
   href: string;
-  icon: React.JSX.Element | React.ReactNode;
+  icon: React.ReactNode;
 }
 
 interface SidebarContextProps {
@@ -18,9 +19,7 @@ interface SidebarContextProps {
   animate: boolean;
 }
 
-const SidebarContext = createContext<SidebarContextProps | undefined>(
-  undefined
-);
+const SidebarContext = createContext<SidebarContextProps | undefined>(undefined);
 
 export const useSidebar = () => {
   const context = useContext(SidebarContext);
@@ -89,11 +88,11 @@ export const DesktopSidebar = ({
   return (
     <motion.div
       className={cn(
-        "h-full px-4 py-4 hidden lg:flex lg:flex-col bg-navy-900 border-r border-navy-700 w-[280px] flex-shrink-0",
+        "h-full px-4 py-4 hidden lg:flex lg:flex-col bg-surface-2 border-r border-line w-[248px] flex-shrink-0",
         className
       )}
       animate={{
-        width: animate ? (open ? "280px" : "72px") : "280px",
+        width: animate ? (open ? "248px" : "72px") : "248px",
       }}
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
@@ -114,74 +113,47 @@ export const MobileSidebar = ({
     <>
       <div
         className={cn(
-          "h-16 px-4 py-4 flex flex-row lg:hidden items-center justify-between bg-navy-900 border-b border-navy-700 w-full"
+          "h-16 px-4 py-4 flex flex-row lg:hidden items-center justify-between bg-surface-2 border-b border-line w-full"
         )}
         {...props}
       >
         <div className="flex justify-end z-20 w-full">
           <Menu
-            className="text-navy-300 cursor-pointer hover:text-white"
+            className="text-ink-2 cursor-pointer hover:text-ink"
             onClick={() => setOpen(!open)}
           />
         </div>
       </div>
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ x: "-100%", opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: "-100%", opacity: 0 }}
-            transition={{
-              duration: 0.3,
-              ease: "easeInOut",
-            }}
-            className={cn(
-              "fixed h-full w-full inset-0 bg-navy-900 p-10 z-[100] flex flex-col justify-between lg:hidden",
-              className
-            )}
-          >
-            <div
-              className="absolute right-6 top-6 z-50 text-navy-300 cursor-pointer hover:text-white"
-              onClick={() => setOpen(!open)}
-            >
-              <X className="w-6 h-6" />
-            </div>
-            {children}
-          </motion.div>
-        )}
-      </AnimatePresence>
     </>
   );
 };
 
 export const SidebarLink = ({
   link,
-  className,
   onClick,
-  ...props
 }: {
-  link: Links;
-  className?: string;
+  link: NavLink;
   onClick?: () => void;
-} & Omit<React.ComponentProps<typeof Link>, "href">) => {
+}) => {
   const { open, animate } = useSidebar();
+  const pathname = usePathname();
+  const isActive = pathname === link.href || (link.href !== "/" && pathname.startsWith(link.href + "/"));
+
   return (
     <Link
       href={link.href}
       onClick={onClick}
       className={cn(
-        "flex items-center justify-start gap-3 group/sidebar px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 text-navy-300 hover:text-white hover:bg-navy-800/50",
-        className
+        "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors focus-ring sidebar-nav-item",
+        isActive && "sidebar-nav-item-active"
       )}
-      {...props}
     >
-      {link.icon}
+      <span className="w-5 h-5 flex-shrink-0 text-current">{link.icon}</span>
       <motion.span
-        animate={{
-          display: animate ? (open ? "inline-block" : "none") : "inline-block",
-          opacity: animate ? (open ? 1 : 0) : 1,
-        }}
-        className="text-navy-300 group-hover/sidebar:text-white transition-colors duration-150 whitespace-pre inline-block !p-0 !m-0"
+        initial={{ opacity: 0, x: -10 }}
+        animate={{ opacity: open ? 1 : 0, x: open ? 0 : -10 }}
+        transition={{ duration: 0.15, ease: "easeInOut" }}
+        className="font-medium text-sm whitespace-pre overflow-hidden"
       >
         {link.label}
       </motion.span>
@@ -189,7 +161,7 @@ export const SidebarLink = ({
   );
 };
 
-export const NAV_LINKS: Links[] = [
+export const NAV_LINKS: NavLink[] = [
   { href: "/overview", label: "Overview", icon: <LayoutDashboard className="w-5 h-5 flex-shrink-0" /> },
   { href: "/reviews", label: "Content Reviews", icon: <ClipboardList className="w-5 h-5 flex-shrink-0" /> },
   { href: "/guidelines", label: "Brand Guidelines", icon: <Shield className="w-5 h-5 flex-shrink-0" /> },
@@ -206,16 +178,16 @@ export const Logo = () => {
       href="/overview"
       className="flex items-center gap-3 px-3 py-2 mb-2 relative z-20"
     >
-      <div className="flex items-center justify-center w-9 h-9 rounded-lg flex-shrink-0 bg-gradient-to-br from-accent to-amber-700 shadow-lg shadow-accent/30">
+      <div className="flex items-center justify-center w-9 h-9 rounded-lg flex-shrink-0 bg-brand shadow-lg shadow-brand/30">
         <Shield className="w-5 h-5 text-white" />
       </div>
       <motion.span
         initial={{ opacity: 0, x: -10 }}
         animate={{ opacity: open ? 1 : 0, x: open ? 0 : -10 }}
         transition={{ duration: 0.15, ease: "easeInOut" }}
-        className="font-bold text-base tracking-tight text-white whitespace-pre overflow-hidden"
+        className="font-bold text-base tracking-tight text-ink whitespace-pre overflow-hidden font-serif"
       >
-        BrandVault AI
+        BrandVault <span className="text-xs font-semibold bg-brand-soft text-brand px-1.5 py-0.5 rounded-full ml-1">AI</span>
       </motion.span>
     </Link>
   );
@@ -227,7 +199,7 @@ export const LogoIcon = () => {
       href="/overview"
       className="flex items-center justify-center px-3 py-2 mb-2 relative z-20"
     >
-      <div className="flex items-center justify-center w-9 h-9 rounded-lg flex-shrink-0 bg-gradient-to-br from-accent to-amber-700 shadow-lg shadow-accent/30">
+      <div className="flex items-center justify-center w-9 h-9 rounded-lg flex-shrink-0 bg-brand shadow-lg shadow-brand/30">
         <Shield className="w-5 h-5 text-white" />
       </div>
     </Link>
@@ -235,7 +207,7 @@ export const LogoIcon = () => {
 };
 
 export const UserSection = ({
-  workspaceName = "NexaTech",
+  workspaceName = "NexTech",
   userName = "Demo Reviewer",
   userRole = "Reviewer",
 }: {
@@ -244,12 +216,12 @@ export const UserSection = ({
   userRole?: string;
 }) => {
   const { open, animate } = useSidebar();
-  
+
   return (
-    <div className="mt-auto pt-4 border-t border-navy-700">
+    <div className="mt-auto pt-4 border-t border-line">
       <div className="flex items-center gap-3 px-3 py-2">
-        <div className="flex items-center justify-center w-8 h-8 rounded-full flex-shrink-0 bg-navy-800 border border-navy-700">
-          <User className="w-4 h-4 text-navy-400" />
+        <div className="flex items-center justify-center w-8 h-8 rounded-full flex-shrink-0 bg-surface border border-line">
+          <Shield className="w-4 h-4 text-brand" />
         </div>
         <motion.div
           animate={{
@@ -258,21 +230,32 @@ export const UserSection = ({
           }}
           className="min-w-0 overflow-hidden"
         >
-          <div className="text-sm font-semibold text-white leading-tight truncate">
+          <div className="text-sm font-semibold text-ink leading-tight truncate">
             {workspaceName}
           </div>
-          <div className="text-xs text-navy-400 leading-tight truncate">
+          <div className="text-xs text-ink-3 leading-tight truncate">
             {userName} · {userRole}
           </div>
         </motion.div>
       </div>
+      <motion.div
+        animate={{
+          display: animate ? (open ? "flex" : "none") : "flex",
+          opacity: animate ? (open ? 1 : 0) : 1,
+        }}
+        className="px-3 py-3 mt-4"
+      >
+        <p className="workspace-card-note text-center">
+          "Verify. Validate. Build trust."
+        </p>
+      </motion.div>
     </div>
   );
 };
 
 export const WorkspaceStatus = () => {
   const { open, animate } = useSidebar();
-  
+
   return (
     <motion.div
       animate={{
@@ -282,8 +265,8 @@ export const WorkspaceStatus = () => {
       className="px-3 py-2 mb-4"
     >
       <div className="flex items-center gap-2">
-        <span className="w-2 h-2 rounded-full bg-success flex-shrink-0" />
-        <span className="text-xs font-medium text-navy-300">Workspace Active</span>
+        <span className="w-2 h-2 rounded-full bg-supported flex-shrink-0" />
+        <span className="text-xs font-medium text-ink-2">Workspace Active</span>
       </div>
     </motion.div>
   );
