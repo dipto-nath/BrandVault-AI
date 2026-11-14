@@ -48,8 +48,18 @@ export function getStatusLabel(status: string): string {
   return labels[status] || status;
 }
 
-export function getSubmissionReference(submission: { id?: string; reference?: string } | null | undefined): string {
+export function getSubmissionReference(
+  submission: string | { id?: string; reference?: string } | null | undefined
+): string {
   if (!submission) return 'REV-2026-0000';
+  if (typeof submission === 'string') {
+    const match = submission.match(/(\d+)$/);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      return `REV-2026-${String(num).padStart(4, '0')}`;
+    }
+    return 'REV-2026-0001';
+  }
   if (submission.reference) return submission.reference;
   const match = submission.id?.match(/(\d+)$/);
   if (match) {
@@ -59,8 +69,18 @@ export function getSubmissionReference(submission: { id?: string; reference?: st
   return 'REV-2026-0001';
 }
 
-export function getPassportReference(submission: { id?: string; passport_reference?: string; reference?: string } | null | undefined): string {
+export function getPassportReference(
+  submission: string | { id?: string; passport_reference?: string; reference?: string } | null | undefined
+): string {
   if (!submission) return 'BVP-2026-0000';
+  if (typeof submission === 'string') {
+    const match = submission.match(/(\d+)$/);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      return `BVP-2026-${String(num).padStart(4, '0')}`;
+    }
+    return 'BVP-2026-0001';
+  }
   if (submission.passport_reference) return submission.passport_reference;
   if (submission.reference) return submission.reference.replace('REV-', 'BVP-');
   const match = submission.id?.match(/(\d+)$/);

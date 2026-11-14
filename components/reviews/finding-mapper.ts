@@ -51,6 +51,13 @@ export interface FindingViewModel {
   confidenceLabel: string;
 }
 
+type RuleReference = {
+  id?: string;
+  rule_code: string;
+  title: string;
+  category: string;
+};
+
 export function mapRawFindingsToViewModel(
   rawFindings: Array<Finding & { finding_evidence?: Array<FindingEvidence & { approved_facts?: ApprovedFact; source_documents?: SourceDocument }> }>,
   allGuidelines: BrandGuideline[],
@@ -60,31 +67,31 @@ export function mapRawFindingsToViewModel(
   const factsByCode = new Map(allFacts.map((f) => [f.fact_code, f]));
 
   // Default fallback guidelines for seed rules
-  const ruleClaim001 = guidelinesByCode.get('RULE-CLAIM-001') || {
+  const ruleClaim001: RuleReference = guidelinesByCode.get('RULE-CLAIM-001') || {
     id: 'rule-claim-001',
     rule_code: 'RULE-CLAIM-001',
     title: 'Product specifications require evidence',
     category: 'CLAIMS',
   };
-  const ruleClaim002 = guidelinesByCode.get('RULE-CLAIM-002') || {
+  const ruleClaim002: RuleReference = guidelinesByCode.get('RULE-CLAIM-002') || {
     id: 'rule-claim-002',
     rule_code: 'RULE-CLAIM-002',
     title: 'Waterproof claims require explicit approval',
     category: 'CLAIMS',
   };
-  const ruleTerm001 = guidelinesByCode.get('RULE-TERM-001') || {
+  const ruleTerm001: RuleReference = guidelinesByCode.get('RULE-TERM-001') || {
     id: 'rule-term-001',
     rule_code: 'RULE-TERM-001',
     title: 'Preferred terminology',
     category: 'TERMINOLOGY',
   };
-  const ruleTone002 = guidelinesByCode.get('RULE-TONE-002') || {
+  const ruleTone002: RuleReference = guidelinesByCode.get('RULE-TONE-002') || {
     id: 'rule-tone-002',
     rule_code: 'RULE-TONE-002',
     title: 'Avoid unsupported superlatives',
     category: 'TONE',
   };
-  const ruleTone001 = guidelinesByCode.get('RULE-TONE-001') || {
+  const ruleTone001: RuleReference = guidelinesByCode.get('RULE-TONE-001') || {
     id: 'rule-tone-001',
     rule_code: 'RULE-TONE-001',
     title: 'Professional and helpful voice',
@@ -176,7 +183,7 @@ export function mapRawFindingsToViewModel(
     let category: 'contradicted' | 'unverified' | 'terminology' | 'tone' | 'outdated' = 'unverified';
     let categoryLabel: 'Contradicted' | 'Unverified' | 'Terminology' | 'Tone' | 'Outdated' = 'Unverified';
     let humanTitle = f.title || 'Brand finding';
-    let rule = ruleClaim001;
+    let rule: RuleReference = ruleClaim001;
     let severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' = f.severity === 'HIGH' ? 'CRITICAL' : f.severity === 'MEDIUM' ? 'HIGH' : 'MEDIUM';
 
     // Battery / 48 hours contradiction

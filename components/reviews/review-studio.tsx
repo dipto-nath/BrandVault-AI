@@ -356,12 +356,12 @@ export function ReviewStudio({
   }, [displayedFindings, activeFindingId]);
 
   const copyRefCode = () => {
-    navigator.clipboard.writeText(getSubmissionReference(submission.id));
+    navigator.clipboard.writeText(getSubmissionReference(submission));
     setCopiedRef(true);
     setTimeout(() => setCopiedRef(false), 2000);
   };
 
-  const passportRef = getPassportReference(submission.id);
+  const passportRef = getPassportReference(submission);
 
   return (
     <div className="space-y-6 pb-28 text-ink-dark">
@@ -382,7 +382,7 @@ export function ReviewStudio({
               title="Click to copy submission reference"
               className="inline-flex items-center gap-1 font-mono text-xs font-semibold px-2 py-0.5 rounded bg-sand/60 hover:bg-sand text-ink-dark border border-sand-dark/40 transition-colors"
             >
-              {getSubmissionReference(submission.id)}
+              {getSubmissionReference(submission)}
               {copiedRef ? <CheckCheck className="w-3 h-3 text-evidence-supported" /> : <Copy className="w-3 h-3 text-ink-muted" />}
             </button>
             <Badge variant="outline" className="text-xs uppercase tracking-wider font-semibold">
@@ -827,7 +827,7 @@ export function ReviewStudio({
                 <Th className="w-12">#</Th>
                 <Th>Claim Text</Th>
                 <Th>Claim Type</Th>
-                <Th>Truth Rating</Th>
+                <Th>Verification Status</Th>
                 <Th>Confidence</Th>
               </Tr>
             </Thead>
@@ -853,13 +853,13 @@ export function ReviewStudio({
                     <Td>
                       <Badge
                         variant={
-                          claim.truth_rating === 'CONTRADICTED' ? 'danger' :
-                          claim.truth_rating === 'SUPPORTED' ? 'success' :
-                          claim.truth_rating === 'UNVERIFIED' ? 'warning' : 'neutral'
+                          claim.verification_status === 'CONTRADICTED' ? 'danger' :
+                          claim.verification_status === 'SUPPORTED' ? 'success' :
+                          claim.verification_status === 'UNVERIFIED' ? 'warning' : 'neutral'
                         }
                         className="text-[11px] font-semibold uppercase"
                       >
-                        {claim.truth_rating || 'PENDING'}
+                        {claim.verification_status || 'PENDING'}
                       </Badge>
                     </Td>
                     <Td className="font-mono text-xs text-ink-muted">

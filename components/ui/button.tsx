@@ -2,19 +2,20 @@ import * as React from 'react';
 import { cn } from '@/lib/utils';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'accent' | 'outline' | 'ghost' | 'danger';
+  variant?: 'primary' | 'secondary' | 'accent' | 'outline' | 'ghost' | 'danger' | 'default';
   size?: 'default' | 'sm';
 }
 
 export function Button({ className, variant = 'primary', size = 'default', ...props }: ButtonProps) {
   const base = 'btn font-jakarta no-underline hover:no-underline transition-all';
   const variants: Record<string, string> = {
-    primary: 'btn-primary',
+    primary:   'btn-primary',
+    default:   'btn-primary',
     secondary: 'btn-secondary',
-    accent:  'btn-accent',
-    outline: 'btn-outline',
-    ghost:   'btn-ghost',
-    danger:  'btn-outline',
+    accent:    'btn-accent',
+    outline:   'btn-outline',
+    ghost:     'btn-ghost',
+    danger:    'btn-outline',
   };
   const sizes: Record<string, string> = {
     default: '',
