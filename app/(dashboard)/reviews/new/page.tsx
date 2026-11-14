@@ -328,10 +328,10 @@ export default function ReviewStudioPage() {
   const activeChannelConfig = CHANNELS.find((c) => c.name === channel);
   const isNearLimit = activeChannelConfig?.charLimit ? charCount > activeChannelConfig.charLimit * 0.9 : false;
 
-  // Validation
+  // Validation: can submit if there is content and a channel selected (title auto-fallbacks)
   const titleError = (touched.title || hasAttemptedSubmit) && !title.trim();
   const contentError = (touched.content || hasAttemptedSubmit) && !content.trim();
-  const canSubmit = Boolean(title.trim() && content.trim() && channel);
+  const canSubmit = Boolean(content.trim() && channel);
 
   // 4. Sample Selection with Animated Stream / Typing
   const loadSample = (sample: SampleBenchmark) => {
@@ -416,19 +416,22 @@ export default function ReviewStudioPage() {
 
   // 5. Submission Handler with Multi-Stage Progress View
   const executeSubmission = async () => {
-    if (!canSubmit) {
+    if (!content.trim()) {
       setHasAttemptedSubmit(true);
+      document.getElementById('draft-content')?.focus();
       return;
     }
+
+    const submissionTitle = title.trim() || `${channel} Copy — ${content.slice(0, 32).trim()}…`;
 
     setError(null);
     setLoading(true);
     setAnalysisStep(0);
 
-    // Fake honest stage progression timing while awaiting analysis response
-    const stageTimer1 = setTimeout(() => setAnalysisStep(1), 700);
-    const stageTimer2 = setTimeout(() => setAnalysisStep(2), 1600);
-    const stageTimer3 = setTimeout(() => setAnalysisStep(3), 2600);
+    // Honest stage progression timing while awaiting analysis response
+    const stageTimer1 = setTimeout(() => setAnalysisStep(1), 600);
+    const stageTimer2 = setTimeout(() => setAnalysisStep(2), 1400);
+    const stageTimer3 = setTimeout(() => setAnalysisStep(3), 2200);
 
     try {
       // Step 1: Create submission record
@@ -436,7 +439,7 @@ export default function ReviewStudioPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: title.trim(),
+          title: submissionTitle,
           content_type: contentType,
           channel,
           original_content: content.trim(),
@@ -468,6 +471,9 @@ export default function ReviewStudioPage() {
 
       // Smooth transition to review page
       router.push(`/reviews/${submissionId}`);
+      setTimeout(() => {
+        window.location.href = `/reviews/${submissionId}`;
+      }, 400);
     } catch (err: any) {
       clearTimeout(stageTimer1);
       clearTimeout(stageTimer2);
@@ -1123,21 +1129,34 @@ export default function ReviewStudioPage() {
                   <div
                     title={
                       !canSubmit
-                        ? 'Add a title, pick a channel and paste some copy first.'
+                        ? 'Paste some copy to begin verification (⌘↵)'
                         : 'Submit for brand verification (⌘↵)'
                     }
                   >
                     <Button
-                      type="submit"
+                      type="button"
                       disabled={loading || !canSubmit}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        executeSubmission();
+                      }}
                       className={cn(
-                        'btn-primary text-xs px-6 py-2.5 flex items-center gap-2 rounded-full font-bold shadow-sm',
-                        !canSubmit && 'opacity-60 cursor-not-allowed'
+                        'btn-primary text-xs px-6 py-2.5 flex items-center gap-2 rounded-full font-bold shadow-sm transition-all',
+                        canSubmit ? 'cursor-pointer hover:shadow-md active:scale-95' : 'opacity-60 cursor-not-allowed'
                       )}
                     >
-                      <Play className="w-3.5 h-3.5 fill-current" />
-                      <span>Submit for brand verification</span>
-                      <span className="hidden lg:inline text-[10px] opacity-75 font-mono ml-0.5">⌘↵</span>
+                      {loading ? (
+                        <>
+                          <RotateCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>Verifying…</span>
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-3.5 h-3.5 fill-current" />
+                          <span>Submit for brand verification</span>
+                          <span className="hidden lg:inline text-[10px] opacity-75 font-mono ml-0.5">⌘↵</span>
+                        </>
+                      )}
                     </Button>
                   </div>
                 </div>

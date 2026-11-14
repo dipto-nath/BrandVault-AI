@@ -25,7 +25,7 @@ export async function getRequestContext(): Promise<RequestContext> {
 
   const storage = getStorage();
 
-  if (demo) {
+  if (demo || !hasSupabaseConfig()) {
     const workspace = demoWs
       ? await storage.getWorkspaceBySlug(demoWs)
       : await storage.getDemoWorkspace();

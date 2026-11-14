@@ -114,12 +114,11 @@ export function ReviewStudio({
     if (!suggestedContent) return;
     setApplyingCorrection(true);
     try {
-      const res = await fetch(`/api/submissions/${submission.id}/version`, {
+      const res = await fetch(`/api/submissions/${submission.id}/corrections/apply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           content: suggestedContent,
-          change_reason: 'Applied AI-suggested correction',
         }),
       });
       if (!res.ok) throw new Error('Failed to create version');
