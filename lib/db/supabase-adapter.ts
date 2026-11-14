@@ -8,7 +8,7 @@ import type {
   GuidelineSuggestion, AuditLog,
 } from '@/types/database';
 
-const DEMO_WORKSPACE_SLUG = 'nexatech';
+const DEMO_WORKSPACE_SLUG = 'nextech';
 
 function db() { return createServerClient(); }
 
@@ -167,8 +167,10 @@ export class SupabaseStorage implements Storage {
     if (error) throw error;
     return (data ?? []) as Finding[];
   }
-  async listFindings(submissionId: string): Promise<Finding[]> {
-    const { data, error } = await db().from('findings').select('*, brand_guidelines:rule_id(*), finding_evidence(*, approved_facts(*))').eq('submission_id', submissionId).order('created_at', { ascending: true });
+  async listFindings(submissionId?: string): Promise<Finding[]> {
+    let q = db().from('findings').select('*, brand_guidelines:rule_id(*), finding_evidence(*, approved_facts(*))');
+    if (submissionId) q = q.eq('submission_id', submissionId);
+    const { data, error } = await q.order('created_at', { ascending: true });
     if (error) throw error;
     return (data ?? []) as Finding[];
   }

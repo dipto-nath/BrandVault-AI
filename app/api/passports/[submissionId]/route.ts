@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { storage } from '@/lib/db/adaptor';
 import { getRequestContext } from '@/lib/auth';
+import { getPassportReference } from '@/lib/utils';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ submissionId: string }> }) {
   const { submissionId } = await params;
@@ -20,7 +21,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ subm
     const latestRun = runs[0];
     const latestVersion = versions[versions.length - 1];
     const passport = {
-      passportId: `PASS-${submissionId.slice(0, 8)}`,
+      passportId: submission.passport_reference || getPassportReference(submission),
       submission,
       latestRun,
       latestVersion,

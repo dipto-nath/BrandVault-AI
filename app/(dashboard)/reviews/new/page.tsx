@@ -13,13 +13,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 
 const EXAMPLE_CONTRADICTED =
-  "Meet the NexaTech Nova! Enjoy an incredible 48 hours of battery life, weighing just 185 grams. This completely waterproof device features an AI robot buddy and is the world's best smartphone for everyone. Get yours today!";
+  "Meet the NexTech Nova! Enjoy an incredible 48 hours of battery life, weighing just 185 grams. This completely waterproof device features an AI robot buddy and is the world's best smartphone for everyone. Get yours today!";
 
 const EXAMPLE_COMPLIANT =
-  "Introducing the NexaTech Nova. The device offers up to 24 hours of battery life under specified test conditions and weighs 185 grams. Crafted from recycled aluminium, it features a built-in smart assistant for hands-free convenience. Scheduled for launch on 15 December 2026.";
+  "Introducing the NexTech Nova. The device offers up to 12 hours of battery life under specified test conditions and weighs 185 grams. Crafted from recycled aluminium, it features a built-in smart assistant for hands-free convenience. Scheduled for launch on 15 December 2026.";
 
 const EXAMPLE_UNVERIFIED =
-  "NexaTech Nova introduces an experimental quantum-enhanced display matrix and ultra-conductive cooling architecture. Experience next-generation mobile processing built for heavy computational workloads.";
+  "NexTech Nova introduces an experimental quantum-enhanced display matrix and ultra-conductive cooling architecture. Experience next-generation mobile processing built for heavy computational workloads.";
 
 const CONTENT_TYPES = [
   'Social media post',
@@ -50,21 +50,21 @@ export default function StudioPage() {
   const [error, setError] = useState<string | null>(null);
 
   const handleLoadContradicted = () => {
-    setTitle('NexaTech Nova — Promotional Launch Announcement');
+    setTitle('NexTech Nova — Promotional Launch Announcement');
     setContentType('Advertisement');
     setChannel('Instagram');
     setContent(EXAMPLE_CONTRADICTED);
   };
 
   const handleLoadCompliant = () => {
-    setTitle('NexaTech Nova — Official Product Overview');
+    setTitle('NexTech Nova — Official Product Overview');
     setContentType('Product description');
     setChannel('Website');
     setContent(EXAMPLE_COMPLIANT);
   };
 
   const handleLoadUnverified = () => {
-    setTitle('NexaTech Nova — Future Tech Preview');
+    setTitle('NexTech Nova — Future Tech Preview');
     setContentType('Press release');
     setChannel('Website');
     setContent(EXAMPLE_UNVERIFIED);
@@ -153,7 +153,7 @@ export default function StudioPage() {
                 required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. NexaTech Nova Launch Campaign"
+                placeholder="e.g. NexTech Nova Launch Campaign"
                 disabled={loading}
                 className="input w-full text-sm font-medium"
               />

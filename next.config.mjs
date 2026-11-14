@@ -16,4 +16,5 @@ const nextConfig = {
   },
 };
 
+// Restart trigger
 export default nextConfig;

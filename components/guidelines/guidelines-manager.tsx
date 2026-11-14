@@ -144,7 +144,7 @@ export function GuidelinesManager({ guidelines: initialGuidelines }: GuidelinesM
         >
           All Policies ({guidelines.length})
         </button>
-        {CATEGORIES.map((cat) => {
+        {CATEGORIES.filter((cat) => guidelines.some((g) => g.category === cat)).map((cat) => {
           const count = guidelines.filter((g) => g.category === cat).length;
           return (
             <button
@@ -181,7 +181,10 @@ export function GuidelinesManager({ guidelines: initialGuidelines }: GuidelinesM
               {filteredGuidelines.length === 0 ? (
                 <Tr>
                   <Td colSpan={7} className="py-12 text-center text-sm text-ink-secondary">
-                    No guidelines found in this category.
+                    <div className="flex flex-col items-center justify-center p-6 text-center">
+                      <p className="font-semibold text-ink-dark">No guidelines in this category</p>
+                      <p className="text-xs text-ink-muted mt-1">Select another category or click "New Guideline" to create one.</p>
+                    </div>
                   </Td>
                 </Tr>
               ) : (

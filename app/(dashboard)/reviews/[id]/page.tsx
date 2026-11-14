@@ -21,11 +21,11 @@ export default async function ReviewPage({ params }: { params: Promise<{ id: str
   }
 
   const [claims, rawFindings, runs, decisions, versions, allFacts] = await Promise.all([
-    storage.listClaims(id),
-    storage.listFindings(id),
-    storage.listAnalysisRuns(id),
-    storage.listReviewDecisions(id),
-    storage.listVersions(id),
+    storage.listClaims(submission.id),
+    storage.listFindings(submission.id),
+    storage.listAnalysisRuns(submission.id),
+    storage.listReviewDecisions(submission.id),
+    storage.listVersions(submission.id),
     storage.listFacts(submission.workspace_id),
   ]);
 

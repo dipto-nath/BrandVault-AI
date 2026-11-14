@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Table, Tbody, Td, Th, Thead, Tr } from '@/components/ui/table';
 import Link from 'next/link';
-import { formatRelative } from '@/lib/utils';
+import { formatRelative, getSubmissionReference } from '@/lib/utils';
 import { EmptyState } from '@/components/ui/empty-state';
 import { FileText, Filter } from 'lucide-react';
 
@@ -133,11 +133,11 @@ export default async function FindingsPage() {
                       </Badge>
                     </Td>
                     <Td className="py-3 px-4 text-xs text-ink-secondary">
-                      <Link href={`/reviews/${f.submission.id}`} className="font-medium text-ink hover:text-accent truncate block max-w-[150px]">
+                      <Link href={`/reviews/${f.submission.reference || f.submission.id}`} className="font-medium text-ink hover:text-accent truncate block max-w-[150px]">
                         {f.submission.title}
                       </Link>
                       <span className="font-mono text-[10px] text-ink-muted bg-surface-subtle px-1.5 py-0.5 rounded mt-0.5 inline-block border border-border/50">
-                        REV-{f.submission.id.slice(0, 8).toUpperCase()}
+                        {getSubmissionReference(f.submission)}
                       </span>
                     </Td>
                     <Td className="py-3 px-4 text-xs text-ink-muted font-medium">

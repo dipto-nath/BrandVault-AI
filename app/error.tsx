@@ -46,7 +46,7 @@ export default function Error({
           alignItems: 'center',
           justifyContent: 'center'
         }}>
-          <Shield style={{ width: '32', height: '32', color: '#f59e0b' }} />
+          <Shield style={{ width: 32, height: 32, color: '#f59e0b' }} />
         </div>
         <h1 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '0.5rem', color: '#1a1a2e' }}>
           Page unavailable

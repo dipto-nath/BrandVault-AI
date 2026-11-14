@@ -4,13 +4,27 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, Tbody, Td, Th, Thead, Tr } from '@/components/ui/table';
 import Link from 'next/link';
-import { formatRelative, getStatusLabel } from '@/lib/utils';
+import { formatRelative, getStatusLabel, getSubmissionReference, getPassportReference } from '@/lib/utils';
 import { EmptyState } from '@/components/ui/empty-state';
-import { Plus, Shield, ChevronRight } from 'lucide-react';
+import { Plus, Shield, ChevronRight, X } from 'lucide-react';
 
-export default async function ReviewsPage() {
+export default async function ReviewsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ status?: string; risk?: string }>;
+}) {
   const ws = await storage.getDemoWorkspace();
   const submissions = ws ? await storage.listSubmissions(ws.id) : [];
+  const params = (await searchParams) || {};
+  const { status, risk } = params;
+
+  let filtered = submissions;
+  if (status) {
+    filtered = filtered.filter((s) => s.status === status);
+  }
+  if (risk) {
+    filtered = filtered.filter((s) => s.risk_level === risk);
+  }
 
   const total = submissions.length;
   const pending = submissions.filter(s => s.status === 'NEEDS_REVIEW' || s.status === 'CHANGES_REQUESTED').length;
@@ -63,20 +77,58 @@ export default async function ReviewsPage() {
         </div>
       </div>
 
+      {/* Active Filter Indicator */}
+      {(status || risk) && (
+        <div className="flex items-center justify-between p-3 rounded-lg bg-surface border border-accent/30 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-accent">Active Filter:</span>
+            {status && (
+              <Badge variant={statusVariant(status)}>
+                Status: {getStatusLabel(status)}
+              </Badge>
+            )}
+            {risk && (
+              <Badge variant={risk === 'HIGH' ? 'high' : risk === 'MEDIUM' ? 'medium' : 'low'}>
+                Risk: {risk}
+              </Badge>
+            )}
+            <span className="text-ink-secondary">({filtered.length} matching)</span>
+          </div>
+          <Link href="/reviews">
+            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-ink-secondary hover:text-ink flex items-center gap-1">
+              <X className="w-3.5 h-3.5" />
+              <span>Clear Filter</span>
+            </Button>
+          </Link>
+        </div>
+      )}
+
       {/* Submissions Card & Table */}
       <Card className="bg-surface border border-border rounded-xl shadow-sm overflow-hidden">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            {submissions.length === 0 ? (
+            {filtered.length === 0 ? (
               <EmptyState
-                title="No submissions registered yet"
-                description="Submit marketing copy or press releases to run automated fact-checking against the approved knowledge layer."
+                title={status || risk ? "No matching submissions found" : "No submissions registered yet"}
+                description={
+                  status || risk
+                    ? `No submissions match the filter for ${status ? `status "${status}"` : ''}${status && risk ? ' and ' : ''}${risk ? `risk "${risk}"` : ''}.`
+                    : "Submit marketing copy or press releases to run automated fact-checking against the approved knowledge layer."
+                }
                 action={
-                  <Link href="/reviews/new">
-                    <Button variant="outline" size="sm" className="bg-surface hover:bg-surface-hover text-xs font-semibold">
-                      Open Review Studio
-                    </Button>
-                  </Link>
+                  status || risk ? (
+                    <Link href="/reviews">
+                      <Button variant="outline" size="sm" className="bg-surface hover:bg-surface-hover text-xs font-semibold">
+                        Clear Filters
+                      </Button>
+                    </Link>
+                  ) : (
+                    <Link href="/reviews/new">
+                      <Button variant="outline" size="sm" className="bg-surface hover:bg-surface-hover text-xs font-semibold">
+                        Open Review Studio
+                      </Button>
+                    </Link>
+                  )
                 }
               />
             ) : (
@@ -92,22 +144,24 @@ export default async function ReviewsPage() {
                   </Tr>
                 </Thead>
                 <Tbody>
-                  {submissions.map((s) => (
+                  {filtered.map((s) => (
                     <Tr key={s.id} className="hover:bg-surface-hover/60 border-b border-border-soft transition-colors">
                       <Td className="py-3 px-4">
                         <Link
-                          href={`/reviews/${s.id}`}
+                          href={`/reviews/${s.reference || s.id}`}
                           className="font-bold text-ink-dark hover:text-accent transition-colors text-sm block tracking-tight"
                         >
                           {s.title}
                         </Link>
                         <span className="font-mono text-[11px] text-ink-muted bg-surface-subtle px-1.5 py-0.5 rounded mt-1 inline-block border border-border/50">
-                          REV-{s.id.slice(0, 8).toUpperCase()}
+                          {getSubmissionReference(s)}
                         </span>
                       </Td>
                       <Td className="py-3 px-4 text-xs text-ink-secondary">
                         <span className="font-semibold text-ink-dark block">{s.content_type}</span>
-                        <span className="text-[11px] text-ink-muted">{s.channel}</span>
+                        {s.channel && !s.content_type.toLowerCase().includes(s.channel.toLowerCase()) && (
+                          <span className="inline-block px-1.5 py-0.5 mt-0.5 rounded text-[10px] bg-surface-subtle text-ink-muted border border-border/40 font-medium">{s.channel}</span>
+                        )}
                       </Td>
                       <Td className="py-3 px-4">
                         <Badge variant={statusVariant(s.status)}>
@@ -124,19 +178,20 @@ export default async function ReviewsPage() {
                       </Td>
                       <Td className="py-3 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                          <Link href={`/reviews/${s.id}`}>
+                          <Link href={`/reviews/${s.reference || s.id}`}>
                             <Button variant="ghost" size="sm" className="h-8 px-3 text-xs font-semibold hover:bg-surface-hover">
                               Review
                             </Button>
                           </Link>
-                          <Link href={`/passports/${s.id}`}>
+                          <Link href={`/passports/${s.passport_reference || s.id}`} aria-label={`Open passport for ${s.title}`}>
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-8 px-2 text-xs text-accent hover:bg-accent-soft"
-                              title="View Brand Evidence Passport"
+                              className="h-8 px-2.5 text-xs text-accent hover:bg-accent-soft flex items-center gap-1.5"
+                              title={`View Brand Evidence Passport for ${s.title}`}
                             >
                               <Shield className="w-3.5 h-3.5" />
+                              <span>Passport</span>
                             </Button>
                           </Link>
                         </div>

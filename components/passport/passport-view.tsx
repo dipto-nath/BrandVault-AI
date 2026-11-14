@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, Tbody, Td, Th, Thead, Tr } from '@/components/ui/table';
-import { formatDateTime } from '@/lib/utils';
+import { formatDateTime, getPassportReference } from '@/lib/utils';
 import type {
   ContentSubmission, ExtractedClaim, Finding, ReviewDecisionRecord,
   ContentVersion, AnalysisRun, AuditLog, FindingEvidence, ApprovedFact
@@ -36,7 +36,7 @@ export function PassportView({
   auditLogs,
   workspaceName,
 }: PassportViewProps) {
-  const passportId = `BVP-${submission.id.slice(0, 8).toUpperCase()}`;
+  const passportId = submission.passport_reference || getPassportReference(submission);
   const latestRun = runs[0];
   const finalDecision = decisions[0] || null;
 
@@ -45,7 +45,7 @@ export function PassportView({
       {/* Top Controls (Hidden on Print) */}
       <div className="flex items-center justify-between no-print">
         <Link
-          href={`/reviews/${submission.id}`}
+          href={`/reviews/${submission.reference || submission.id}`}
           className="text-sm font-semibold text-ink-secondary hover:text-ink-dark flex items-center gap-1.5"
         >
           <ArrowLeft className="w-4 h-4" />

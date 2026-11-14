@@ -225,7 +225,7 @@ export function KnowledgeManager({
                       </Td>
                       <Td className="py-3 px-4 text-xs font-medium text-ink-secondary">
                         <span className="bg-surface-subtle px-2 py-0.5 rounded text-[11px] font-semibold text-ink-dark border border-border">
-                          {fact.entity_name || 'NexaTech Nova'}
+                          {fact.entity_name || 'NexTech Nova'}
                         </span>
                       </Td>
                       <Td className="text-xs text-ink-secondary">
@@ -400,7 +400,7 @@ export function KnowledgeManager({
                   <input
                     value={entityName}
                     onChange={(e) => setEntityName(e.target.value)}
-                    placeholder="e.g. NexaTech Nova"
+                    placeholder="e.g. NexTech Nova"
                     className="input w-full text-xs"
                   />
                 </div>
@@ -424,7 +424,7 @@ export function KnowledgeManager({
                   value={factText}
                   onChange={(e) => setFactText(e.target.value)}
                   rows={3}
-                  placeholder="e.g. NexaTech Nova supports 30W fast charging via USB-C PD 3.0."
+                  placeholder="e.g. NexTech Nova supports 30W fast charging via USB-C PD 3.0."
                   className="textarea w-full text-xs"
                 />
               </div>

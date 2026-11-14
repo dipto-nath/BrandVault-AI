@@ -6,7 +6,7 @@ export async function getDemoWorkspace(): Promise<Workspace | null> {
   const { data } = await db
     .from('workspaces')
     .select('*')
-    .eq('slug', process.env.NEXT_PUBLIC_DEMO_WORKSPACE_SLUG || 'nexatech')
+    .eq('slug', process.env.NEXT_PUBLIC_DEMO_WORKSPACE_SLUG || 'nextech')
     .single();
   return data;
 }

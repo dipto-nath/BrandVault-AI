@@ -78,7 +78,7 @@ export function FindingInspector({
           id: 'temp-' + Date.now(),
           workspace_id: finding.workspace_id,
           finding_id: finding.id,
-          user_id: '00000000-0000-0000-0000-000000000011',
+          user_id: '22222222-2222-2222-2222-222222222222',
           feedback_type: feedbackType,
           reason: finalReason,
           created_at: new Date().toISOString(),
@@ -106,7 +106,7 @@ export function FindingInspector({
           <span>Back to Content Review</span>
         </Link>
         <span className="font-mono text-xs text-ink-secondary">
-          Finding ID: {finding.id.slice(0, 8)}
+          Finding: {finding.id.startsWith('f-') ? finding.id.toUpperCase() : `FINDING-${finding.id.slice(0, 8).toUpperCase()}`}
         </span>
       </div>
 
