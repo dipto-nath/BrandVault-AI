@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+
 /* BrandVault AI — Enterprise Design System (Eye-Soothing Typography) */
 
 @tailwind base;
@@ -193,9 +195,9 @@
     font-variant-numeric: tabular-nums;
   }
 
-  .font-jakarta { font-family: var(--font-jakarta), system-ui, -apple-system, sans-serif !important; }
-  .font-rounded { font-family: var(--font-rounded), system-ui, -apple-system, sans-serif !important; }
-  .font-outfit { font-family: var(--font-outfit), system-ui, -apple-system, sans-serif !important; }
+  .font-jakarta { font-family: var(--font-jakarta), 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif !important; }
+  .font-rounded { font-family: var(--font-rounded), 'Nunito', system-ui, -apple-system, sans-serif !important; }
+  .font-outfit { font-family: var(--font-outfit), 'Outfit', system-ui, -apple-system, sans-serif !important; }
 
   a { 
     text-decoration: none; 

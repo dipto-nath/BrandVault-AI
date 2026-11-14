@@ -67,9 +67,9 @@ module.exports = {
       fontFamily: {
         sans:    ["var(--font-geist)",      "system-ui", "sans-serif"],
         serif:   ["var(--font-newsreader)", "Georgia",   "serif"],
-        jakarta: ["var(--font-jakarta)",    "system-ui", "sans-serif"],
-        rounded: ["var(--font-rounded)",    "sans-serif"],
-        outfit:  ["var(--font-outfit)",     "sans-serif"],
+        jakarta: ["var(--font-jakarta)",    "'Plus Jakarta Sans'", "system-ui", "sans-serif"],
+        rounded: ["var(--font-rounded)",    "'Nunito'", "system-ui", "sans-serif"],
+        outfit:  ["var(--font-outfit)",     "'Outfit'", "system-ui", "sans-serif"],
       },
       fontSize: {
         xs:   ["0.6875rem", { lineHeight: "1.4", letterSpacing: "0.02em" }],     // 11px - metadata

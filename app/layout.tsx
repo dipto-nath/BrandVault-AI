@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Geist } from 'next/font/google';
+import { Geist, Newsreader, Plus_Jakarta_Sans, Nunito, Outfit } from 'next/font/google';
 import './globals.css';
 
 const geist = Geist({
@@ -7,9 +7,31 @@ const geist = Geist({
   variable: '--font-geist',
   display: 'swap',
   weight: ['400', '500', '600', '700'],
-  preload: true,
-  adjustFontFallback: true,
-  fallback: ['system-ui', 'sans-serif'],
+});
+const plusJakarta = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  variable: '--font-jakarta',
+  display: 'swap',
+  weight: ['400', '500', '600', '700'],
+});
+const nunito = Nunito({
+  subsets: ['latin'],
+  variable: '--font-rounded',
+  display: 'swap',
+  weight: ['500', '600', '700', '800'],
+});
+const outfit = Outfit({
+  subsets: ['latin'],
+  variable: '--font-outfit',
+  display: 'swap',
+  weight: ['500', '600', '700', '800'],
+});
+const newsreader = Newsreader({
+  subsets: ['latin'],
+  style: ['normal', 'italic'],
+  weight: ['400', '500', '600'],
+  variable: '--font-newsreader',
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
@@ -20,7 +42,11 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geist.variable} antialiased`}>{children}</body>
+      <body
+        className={`${geist.variable} ${plusJakarta.variable} ${nunito.variable} ${outfit.variable} ${newsreader.variable} antialiased`}
+      >
+        {children}
+      </body>
     </html>
   );
 }
