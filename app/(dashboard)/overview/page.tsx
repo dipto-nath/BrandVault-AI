@@ -423,29 +423,37 @@ function KnowledgeCard({
   value: number | string;
   icon: React.ReactNode;
   description: string;
-  linkHref: string;
-  linkText: string;
+  linkHref?: string;
+  linkText?: string;
 }) {
-  return (
-    <Link href={linkHref} className="card-interactive block">
-      <div className="card p-4 flex flex-col">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-semibold text-ink-secondary uppercase tracking-wider">{title}</span>
-          <div className="w-9 h-9 rounded-lg bg-surface-subtle flex items-center justify-center shrink-0 text-ink-secondary">
-            {icon}
-          </div>
+  const content = (
+    <div className="card p-4 flex flex-col">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-semibold text-ink-secondary uppercase tracking-wider">{title}</span>
+        <div className="w-9 h-9 rounded-lg bg-surface-subtle flex items-center justify-center shrink-0 text-ink-secondary">
+          {icon}
         </div>
-        <div className="flex-1">
-          <div className="text-2xl font-bold font-sans tnums leading-tight text-ink-dark">
-            {value}
-          </div>
-          <div className="text-[11px] text-ink-secondary truncate mt-1">{description}</div>
+      </div>
+      <div className="flex-1">
+        <div className="text-2xl font-bold font-sans tnums leading-tight text-ink-dark">
+          {value}
         </div>
+        <div className="text-[11px] text-ink-secondary truncate mt-1">{description}</div>
+      </div>
+      {linkHref && linkText && (
         <div className="mt-2 pt-2 border-t border-border-soft flex items-center justify-between">
           <span className="text-xs font-medium text-accent hover:underline">{linkText}</span>
         </div>
-      </div>
+      )}
+    </div>
+  );
+
+  return linkHref ? (
+    <Link href={linkHref} className="card-interactive block">
+      {content}
     </Link>
+  ) : (
+    <div className="card-interactive block">{content}</div>
   );
 }
 
