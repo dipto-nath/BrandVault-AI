@@ -1,8 +1,13 @@
 import type { Metadata } from 'next';
-import { Inter, Newsreader, Plus_Jakarta_Sans, Nunito, Outfit } from 'next/font/google';
+import { Geist, Newsreader, Plus_Jakarta_Sans, Nunito, Outfit } from 'next/font/google';
 import './globals.css';
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-geist', display: 'swap' });
+const geistSans = Geist({
+  subsets: ['latin'],
+  variable: '--font-geist',
+  display: 'swap',
+  weight: ['300', '400', '500', '600', '700'],
+});
 const plusJakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
   variable: '--font-jakarta',
@@ -37,7 +42,11 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} ${plusJakarta.variable} ${nunito.variable} ${outfit.variable} ${newsreader.variable} antialiased`}>{children}</body>
+      <body
+        className={`${geistSans.variable} ${plusJakarta.variable} ${nunito.variable} ${outfit.variable} ${newsreader.variable} antialiased`}
+      >
+        {children}
+      </body>
     </html>
   );
 }

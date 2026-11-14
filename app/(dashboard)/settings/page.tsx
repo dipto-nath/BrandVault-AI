@@ -2,7 +2,7 @@ import { storage } from '@/lib/db/adaptor';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
-  ShieldCheck, Cpu, Database, Users, Lock, KeyRound, Server
+  ShieldCheck, Cpu, Database, Users, Lock, KeyRound, Server, Shield
 } from 'lucide-react';
 
 export default async function SettingsPage() {
@@ -13,7 +13,7 @@ export default async function SettingsPage() {
     <div className="space-y-6 max-w-4xl">
       <div>
         <h2 className="text-xl font-bold text-ink-dark">Workspace Governance & Engine Settings</h2>
-        <p className="text-xs text-ink-secondary mt-0.5">
+        <p className="text-sm text-ink-secondary mt-0.5">
           Configure AI provider disclosure, workspace ground truth isolation, and governance roles.
         </p>
       </div>
@@ -39,7 +39,7 @@ export default async function SettingsPage() {
               </span>
               <span className="text-sm font-bold text-ink-dark">Google Gemini API</span>
               <span className="text-[11px] text-ink-secondary block mt-0.5">
-                Secure server-side abstraction (`@google/generative-ai`)
+                Secure server-side abstraction (@google/generative-ai)
               </span>
             </div>
             <div>
