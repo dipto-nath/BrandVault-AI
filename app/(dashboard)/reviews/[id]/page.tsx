@@ -20,13 +20,14 @@ export default async function ReviewPage({ params }: { params: Promise<{ id: str
     );
   }
 
-  const [claims, rawFindings, runs, decisions, versions, allFacts] = await Promise.all([
+  const [claims, rawFindings, runs, decisions, versions, allFacts, allGuidelines] = await Promise.all([
     storage.listClaims(submission.id),
     storage.listFindings(submission.id),
     storage.listAnalysisRuns(submission.id),
     storage.listReviewDecisions(submission.id),
     storage.listVersions(submission.id),
     storage.listFacts(submission.workspace_id),
+    storage.listGuidelines(submission.workspace_id),
   ]);
 
   const factsMap = new Map(allFacts.map((f) => [f.id, f]));
@@ -54,6 +55,8 @@ export default async function ReviewPage({ params }: { params: Promise<{ id: str
       analysisRuns={runs}
       decisions={decisions}
       versions={versions}
+      allGuidelines={allGuidelines}
+      allFacts={allFacts}
     />
   );
 }
