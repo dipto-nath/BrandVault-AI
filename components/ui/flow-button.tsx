@@ -17,7 +17,7 @@ export function FlowButton({
   return (
     <button
       className={cn(
-        'group relative flex items-center gap-2 overflow-hidden rounded-full border border-brand/30 bg-surface/90 backdrop-blur-sm px-7 py-2.5 text-sm font-semibold text-brand cursor-pointer transition-all duration-[600ms] ease-[cubic-bezier(0.23,1,0.32,1)] hover:border-transparent hover:text-white hover:rounded-xl shadow-sm hover:shadow-md hover:shadow-brand/25 active:scale-[0.96]',
+        'group relative flex items-center gap-2 overflow-hidden rounded-full border border-brand/30 bg-surface/90 backdrop-blur-sm px-7 py-2.5 text-sm font-semibold text-brand cursor-pointer transition-all duration-[600ms] ease-[cubic-bezier(0.23,1,0.32,1)] hover:border-transparent hover:text-white hover:rounded-xl shadow-sm hover:shadow-md hover:shadow-brand/25 active:scale-[0.96] no-underline hover:no-underline font-jakarta',
         className
       )}
       {...props}
@@ -28,7 +28,7 @@ export function FlowButton({
       />
 
       {/* Center Text */}
-      <span className="relative z-[1] -translate-x-1.5 group-hover:translate-x-3 transition-all duration-[700ms] ease-out">
+      <span className="relative z-[1] -translate-x-1.5 group-hover:translate-x-3 transition-all duration-[700ms] ease-out no-underline">
         {text}
       </span>
 

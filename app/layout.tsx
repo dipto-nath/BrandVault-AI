@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Fraunces, Inter, Caveat, JetBrains_Mono } from 'next/font/google';
+import { Fraunces, Inter, Caveat, JetBrains_Mono, Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 
 const fraunces = Fraunces({
@@ -13,6 +13,12 @@ const inter = Inter({
   variable: '--font-inter',
   display: 'swap',
   weight: ['400', '500', '600', '700'],
+});
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  variable: '--font-jakarta',
+  display: 'swap',
+  weight: ['400', '500', '600', '700', '800'],
 });
 const caveat = Caveat({
   subsets: ['latin'],
@@ -36,7 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${fraunces.variable} ${inter.variable} ${caveat.variable} ${jetbrainsMono.variable} antialiased`}
+        className={`${fraunces.variable} ${inter.variable} ${plusJakartaSans.variable} ${caveat.variable} ${jetbrainsMono.variable} antialiased`}
       >
         {children}
       </body>

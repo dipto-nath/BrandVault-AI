@@ -7,7 +7,7 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 }
 
 export function Button({ className, variant = 'primary', size = 'default', ...props }: ButtonProps) {
-  const base = 'btn font-sans transition-all';
+  const base = 'btn font-jakarta no-underline hover:no-underline transition-all';
   const variants: Record<string, string> = {
     primary: 'btn-primary',
     secondary: 'btn-secondary',

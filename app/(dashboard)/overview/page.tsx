@@ -75,20 +75,20 @@ export default async function OverviewPage() {
           <div className='flex-1 min-w-0 lg:max-w-[460px] xl:max-w-[500px] pl-1 sm:pl-3'>
             <div className='inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-brand-soft/80 border border-brand/20 backdrop-blur-sm mb-3'>
               <span className='w-2 h-2 rounded-full bg-supported animate-pulse' />
-              <span className='text-[11px] font-semibold uppercase tracking-wider text-brand font-sans'>Production workspace</span>
+              <span className='text-[11px] font-bold uppercase tracking-wider text-brand font-jakarta'>Production workspace</span>
             </div>
-            <h1 className='text-[32px] sm:text-[36px] xl:text-[40px] font-bold text-ink mb-3 font-serif leading-[1.15] tracking-tight'>
+            <h1 className='text-[34px] sm:text-[38px] xl:text-[42px] font-extrabold text-ink mb-3 font-jakarta leading-[1.15] tracking-tight'>
               NexTech brand governance
             </h1>
-            <p className='text-ink-2 text-sm sm:text-base leading-relaxed mb-6 font-medium'>
+            <p className='text-ink-2 text-sm sm:text-base leading-relaxed mb-6 font-medium font-jakarta'>
               Every claim checked against approved sources before it goes live.
             </p>
             <div className='flex flex-wrap items-center gap-3'>
-              <Link href='/reviews/new'>
+              <Link href='/reviews/new' className='no-underline hover:no-underline'>
                 <FlowButton text="Submit for review" />
               </Link>
-              <Link href='/passports'>
-                <Button variant='secondary' size='sm' className='bg-surface/90 hover:bg-surface border-line backdrop-blur-sm shadow-xs'>
+              <Link href='/passports' className='no-underline hover:no-underline'>
+                <Button variant='secondary' size='sm' className='bg-surface/90 hover:bg-surface border-line backdrop-blur-sm shadow-xs font-jakarta rounded-full px-5 py-2.5 no-underline hover:no-underline'>
                   View passports
                 </Button>
               </Link>
@@ -99,17 +99,17 @@ export default async function OverviewPage() {
           {latestCertified ? (
             <Link
               href={'/passports/' + (latestCertified.passport_reference || latestCertified.id)}
-              className='flex justify-center shrink-0 w-full sm:w-[270px] -rotate-2 hover:rotate-0 transition-transform duration-300 mx-auto lg:mx-0 group cursor-pointer'
+              className='flex justify-center shrink-0 w-full sm:w-[270px] -rotate-2 hover:rotate-0 transition-transform duration-300 mx-auto lg:mx-0 group cursor-pointer no-underline hover:no-underline'
               aria-label={`View evidence passport for ${latestCertified.title}`}
             >
               <div className='passport-card passport-card-approved w-full bg-paper/95 backdrop-blur-md shadow-md border border-line/90 group-hover:shadow-lg transition-shadow'>
                 <div className='p-4 sm:p-5'>
                   <div className='flex items-center gap-2 mb-2'>
                     <span className='w-2 h-2 rounded-full bg-supported' />
-                    <span className='text-[10px] font-semibold uppercase tracking-wider text-ink-3'>Certified</span>
+                    <span className='text-[10px] font-bold uppercase tracking-wider text-ink-3 font-jakarta'>Certified</span>
                   </div>
-                  <h3 className='text-base font-bold text-ink font-serif mb-0.5 truncate'>{latestCertified.title}</h3>
-                  <p className='text-xs text-ink-2 mb-3 truncate'>{latestCertified.channel || latestCertified.content_type} · Approved · {latestCertified.risk_level || 'Low'} risk</p>
+                  <h3 className='text-base font-bold text-ink font-jakarta mb-0.5 truncate'>{latestCertified.title}</h3>
+                  <p className='text-xs text-ink-2 mb-3 truncate font-jakarta'>{latestCertified.channel || latestCertified.content_type} · Approved · {latestCertified.risk_level || 'Low'} risk</p>
                   <div className='flex items-center justify-between pt-2.5 border-t border-line'>
                     <span className='text-xs font-mono text-ink-3'>{getPassportReference(latestCertified)}</span>
                     <div className='stamp stamp-approved scale-90 origin-right'>
@@ -303,12 +303,12 @@ export default async function OverviewPage() {
                       </td>
                       <td className='py-3.5 px-4 text-right'>
                         <div className='flex items-center justify-end gap-1.5'>
-                          <Link href={'/reviews/' + (s.reference || s.id)}>
+                          <Link href={'/reviews/' + (s.reference || s.id)} className='no-underline hover:no-underline'>
                             <Button variant='ghost' size='sm' className='h-8 px-3 text-xs font-semibold hover:bg-surface-2'>
                               Review
                             </Button>
                           </Link>
-                          <Link href={'/passports/' + (s.passport_reference || s.id)} aria-label={`Open passport for ${s.title}`}>
+                          <Link href={'/passports/' + (s.passport_reference || s.id)} className='no-underline hover:no-underline' aria-label={`Open passport for ${s.title}`}>
                             <Button
                               variant='ghost'
                               size='sm'
