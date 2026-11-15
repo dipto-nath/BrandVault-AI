@@ -28,7 +28,7 @@ export default function DashboardLayout({
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-background">
       {/* Desktop Sticky Sidebar with sliding expansion */}
-      <div className="hidden lg:block lg:sticky lg:top-0 lg:h-screen lg:shrink-0 z-30">
+      <div className="hidden lg:block lg:sticky lg:top-0 lg:h-screen lg:shrink-0 z-30 print:hidden">
         <Sidebar animate={true}>
           <SidebarBody className="justify-between h-full">
             <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden scrollbar-none">
@@ -103,13 +103,15 @@ export default function DashboardLayout({
       </AnimatePresence>
 
       {/* Main Dashboard Canvas */}
-      <div className="flex-1 flex flex-col min-w-0 relative">
+      <div className="flex-1 flex flex-col min-w-0 relative print:p-0 print:m-0">
         {/* Header with mobile menu button */}
-        <Header onMenuClick={() => setMobileMenuOpen(true)} />
+        <div className="print:hidden">
+          <Header onMenuClick={() => setMobileMenuOpen(true)} />
+        </div>
 
         {/* Central Content Workspace */}
-        <main className="flex-1 w-full">
-          <div className="layout-content">
+        <main className="flex-1 w-full print:p-0 print:m-0 print:w-full">
+          <div className="layout-content print:p-0 print:m-0 print:max-w-none">
             <ErrorBoundary name="DashboardContent">
               {children}
             </ErrorBoundary>

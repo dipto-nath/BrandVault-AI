@@ -43,7 +43,7 @@ export function PassportView({
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       {/* Top Controls (Hidden on Print) */}
-      <div className="flex items-center justify-between no-print">
+      <div className="flex items-center justify-between no-print print:hidden">
         <Link
           href={`/reviews/${submission.reference || submission.id}`}
           className="text-sm font-semibold text-ink-secondary hover:text-ink-dark flex items-center gap-1.5"
@@ -53,10 +53,10 @@ export function PassportView({
         </Link>
         <div className="flex items-center gap-2">
           <Button
-            variant="outline"
+            variant="default"
             size="sm"
             onClick={() => window.print()}
-            className="flex items-center gap-1.5 text-xs"
+            className="flex items-center gap-1.5 text-xs bg-brand text-white hover:bg-brand/90 font-medium shadow-xs"
           >
             <Printer className="w-4 h-4" />
             <span>Print Official Passport</span>
@@ -65,7 +65,7 @@ export function PassportView({
       </div>
 
       {/* Main Passport Certificate Container */}
-      <div className="bg-surface border-2 border-border rounded-xl p-8 sm:p-10 shadow-sm space-y-8 print:border-none print:shadow-none print:p-0">
+      <div className="bg-surface border-2 border-border rounded-xl p-8 sm:p-10 shadow-sm space-y-8 print:border-none print:shadow-none print:p-0 print:m-0 print:bg-transparent">
         {/* Certificate Header */}
         <div className="border-b-2 border-ink-dark pb-6">
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
@@ -143,7 +143,7 @@ export function PassportView({
                 <span className="font-bold text-ink-secondary uppercase text-[10px] tracking-wider">
                   Original Submitted Content (v1)
                 </span>
-                <span className="text-[10px] font-mono text-ink-secondary">Preserved</span>
+                <span className="text-[10px] font-mono text-ink-secondary bg-sand/60 px-2 py-0.5 rounded">Preserved</span>
               </div>
               <p className="font-sans text-ink leading-relaxed whitespace-pre-wrap">
                 {submission.original_content}
@@ -155,13 +155,32 @@ export function PassportView({
                 <span className="font-bold text-ink-secondary uppercase text-[10px] tracking-wider">
                   Final Active Content {versions.length > 1 ? `(v${versions.length})` : ''}
                 </span>
-                <span className="text-[10px] font-mono text-success font-semibold">Active State</span>
+                <span className="text-[10px] font-mono text-evidence-supported font-semibold bg-evidence-supported/10 px-2 py-0.5 rounded">
+                  {submission.status === 'APPROVED' ? 'Approved State' : 'Active State'}
+                </span>
               </div>
               <p className="font-sans text-ink-dark leading-relaxed whitespace-pre-wrap">
                 {submission.current_content}
               </p>
             </div>
           </div>
+
+          {submission.current_content !== submission.original_content ? (
+            <div className="p-3.5 rounded-xl border border-evidence-supported/30 bg-evidence-supported/5 text-xs space-y-1.5">
+              <div className="flex items-center gap-1.5 text-ink-dark font-bold">
+                <CheckCircle2 className="w-4 h-4 text-evidence-supported" />
+                <span>Compliance Revisions Applied</span>
+              </div>
+              <p className="text-ink-secondary leading-relaxed">
+                The content was edited during human review to correct policy contradictions, adjust brand tone, and replace unverified superlatives prior to official sign-off.
+              </p>
+            </div>
+          ) : (
+            <div className="p-3 rounded-lg border border-border bg-surface-subtle text-xs text-ink-secondary flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-evidence-supported" />
+              <span>Approved in original submitted form without text alterations.</span>
+            </div>
+          )}
         </div>
 
         {/* 3. Extracted Factual Claims (Three States) */}

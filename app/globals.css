@@ -301,5 +301,32 @@
   .workspace-card { @apply p-3 rounded-xl bg-surface border border-line; background-color: var(--surface); border-color: var(--line); }
   .workspace-card-note { @apply mt-3 text-[12px] text-ink-3 italic leading-relaxed; font-family: var(--font-caveat), cursive; }
   
-  @media print { .no-print { display: none !important; } .passport-print-page { @apply max-w-[820px] mx-auto p-10 sm:p-14 shadow-lg bg-white; box-shadow: 0 0 0 1px var(--line), 0 20px 60px rgba(30,37,64,0.1); } .passport-print-page::before { content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 4px; background: var(--brand); } .passport-print-header { @apply border-b-2 border-ink pb-6 mb-8; } .passport-print-section { @apply mb-8; } .passport-print-section-title { @apply flex items-center gap-2 border-b border-ink pb-2 mb-4 text-sm font-bold uppercase tracking-wider text-ink; font-family: var(--font-fraunces), Georgia, serif; } }
+  @media print {
+    @page {
+      margin: 12mm 15mm;
+    }
+    body {
+      background: #ffffff !important;
+      color: #1e2540 !important;
+    }
+    .no-print, [data-print="hidden"] {
+      display: none !important;
+    }
+    .passport-print-page {
+      @apply max-w-[820px] mx-auto p-0 shadow-none bg-white;
+    }
+    .passport-print-page::before {
+      display: none;
+    }
+    .passport-print-header {
+      @apply border-b-2 border-ink pb-6 mb-8;
+    }
+    .passport-print-section {
+      @apply mb-8;
+    }
+    .passport-print-section-title {
+      @apply flex items-center gap-2 border-b border-ink pb-2 mb-4 text-sm font-bold uppercase tracking-wider text-ink;
+      font-family: var(--font-fraunces), Georgia, serif;
+    }
+  }
 }

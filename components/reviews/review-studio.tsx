@@ -303,9 +303,13 @@ export function ReviewStudio({
       setStampAnimation(dec);
 
       setTimeout(() => {
-        router.refresh();
-        window.location.reload();
-      }, 1600);
+        if (dec === 'APPROVED') {
+          router.push(`/passports/${submission.id}`);
+        } else {
+          router.refresh();
+          window.location.reload();
+        }
+      }, 1800);
     } catch (err: any) {
       alert(err.message || 'Error recording review decision.');
     } finally {
@@ -1183,18 +1187,25 @@ export function ReviewStudio({
 
       {/* Stamp Animation Overlay */}
       {stampAnimation && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-dark/30 backdrop-blur-xs pointer-events-none">
-          <div className="transform -rotate-12 scale-125 transition-transform duration-500 animate-in zoom-in-75">
-            <div className={`px-8 py-4 border-4 rounded-2xl font-serif text-3xl font-extrabold tracking-widest uppercase shadow-2xl ${
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-ink-dark/40 backdrop-blur-xs pointer-events-none">
+          <div className="transform -rotate-6 scale-125 transition-transform duration-500 animate-in zoom-in-75">
+            <div className={`px-8 py-4 border-4 rounded-2xl font-serif text-3xl font-extrabold tracking-widest uppercase shadow-2xl flex items-center gap-3 ${
               stampAnimation === 'APPROVED'
                 ? 'border-evidence-supported text-evidence-supported bg-surface/95'
                 : stampAnimation === 'REJECTED'
                 ? 'border-evidence-contradicted text-evidence-contradicted bg-surface/95'
                 : 'border-evidence-unverified text-evidence-unverified bg-surface/95'
             }`}>
+              <ShieldCheck className="w-8 h-8 stroke-[2.5]" />
               {stampAnimation.replace('_', ' ')}
             </div>
           </div>
+          {stampAnimation === 'APPROVED' && (
+            <div className="mt-6 px-4 py-2 bg-surface/95 rounded-full border border-sand-dark/50 text-xs font-semibold text-ink-dark shadow-xl animate-pulse flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-brand" />
+              <span>Redirecting to Brand Evidence Passport...</span>
+            </div>
+          )}
         </div>
       )}
 

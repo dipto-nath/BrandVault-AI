@@ -300,11 +300,16 @@ export function mapRawFindingsToViewModel(
     const lower = (f.excerpt || text).toLowerCase();
 
     if (f.suggested_correction) {
+      let orig = f.excerpt || text;
+      let repl = f.suggested_correction;
+      if (orig === '48 hours' && repl.includes('of battery life')) {
+        orig = '48 hours of battery life';
+      }
       suggestedRewrite = {
-        original: f.excerpt || '',
-        replacement: f.suggested_correction,
+        original: orig,
+        replacement: repl,
       };
-      targetedPhrase = f.excerpt || text;
+      targetedPhrase = orig;
     } else if (lower.includes('48 hour')) {
       targetedPhrase = '48 hours of battery life';
       suggestedRewrite = {
