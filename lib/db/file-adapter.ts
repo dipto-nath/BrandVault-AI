@@ -374,13 +374,87 @@ export class FileStorage implements Storage {
   async approveGuidelineSuggestion(id: string, reviewerId: string): Promise<void> {
     const store = this.store(); const idx = store.guidelineSuggestions.findIndex((s) => s.id === id);
     if (idx === -1) throw new Error('Suggestion not found');
-    store.guidelineSuggestions[idx] = { ...store.guidelineSuggestions[idx], status: 'APPROVED', reviewed_by: reviewerId, reviewed_at: now() };
+    const sugg = store.guidelineSuggestions[idx];
+    store.guidelineSuggestions[idx] = { ...sugg, status: 'APPROVED', reviewed_by: reviewerId, reviewed_at: now() };
+    
+    if (sugg.guideline_id) {
+      const gIdx = store.guidelines.findIndex(g => g.id === sugg.guideline_id);
+      if (gIdx !== -1) {
+        const oldG = store.guidelines[gIdx];
+        const newVersion = (oldG.version || 1) + 1;
+        const newDesc = `${oldG.description} ${sugg.suggested_change}`;
+        store.guidelines[gIdx] = {
+          ...oldG,
+          version: newVersion,
+          description: newDesc,
+          updated_at: now(),
+        };
+        store.auditLogs.unshift({
+          id: uid(),
+          workspace_id: sugg.workspace_id,
+          user_id: reviewerId,
+          entity_type: 'brand_guideline',
+          entity_id: oldG.id,
+          action: 'GUIDELINE_VERSION_APPROVED',
+          old_value: { version: oldG.version, description: oldG.description },
+          new_value: { version: newVersion, description: newDesc, suggestion_id: id },
+          metadata: { rule_code: oldG.rule_code, title: oldG.title },
+          created_at: now(),
+        });
+      }
+    }
     persist(store);
   }
-  async rejectGuidelineSuggestion(id: string, reviewerId: string): Promise<void> {
+  async rejectGuidelineSuggestion(id: string, reviewerId: string, reason?: string): Promise<void> {
     const store = this.store(); const idx = store.guidelineSuggestions.findIndex((s) => s.id === id);
     if (idx === -1) throw new Error('Suggestion not found');
-    store.guidelineSuggestions[idx] = { ...store.guidelineSuggestions[idx], status: 'REJECTED', reviewed_by: reviewerId, reviewed_at: now() };
+    const sugg = store.guidelineSuggestions[idx];
+    store.guidelineSuggestions[idx] = { ...sugg, status: 'REJECTED', reviewed_by: reviewerId, reviewed_at: now() };
+    store.auditLogs.unshift({
+      id: uid(),
+      workspace_id: sugg.workspace_id,
+      user_id: reviewerId,
+      entity_type: 'guideline_suggestion',
+      entity_id: id,
+      action: 'SUGGESTION_DISMISSED',
+      old_value: { status: sugg.status },
+      new_value: { status: 'REJECTED', reason: reason || 'Dismissed by reviewer' },
+      metadata: { suggestion_title: sugg.title },
+      created_at: now(),
+    });
+    persist(store);
+  }
+  async undoGuidelineSuggestion(id: string, reviewerId: string): Promise<void> {
+    const store = this.store(); const idx = store.guidelineSuggestions.findIndex((s) => s.id === id);
+    if (idx === -1) throw new Error('Suggestion not found');
+    const sugg = store.guidelineSuggestions[idx];
+    store.guidelineSuggestions[idx] = { ...sugg, status: 'PENDING', reviewed_by: null, reviewed_at: null };
+    if (sugg.guideline_id) {
+      const gIdx = store.guidelines.findIndex(g => g.id === sugg.guideline_id);
+      if (gIdx !== -1) {
+        const g = store.guidelines[gIdx];
+        const prevVersion = Math.max(1, (g.version || 2) - 1);
+        const origDesc = g.description.replace(` ${sugg.suggested_change}`, '');
+        store.guidelines[gIdx] = {
+          ...g,
+          version: prevVersion,
+          description: origDesc,
+          updated_at: now(),
+        };
+        store.auditLogs.unshift({
+          id: uid(),
+          workspace_id: sugg.workspace_id,
+          user_id: reviewerId,
+          entity_type: 'brand_guideline',
+          entity_id: g.id,
+          action: 'GUIDELINE_VERSION_REVERTED',
+          old_value: { version: g.version },
+          new_value: { version: prevVersion },
+          metadata: { rule_code: g.rule_code, suggestion_id: id },
+          created_at: now(),
+        });
+      }
+    }
     persist(store);
   }
   async createAuditLog(data: Omit<AuditLog, 'id' | 'created_at'> & { created_by?: string | null }): Promise<void> {

@@ -215,7 +215,7 @@ export class SupabaseStorage implements Storage {
     const { error } = await db().from('guideline_suggestions').update({ status: 'APPROVED', reviewed_by: reviewerId, reviewed_at: new Date().toISOString() }).eq('id', id);
     if (error) throw error;
   }
-  async rejectGuidelineSuggestion(id: string, reviewerId: string): Promise<void> {
+  async rejectGuidelineSuggestion(id: string, reviewerId: string, reason?: string): Promise<void> {
     const { error } = await db().from('guideline_suggestions').update({ status: 'REJECTED', reviewed_by: reviewerId, reviewed_at: new Date().toISOString() }).eq('id', id);
     if (error) throw error;
   }

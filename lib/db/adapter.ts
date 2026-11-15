@@ -109,7 +109,8 @@ export interface Storage {
   listGuidelineSuggestions(workspaceId: string): Promise<GuidelineSuggestion[]>;
   createGuidelineSuggestion(data: Omit<GuidelineSuggestion, 'id' | 'created_at' | 'status' | 'reviewed_by' | 'reviewed_at'> & { created_by?: string | null }): Promise<GuidelineSuggestion>;
   approveGuidelineSuggestion(id: string, reviewerId: string): Promise<void>;
-  rejectGuidelineSuggestion(id: string, reviewerId: string): Promise<void>;
+  rejectGuidelineSuggestion(id: string, reviewerId: string, reason?: string): Promise<void>;
+  undoGuidelineSuggestion?(id: string, reviewerId: string): Promise<void>;
 
   // ---------- Audit log ----------
   createAuditLog(data: Omit<AuditLog, 'id' | 'created_at'> & { created_by?: string | null }): Promise<void>;

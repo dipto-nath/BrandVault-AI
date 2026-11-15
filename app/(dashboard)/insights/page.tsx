@@ -1,22 +1,24 @@
 import { storage } from '@/lib/db/adaptor';
-import { getInsights } from '@/lib/services/insights';
+import { getInsights, TimeRange } from '@/lib/services/insights';
 import { InsightsManager } from '@/components/insights/insights-manager';
 
-export default async function InsightsPage() {
+export default async function InsightsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ range?: string; rule?: string }>;
+}) {
   const ws = await storage.getDemoWorkspace();
   const workspaceId = ws?.id || '11111111-1111-1111-1111-111111111111';
+  const resolvedParams = await searchParams;
+  const rangeParam = (resolvedParams.range || '30d') as TimeRange;
+  const range: TimeRange = ['7d', '30d', '90d', 'all'].includes(rangeParam) ? rangeParam : '30d';
 
-  const [insightsStats, rawSuggestions, guidelines] = await Promise.all([
-    getInsights(workspaceId),
-    storage.listGuidelineSuggestions(workspaceId),
-    storage.listGuidelines(workspaceId),
-  ]);
+  const initialData = await getInsights(workspaceId, range);
 
   return (
     <InsightsManager
-      stats={insightsStats}
-      suggestions={rawSuggestions}
-      guidelines={guidelines}
+      initialData={initialData}
+      initialRuleParam={resolvedParams.rule || null}
     />
   );
 }
