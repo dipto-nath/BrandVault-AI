@@ -174,6 +174,21 @@ export function ReviewStudio({
     }));
   };
 
+  // Handle Reopen / Undo action
+  const handleReopen = (findingId: string) => {
+    setFindingModels(prev => prev.map(f => {
+      if (f.id === findingId) {
+        return {
+          ...f,
+          state: 'OPEN',
+          overrideReason: undefined,
+          occurrences: f.occurrences.map(o => ({ ...o, accepted: false, dismissed: false }))
+        };
+      }
+      return f;
+    }));
+  };
+
   // Handle Accept individual occurrence in grouped terminology
   const handleToggleOccurrence = (findingId: string, occId: string, accept: boolean) => {
     setFindingModels(prev => prev.map(f => {
@@ -359,6 +374,13 @@ export function ReviewStudio({
     navigator.clipboard.writeText(getSubmissionReference(submission));
     setCopiedRef(true);
     setTimeout(() => setCopiedRef(false), 2000);
+  };
+
+  const [copiedRevised, setCopiedRevised] = useState(false);
+  const copyRevisedDraft = () => {
+    navigator.clipboard.writeText(revisedContent);
+    setCopiedRevised(true);
+    setTimeout(() => setCopiedRevised(false), 2000);
   };
 
   const passportRef = getPassportReference(submission);
@@ -585,9 +607,15 @@ export function ReviewStudio({
           }`}
         >
           Findings & Copy Desk
-          <span className="ml-1.5 px-2 py-0.5 rounded-full text-xs bg-brand/10 text-brand">
-            {openFindings.length}
-          </span>
+          {openFindings.length === 0 ? (
+            <span className="ml-1.5 px-2 py-0.5 rounded-full text-xs bg-supported-soft text-supported font-bold">
+              ✓ {findingModels.length} resolved
+            </span>
+          ) : (
+            <span className="ml-1.5 px-2 py-0.5 rounded-full text-xs bg-brand-soft text-brand font-bold">
+              {findingModels.length} ({openFindings.length} open)
+            </span>
+          )}
           {activeTab === 'findings' && (
             <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand rounded-full" />
           )}
@@ -646,7 +674,7 @@ export function ReviewStudio({
       {activeTab === 'findings' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Left Column: Submitted Copy (5/12) */}
-          <div className="lg:col-span-5 sticky top-6 space-y-3">
+          <div className="lg:col-span-5 lg:sticky lg:top-20 space-y-4 self-start">
             <Card className="border-sand-dark/40 bg-surface shadow-xs">
               <CardHeader className="py-3 px-4 border-b border-sand-dark/30 flex flex-row items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -692,12 +720,38 @@ export function ReviewStudio({
                     />
                   ) : (
                     // Revised copy with changes applied
-                    <div className="space-y-3">
-                      <div className="p-3 bg-sand/30 rounded-lg border border-sand-dark/30 text-xs text-ink-secondary flex items-center gap-2">
-                        <Sparkles className="w-3.5 h-3.5 text-brand" />
-                        <span>Showing draft with accepted corrections applied live.</span>
+                    <div className="space-y-4 font-sans">
+                      <div className="p-3 bg-supported-soft/60 rounded-xl border border-supported/30 text-xs flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 text-ink-dark font-medium">
+                          <Sparkles className="w-3.5 h-3.5 text-supported" />
+                          <span>
+                            {findingModels.filter(f => f.state === 'ACCEPTED').length > 0
+                              ? `${findingModels.filter(f => f.state === 'ACCEPTED').length} accepted correction(s) applied live.`
+                              : 'No corrections accepted yet. Accept suggestions on the right to see live updates.'}
+                          </span>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={copyRevisedDraft}
+                          className="h-7 text-xs bg-surface border-sand-dark/40 hover:bg-sand/40 font-medium"
+                        >
+                          {copiedRevised ? (
+                            <>
+                              <Check className="w-3.5 h-3.5 text-supported mr-1 stroke-[2.5]" />
+                              Copied!
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3.5 h-3.5 text-ink-muted mr-1" />
+                              Copy revised draft
+                            </>
+                          )}
+                        </Button>
                       </div>
-                      <p>{revisedContent}</p>
+                      <div className="p-4 bg-sand/20 rounded-xl border border-sand-dark/30 font-serif text-base sm:text-lg leading-relaxed text-ink-dark/95 whitespace-pre-wrap select-text">
+                        {revisedContent}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -787,6 +841,7 @@ export function ReviewStudio({
                     }}
                     onAccept={() => handleAccept(finding.id)}
                     onDismiss={() => handleDismiss(finding.id)}
+                    onReopen={() => handleReopen(finding.id)}
                     onOverride={() => {
                       setOverrideModalFinding(finding);
                       setOverrideReasonInput(finding.overrideReason || '');
@@ -1196,7 +1251,6 @@ function RenderHighlightedCopy({
   activeFindingId: string | null;
   onHighlightClick: (findingId: string) => void;
 }) {
-  // Extract all highlight ranges
   interface Range {
     start: number;
     end: number;
@@ -1206,35 +1260,56 @@ function RenderHighlightedCopy({
 
   const ranges: Range[] = [];
 
-  findings.forEach(finding => {
-    // Collect all excerpts for this finding (main + grouped occurrences)
+  findings.forEach((finding) => {
+    // Collect all search phrases for this finding
     const excerptsToFind: string[] = [];
     if (finding.occurrences && finding.occurrences.length > 0) {
-      finding.occurrences.forEach(occ => excerptsToFind.push(occ.excerpt));
-    } else if (finding.flaggedExcerpt) {
+      finding.occurrences.forEach((occ) => {
+        if (occ.excerpt) excerptsToFind.push(occ.excerpt);
+      });
+    }
+    if (finding.flaggedExcerpt && !excerptsToFind.includes(finding.flaggedExcerpt)) {
       excerptsToFind.push(finding.flaggedExcerpt);
     }
 
-    excerptsToFind.forEach(excerpt => {
-      let searchIdx = 0;
-      while (searchIdx < text.length) {
-        const idx = text.indexOf(excerpt, searchIdx);
-        if (idx === -1) break;
-        ranges.push({
-          start: idx,
-          end: idx + excerpt.length,
-          finding,
-          excerpt,
-        });
-        searchIdx = idx + excerpt.length;
+    excerptsToFind.forEach((rawExcerpt) => {
+      const clean = rawExcerpt.replace(/^[“”"']|[“”"']$/g, '').trim();
+      if (!clean || clean.length < 2) return;
+
+      try {
+        const escaped = clean.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(escaped, 'gi');
+        let match: RegExpExecArray | null;
+        while ((match = regex.exec(text)) !== null) {
+          ranges.push({
+            start: match.index,
+            end: match.index + match[0].length,
+            finding,
+            excerpt: match[0],
+          });
+        }
+      } catch {
+        // fallback to indexOf
+        let idx = 0;
+        while (idx < text.length) {
+          const found = text.toLowerCase().indexOf(clean.toLowerCase(), idx);
+          if (found === -1) break;
+          ranges.push({
+            start: found,
+            end: found + clean.length,
+            finding,
+            excerpt: text.substring(found, found + clean.length),
+          });
+          idx = found + clean.length;
+        }
       }
     });
   });
 
-  // Sort ranges by start position
-  ranges.sort((a, b) => a.start - b.start);
+  // Sort ranges: earlier start first; for same start, prefer shorter/more targeted phrases
+  ranges.sort((a, b) => a.start - b.start || (a.end - a.start) - (b.end - b.start));
 
-  // Filter overlapping ranges (keep earlier)
+  // Filter overlapping ranges (keep tighter/first matches)
   const nonOverlapping: Range[] = [];
   let lastEnd = 0;
   for (const r of ranges) {
@@ -1244,7 +1319,7 @@ function RenderHighlightedCopy({
     }
   }
 
-  // Build segments
+  // Build highlighted output
   const segments: React.ReactNode[] = [];
   let cursor = 0;
 
@@ -1255,28 +1330,74 @@ function RenderHighlightedCopy({
 
     const isCurrent = activeFindingId === r.finding.id;
     const cat = r.finding.category;
+    const isResolved = r.finding.state !== 'OPEN';
 
-    const bgClass =
-      cat === 'contradicted' ? 'bg-evidence-contradicted/20 border-b-2 border-evidence-contradicted text-evidence-contradicted font-medium' :
-      cat === 'unverified' ? 'bg-evidence-unverified/20 border-b-2 border-evidence-unverified text-evidence-unverified font-medium' :
-      cat === 'tone' ? 'bg-accent-terracotta/20 border-b-2 border-accent-terracotta text-accent-terracotta font-medium' :
-      'bg-sand-dark/30 border-b-2 border-ink-dark/60 text-ink-dark font-medium';
+    // Tailored palette tokens: warm, calm, zero fluorescent neon
+    const colorTheme =
+      isResolved
+        ? {
+            wrapper: 'bg-supported-soft/60 text-ink border-b-2 border-supported/70',
+            badge: 'bg-supported text-white',
+            label: 'Resolved',
+          }
+        : cat === 'contradicted'
+        ? {
+            wrapper: 'bg-contradicted-soft text-contradicted border-b-2 border-contradicted',
+            badge: 'bg-contradicted text-white',
+            label: 'Contradicted',
+          }
+        : cat === 'unverified'
+        ? {
+            wrapper: 'bg-unverified-soft text-unverified border-b-2 border-unverified',
+            badge: 'bg-unverified text-white',
+            label: 'Unverified',
+          }
+        : cat === 'tone'
+        ? {
+            wrapper: 'bg-[#FBEAE3] text-terracotta border-b-2 border-terracotta',
+            badge: 'bg-terracotta text-white',
+            label: 'Tone',
+          }
+        : {
+            wrapper: 'bg-brand-soft text-brand border-b-2 border-brand',
+            badge: 'bg-brand text-white',
+            label: 'Terminology',
+          };
 
     segments.push(
-      <mark
-        key={`mark-${idx}`}
+      <span
+        key={`highlight-${r.finding.id}-${idx}`}
         id={`highlight-${r.finding.id}`}
+        role="button"
+        tabIndex={0}
         onClick={() => onHighlightClick(r.finding.id)}
-        className={`px-1 py-0.5 rounded-xs cursor-pointer transition-all inline-flex items-center gap-0.5 ${bgClass} ${
-          isCurrent ? 'ring-2 ring-brand ring-offset-1 shadow-xs' : 'hover:opacity-90'
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onHighlightClick(r.finding.id);
+          }
+        }}
+        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded cursor-pointer transition-all duration-150 select-text ${
+          colorTheme.wrapper
+        } ${
+          isCurrent
+            ? 'ring-2 ring-brand ring-offset-2 scale-[1.02] shadow-xs'
+            : 'hover:brightness-95 hover:shadow-2xs'
         }`}
-        title={`Click to view Finding #${r.finding.number}: ${r.finding.title}`}
+        title={`Finding #${r.finding.number}: ${r.finding.title} (${colorTheme.label})`}
       >
-        <span className="text-[10px] font-mono px-1 rounded-full bg-white/70 text-ink-dark leading-tight mr-0.5">
+        <span
+          className={`text-[10px] font-sans font-bold px-1.5 py-0.2 rounded-full leading-tight shrink-0 shadow-2xs select-none ${
+            colorTheme.badge
+          }`}
+        >
           {r.finding.number}
         </span>
-        {text.substring(r.start, r.end)}
-      </mark>
+        <span className="font-medium">{text.substring(r.start, r.end)}</span>
+        {isResolved && (
+          <Check className="w-3 h-3 text-supported shrink-0 inline-block stroke-[2.5]" />
+        )}
+      </span>
     );
 
     cursor = r.end;
@@ -1286,7 +1407,7 @@ function RenderHighlightedCopy({
     segments.push(text.substring(cursor));
   }
 
-  return <>{segments}</>;
+  return <span className="leading-relaxed whitespace-pre-wrap">{segments}</span>;
 }
 
 // ---------------------------------------------------------------------------
@@ -1298,6 +1419,7 @@ function FindingCard({
   onFocus,
   onAccept,
   onDismiss,
+  onReopen,
   onOverride,
   onStartEdit,
   isEditing,
@@ -1313,6 +1435,7 @@ function FindingCard({
   onFocus: () => void;
   onAccept: () => void;
   onDismiss: () => void;
+  onReopen: () => void;
   onOverride: () => void;
   onStartEdit: () => void;
   isEditing: boolean;
@@ -1554,37 +1677,73 @@ function FindingCard({
         {/* Action Buttons */}
         <div className="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-sand-dark/25">
           <div className="flex items-center gap-2">
-            {finding.state !== 'ACCEPTED' ? (
-              <Button
-                variant="default"
-                size="sm"
-                onClick={onAccept}
-                className="gap-1 text-xs bg-brand hover:bg-brand/90 text-white"
-              >
-                <Check className="w-3.5 h-3.5" />
-                Accept suggestion
-              </Button>
+            {finding.state === 'OPEN' ? (
+              <>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={onAccept}
+                  className="gap-1.5 text-xs bg-brand hover:bg-brand/90 text-white font-medium shadow-xs"
+                >
+                  <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                  Accept suggestion
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onDismiss}
+                  className="text-xs text-ink-muted hover:text-ink-dark border-sand-dark/40 hover:bg-sand/40"
+                >
+                  Dismiss
+                </Button>
+              </>
+            ) : finding.state === 'ACCEPTED' ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-supported inline-flex items-center gap-1 bg-supported-soft px-2.5 py-1 rounded-md">
+                  <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                  Correction accepted
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onReopen}
+                  className="gap-1 text-xs text-ink-muted hover:text-ink-dark border-sand-dark/40 hover:bg-sand/40"
+                >
+                  <Undo2 className="w-3.5 h-3.5" />
+                  Undo accept
+                </Button>
+              </div>
+            ) : finding.state === 'DISMISSED' ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-ink-muted italic bg-sand/60 px-2 py-1 rounded-md">
+                  Dismissed
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onReopen}
+                  className="gap-1 text-xs text-ink-muted hover:text-ink-dark border-sand-dark/40 hover:bg-sand/40"
+                >
+                  <Undo2 className="w-3.5 h-3.5" />
+                  Reopen finding
+                </Button>
+              </div>
             ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onDismiss}
-                className="gap-1 text-xs text-ink-muted hover:text-ink-dark"
-              >
-                <Undo2 className="w-3.5 h-3.5" />
-                Undo accept
-              </Button>
-            )}
-
-            {finding.state === 'OPEN' && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onDismiss}
-                className="text-xs text-ink-muted hover:text-ink-dark border-sand-dark/40"
-              >
-                Dismiss
-              </Button>
+              // OVERRIDDEN
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-accent-terracotta inline-flex items-center gap-1 bg-accent-terracotta/15 px-2.5 py-1 rounded-md">
+                  Overridden by reviewer
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onReopen}
+                  className="gap-1 text-xs text-ink-muted hover:text-ink-dark border-sand-dark/40 hover:bg-sand/40"
+                >
+                  <Undo2 className="w-3.5 h-3.5" />
+                  Clear override
+                </Button>
+              </div>
             )}
           </div>
 
@@ -1593,9 +1752,9 @@ function FindingCard({
               variant="outline"
               size="sm"
               onClick={onOverride}
-              className="text-xs text-ink-secondary hover:text-accent-terracotta border-sand-dark/40"
+              className="text-xs text-ink-secondary hover:text-accent-terracotta border-sand-dark/40 hover:bg-sand/40"
             >
-              {finding.state === 'OVERRIDDEN' ? 'Edit override' : 'Override with note'}
+              {finding.state === 'OVERRIDDEN' ? 'Edit override note' : 'Override with note'}
             </Button>
           </div>
         </div>

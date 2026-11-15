@@ -294,34 +294,55 @@ export function mapRawFindingsToViewModel(
       }
     }
 
-    // Build Suggested Rewrite
+    // Build Suggested Rewrite & targeted phrase
     let suggestedRewrite: { original: string; replacement: string } | null = null;
+    let targetedPhrase = f.excerpt || text;
+    const lower = (f.excerpt || text).toLowerCase();
+
     if (f.suggested_correction) {
       suggestedRewrite = {
         original: f.excerpt || '',
         replacement: f.suggested_correction,
       };
-    } else if (text.includes('48 hours')) {
+      targetedPhrase = f.excerpt || text;
+    } else if (lower.includes('48 hour')) {
+      targetedPhrase = '48 hours of battery life';
       suggestedRewrite = {
         original: '48 hours of battery life',
         replacement: 'up to 12 hours of battery life',
       };
-    } else if (text.includes('completely waterproof')) {
+    } else if (lower.includes('completely waterproof')) {
+      targetedPhrase = 'completely waterproof';
       suggestedRewrite = {
         original: 'completely waterproof',
-        replacement: 'splash-resistant (see specifications for details)',
+        replacement: 'splash-resistant (IP54)',
       };
-    } else if (text.includes("world's best")) {
+    } else if (lower.includes('waterproof')) {
+      targetedPhrase = 'waterproof';
       suggestedRewrite = {
-        original: "world's best smartphone for everyone",
-        replacement: 'acclaimed smartphone engineered for performance',
+        original: 'waterproof',
+        replacement: 'splash-resistant',
       };
-    } else if (text.includes('incredible')) {
+    } else if (lower.includes("world's best")) {
+      targetedPhrase = "world's best";
       suggestedRewrite = {
-        original: 'Enjoy an incredible',
-        replacement: 'Experience reliable',
+        original: "world's best",
+        replacement: 'award-winning',
       };
-    } else if (text.includes('get yours today')) {
+    } else if (lower.includes('ai robot buddy')) {
+      targetedPhrase = 'AI robot buddy';
+      suggestedRewrite = {
+        original: 'AI robot buddy',
+        replacement: 'smart assistant',
+      };
+    } else if (lower.includes('incredible')) {
+      targetedPhrase = 'incredible';
+      suggestedRewrite = {
+        original: 'incredible',
+        replacement: 'reliable',
+      };
+    } else if (lower.includes('get yours today')) {
+      targetedPhrase = 'Get yours today!';
       suggestedRewrite = {
         original: 'Get yours today!',
         replacement: 'Available starting 15 December 2026.',
@@ -337,11 +358,11 @@ export function mapRawFindingsToViewModel(
       categoryLabel,
       severity,
       state: 'OPEN',
-      flaggedExcerpt: f.excerpt || text,
+      flaggedExcerpt: targetedPhrase,
       occurrences: [
         {
           id: f.id,
-          excerpt: f.excerpt || text,
+          excerpt: targetedPhrase,
           suggestedCorrection: suggestedRewrite?.replacement,
           accepted: false,
           dismissed: false,
