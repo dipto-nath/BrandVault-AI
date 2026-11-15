@@ -340,7 +340,7 @@ export function FindingInspector({
                 >
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-semibold text-ink-dark">{fb.feedback_type}</span>
-                    <span className="text-ink-secondary font-mono">{formatDateTime(fb.created_at)}</span>
+                    <span suppressHydrationWarning className="text-ink-secondary font-mono">{formatDateTime(fb.created_at)}</span>
                   </div>
                   <p className="text-ink-secondary">{fb.reason || 'No detailed reason provided.'}</p>
                 </div>

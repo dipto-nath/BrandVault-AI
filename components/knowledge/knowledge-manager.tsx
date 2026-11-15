@@ -353,7 +353,7 @@ export function KnowledgeManager({
                         <span>•</span>
                         <span>{doc.file_size ? `${Math.round(doc.file_size / 1024)} KB` : 'Text'}</span>
                         <span>•</span>
-                        <span>{formatDateTime(doc.uploaded_at)}</span>
+                        <span suppressHydrationWarning>{formatDateTime(doc.uploaded_at)}</span>
                       </div>
                       {doc.extracted_text && (
                         <div className="p-2.5 rounded bg-surface-subtle font-mono text-[11px] text-ink line-clamp-3 leading-relaxed border border-border/60">

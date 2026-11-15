@@ -124,7 +124,7 @@ export function PassportView({
             <span className="font-semibold text-ink-secondary uppercase text-[10px] tracking-wider block mb-0.5">
               Submission Date
             </span>
-            <span className="font-medium text-ink-dark">{formatDateTime(submission.created_at)}</span>
+            <span suppressHydrationWarning className="font-medium text-ink-dark">{formatDateTime(submission.created_at)}</span>
           </div>
         </div>
 
@@ -291,7 +291,7 @@ export function PassportView({
                 <span className="font-bold text-ink-dark text-sm">
                   Official Decision: <span className="uppercase">{finalDecision.decision}</span>
                 </span>
-                <span className="font-mono text-ink-secondary">
+                <span suppressHydrationWarning className="font-mono text-ink-secondary">
                   {formatDateTime(finalDecision.created_at)}
                 </span>
               </div>
@@ -328,7 +328,7 @@ export function PassportView({
                   <span className="font-bold text-ink-dark mr-2">Version {v.version_number}</span>
                   <span className="text-ink-secondary">{v.change_reason || 'Content revised'}</span>
                 </div>
-                <span className="text-ink-secondary font-mono">{formatDateTime(v.created_at)}</span>
+                <span suppressHydrationWarning className="text-ink-secondary font-mono">{formatDateTime(v.created_at)}</span>
               </div>
             ))}
           </div>

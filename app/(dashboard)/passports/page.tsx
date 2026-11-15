@@ -118,7 +118,11 @@ export default async function PassportsPage() {
                         </Badge>
                       </Td>
                       <Td className="py-3 px-4 text-xs text-ink-muted font-medium">
-                        {s.status === 'APPROVED' ? formatDateTime(s.updated_at || s.created_at) : <span className="italic opacity-60">Pending approval</span>}
+                        {s.status === 'APPROVED' ? (
+                          <span suppressHydrationWarning>{formatDateTime(s.updated_at || s.created_at)}</span>
+                        ) : (
+                          <span className="italic opacity-60">Pending approval</span>
+                        )}
                       </Td>
                       <Td className="py-3 px-4 text-right">
                         <Link href={`/passports/${s.passport_reference || s.id}`}>

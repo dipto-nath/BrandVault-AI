@@ -11,7 +11,8 @@ import type {
   DocumentStatus, SuggestionStatus, FeedbackType,
 } from '@/types/database';
 
-const DATA_DIR = join(process.cwd(), '.brandvault');
+const IS_VERCEL = Boolean(process.env.VERCEL);
+const DATA_DIR = IS_VERCEL ? join('/tmp', '.brandvault') : join(process.cwd(), '.brandvault');
 const DATA_FILE = join(DATA_DIR, 'store.json');
 const DEMO_WORKSPACE_ID = '11111111-1111-1111-1111-111111111111';
 const DEMO_USER_ID = '22222222-2222-2222-2222-222222222222';
@@ -38,9 +39,33 @@ function emptyStore(): Store {
     findingEvidence: [], reviewDecisions: [], findingFeedback: [], guidelineSuggestions: [], auditLogs: [], };
 }
 function loadStore(): Store {
-  try { if (!existsSync(DATA_FILE)) return emptyStore(); return JSON.parse(readFileSync(DATA_FILE, 'utf8')) as Store; } catch { return emptyStore(); }
+  try {
+    if (existsSync(DATA_FILE)) {
+      return JSON.parse(readFileSync(DATA_FILE, 'utf8')) as Store;
+    }
+    const tmpFile = join('/tmp', '.brandvault', 'store.json');
+    if (existsSync(tmpFile)) {
+      return JSON.parse(readFileSync(tmpFile, 'utf8')) as Store;
+    }
+    return emptyStore();
+  } catch {
+    return emptyStore();
+  }
 }
-function saveStore(store: Store): void { mkdirSync(DATA_DIR, { recursive: true }); writeFileSync(DATA_FILE, JSON.stringify(store, null, 2), 'utf8'); }
+function saveStore(store: Store): void {
+  try {
+    mkdirSync(DATA_DIR, { recursive: true });
+    writeFileSync(DATA_FILE, JSON.stringify(store, null, 2), 'utf8');
+  } catch {
+    try {
+      const fallbackDir = join('/tmp', '.brandvault');
+      mkdirSync(fallbackDir, { recursive: true });
+      writeFileSync(join(fallbackDir, 'store.json'), JSON.stringify(store, null, 2), 'utf8');
+    } catch {
+      // In-memory fallback
+    }
+  }
+}
 function seed(store: Store): Store {
   // Deduplicate workspaces if any were duplicated
   if (store.workspaces.some((w) => w.id === DEMO_WORKSPACE_ID)) {
@@ -224,7 +249,10 @@ export class FileStorage implements Storage {
   private store(): Store { return getStore(); }
   async getWorkspaceBySlug(slug: string): Promise<Workspace | null> {
     const s = (slug || '').toLowerCase();
-    return this.store().workspaces.find((w) => w.slug.toLowerCase() === s || (s === 'nexatech' && w.slug.toLowerCase() === 'nextech')) ?? null;
+    return this.store().workspaces.find((w) => {
+      const wsSlug = (w.slug || '').toLowerCase();
+      return wsSlug === s || ((s === 'nexatech' || s === 'nextech') && (wsSlug === 'nextech' || wsSlug === 'nexatech'));
+    }) ?? null;
   }
   async getDemoWorkspace(): Promise<Workspace | null> {
     const ws = await this.getWorkspaceBySlug(DEMO_WORKSPACE_SLUG);

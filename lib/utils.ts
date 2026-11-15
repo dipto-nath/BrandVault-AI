@@ -5,17 +5,26 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
 export function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString('en-GB', {
-    day: 'numeric', month: 'short', year: 'numeric',
-  });
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return dateString;
+  const day = date.getDate();
+  const month = MONTH_NAMES[date.getMonth()];
+  const year = date.getFullYear();
+  return `${day} ${month} ${year}`;
 }
 
 export function formatDateTime(dateString: string): string {
-  return new Date(dateString).toLocaleString('en-GB', {
-    day: 'numeric', month: 'short', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  });
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return dateString;
+  const day = date.getDate();
+  const month = MONTH_NAMES[date.getMonth()];
+  const year = date.getFullYear();
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${day} ${month} ${year}, ${hours}:${minutes}`;
 }
 
 export function formatRelative(dateString: string): string {

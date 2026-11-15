@@ -471,9 +471,6 @@ export default function ReviewStudioPage() {
 
       // Smooth transition to review page
       router.push(`/reviews/${submissionId}`);
-      setTimeout(() => {
-        window.location.href = `/reviews/${submissionId}`;
-      }, 400);
     } catch (err: any) {
       clearTimeout(stageTimer1);
       clearTimeout(stageTimer2);

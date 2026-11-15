@@ -25,10 +25,31 @@ function many<T>(result: { data: T[] | null; error: unknown }): T[] {
 
 export class SupabaseStorage implements Storage {
   async getWorkspaceBySlug(slug: string): Promise<Workspace | null> {
-    return one(await db().from('workspaces').select('*').eq('slug', slug).single());
+    try {
+      const { data, error } = await db().from('workspaces').select('*').eq('slug', slug).maybeSingle();
+      if (error || !data) {
+        if (slug === 'nextech' || slug === 'nexatech') {
+          const altSlug = slug === 'nextech' ? 'nexatech' : 'nextech';
+          const alt = await db().from('workspaces').select('*').eq('slug', altSlug).maybeSingle();
+          if (alt.data) return alt.data as Workspace;
+        }
+        return null;
+      }
+      return data as Workspace;
+    } catch {
+      return null;
+    }
   }
   async getDemoWorkspace(): Promise<Workspace | null> {
-    return this.getWorkspaceBySlug(DEMO_WORKSPACE_SLUG);
+    let ws = await this.getWorkspaceBySlug(DEMO_WORKSPACE_SLUG);
+    if (!ws) {
+      ws = await this.getWorkspaceBySlug('nexatech');
+    }
+    if (!ws) {
+      const { data } = await db().from('workspaces').select('*').limit(1);
+      if (data && data.length > 0) ws = data[0] as Workspace;
+    }
+    return ws;
   }
   async createWorkspace(data: { name: string; slug: string; description?: string }): Promise<Workspace> {
     return one(await db().from('workspaces').insert({ ...data }).select().single());

@@ -434,7 +434,7 @@ export function ReviewStudio({
               </Badge>
             </div>
             <p className="text-xs text-ink-muted flex flex-wrap items-center gap-2">
-              <span>Submitted {formatDateTime(submission.created_at)}</span>
+              <span suppressHydrationWarning>Submitted {formatDateTime(submission.created_at)}</span>
               <span>•</span>
               <span>Version {versions.length || 1}</span>
               {submission.status === 'APPROVED' && (
@@ -935,7 +935,7 @@ export function ReviewStudio({
                         {dec.decision.replace('_', ' ')}
                       </span>
                       <span className="text-xs text-ink-muted">by Reviewer</span>
-                      <span className="text-xs text-ink-muted">• {formatDateTime(dec.created_at)}</span>
+                      <span suppressHydrationWarning className="text-xs text-ink-muted">• {formatDateTime(dec.created_at)}</span>
                     </div>
                     {dec.comment && (
                       <p className="text-xs text-ink-secondary bg-sand/30 p-3 rounded-lg border border-sand-dark/30 mt-2">
