@@ -145,7 +145,7 @@ export class SupabaseStorage implements Storage {
   async getSubmission(id: string): Promise<ContentSubmission | null> {
     return one(await db().from('content_submissions').select('*').eq('id', id).single());
   }
-  async createSubmission(data: Omit<ContentSubmission, 'id' | 'created_at' | 'updated_at' | 'submitted_at'> & { created_by?: string | null }): Promise<ContentSubmission> {
+  async createSubmission(data: Omit<ContentSubmission, 'id' | 'created_at' | 'updated_at' | 'submitted_at'> & { id?: string; created_by?: string | null }): Promise<ContentSubmission> {
     return one(await db().from('content_submissions').insert(data).select().single());
   }
   async updateSubmission(id: string, data: Partial<Pick<ContentSubmission, 'title' | 'content_type' | 'channel' | 'original_content' | 'current_content' | 'status' | 'risk_level' | 'reviewer_id' | 'submitted_at'>>): Promise<ContentSubmission> {

@@ -338,8 +338,8 @@ export class FileStorage implements Storage {
     return clone(arr);
   }
   async getSubmission(id: string): Promise<ContentSubmission | null> { return this.store().submissions.find((s) => s.id === id || s.reference === id || s.passport_reference === id) ?? null; }
-  async createSubmission(data: Omit<ContentSubmission, 'id' | 'created_at' | 'updated_at' | 'submitted_at'> & { created_by?: string | null }): Promise<ContentSubmission> {
-    const store = this.store(); const s: ContentSubmission = { id: uid(), workspace_id: data.workspace_id, title: data.title, content_type: data.content_type, channel: data.channel, original_content: data.original_content, current_content: data.current_content, status: data.status ?? 'DRAFT', risk_level: null, created_by: data.created_by ?? null, reviewer_id: null, created_at: now(), updated_at: now(), submitted_at: null };
+  async createSubmission(data: Omit<ContentSubmission, 'id' | 'created_at' | 'updated_at' | 'submitted_at'> & { id?: string; created_by?: string | null }): Promise<ContentSubmission> {
+    const store = this.store(); const s: ContentSubmission = { id: data.id || uid(), workspace_id: data.workspace_id, title: data.title, content_type: data.content_type, channel: data.channel, original_content: data.original_content, current_content: data.current_content, status: data.status ?? 'DRAFT', risk_level: null, created_by: data.created_by ?? null, reviewer_id: null, created_at: now(), updated_at: now(), submitted_at: null };
     store.submissions.push(s); persist(store); return clone(s);
   }
   async updateSubmission(id: string, data: Partial<Pick<ContentSubmission, 'title' | 'content_type' | 'channel' | 'original_content' | 'current_content' | 'status' | 'risk_level' | 'reviewer_id' | 'submitted_at'>>): Promise<ContentSubmission> {
