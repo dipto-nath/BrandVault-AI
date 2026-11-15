@@ -7,6 +7,7 @@ import {
   Bell, AlertTriangle, ShieldCheck, Sparkles, Check,
   Clock, ArrowRight, ExternalLink, X, CheckCheck, ShieldAlert
 } from 'lucide-react';
+import { safeStorage } from '@/lib/utils';
 
 export interface NotificationItem {
   id: string;
@@ -57,7 +58,7 @@ const DEFAULT_NOTIFICATIONS: NotificationItem[] = [
   },
 ];
 
-const STORAGE_KEY = 'brandvault_notifications_state';
+const STORAGE_KEY = 'notifications_state';
 
 export function NotificationPopover() {
   const router = useRouter();
@@ -65,24 +66,38 @@ export function NotificationPopover() {
   const [notifications, setNotifications] = useState<NotificationItem[]>(DEFAULT_NOTIFICATIONS);
   const popoverRef = useRef<HTMLDivElement>(null);
 
-  // Load saved state from localStorage if available
+  // Load saved state from safeStorage if available
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+      const saved = safeStorage.getItem(STORAGE_KEY);
       if (saved) {
         setNotifications(JSON.parse(saved));
       }
     } catch {
-      // Ignore localStorage errors
+      // Ignore parse errors
     }
+
+    // Cross-tab storage synchronization
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === `bv:${STORAGE_KEY}` && e.newValue) {
+        try {
+          setNotifications(JSON.parse(e.newValue));
+        } catch {
+          // Ignore
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   const saveNotifications = (items: NotificationItem[]) => {
     setNotifications(items);
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      safeStorage.setItem(STORAGE_KEY, JSON.stringify(items));
     } catch {
-      // Ignore localStorage errors
+      // Ignore errors
     }
   };
 
@@ -128,9 +143,10 @@ export function NotificationPopover() {
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         aria-label="Notifications"
+        aria-haspopup="dialog"
         aria-expanded={isOpen}
-        className={`p-2 rounded-lg text-ink-secondary hover:text-ink-dark hover:bg-sand/60 relative transition-all ${
-          isOpen ? 'bg-sand/70 text-ink-dark ring-2 ring-brand/20' : ''
+        className={`p-2 rounded-lg text-secondary-ink hover:text-ink hover:bg-surface-2 relative transition-all ${
+          isOpen ? 'bg-surface-2 text-ink ring-2 ring-brand/20' : ''
         }`}
       >
         <Bell className="w-4 h-4" />
@@ -143,17 +159,21 @@ export function NotificationPopover() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-surface border border-sand-dark/50 shadow-xl z-50 overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150">
+        <div
+          role="dialog"
+          aria-label="Notifications"
+          className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-surface border border-line shadow-xl z-50 overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150"
+        >
           {/* Header */}
-          <div className="p-3.5 px-4 border-b border-sand-dark/30 flex items-center justify-between bg-surface-subtle/50">
+          <div className="p-3.5 px-4 border-b border-line flex items-center justify-between bg-surface-2/40">
             <div className="flex items-center gap-2">
-              <span className="font-bold text-xs text-ink-dark">Notifications</span>
+              <span className="font-bold text-xs text-ink">Notifications</span>
               {unreadCount > 0 ? (
                 <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-accent-terracotta/15 text-accent-terracotta">
                   {unreadCount} new
                 </span>
               ) : (
-                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-sand text-ink-muted">
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-surface-2 text-ink-3">
                   All read
                 </span>
               )}
@@ -172,11 +192,11 @@ export function NotificationPopover() {
           </div>
 
           {/* List */}
-          <div className="max-h-[380px] overflow-y-auto divide-y divide-sand-dark/20">
+          <div className="max-h-[380px] overflow-y-auto divide-y divide-line/30">
             {notifications.length === 0 ? (
-              <div className="p-8 text-center text-xs text-ink-muted">
+              <div className="p-8 text-center text-xs text-ink-3">
                 <ShieldCheck className="w-8 h-8 text-evidence-supported mx-auto mb-2 opacity-80" />
-                <p className="font-semibold text-ink-dark">You're all caught up</p>
+                <p className="font-semibold text-ink">You're all caught up</p>
                 <p className="text-[11px] mt-0.5">No notifications at this time.</p>
               </div>
             ) : (
@@ -184,8 +204,8 @@ export function NotificationPopover() {
                 <div
                   key={item.id}
                   onClick={() => handleNotificationClick(item)}
-                  className={`p-3.5 px-4 flex items-start gap-3 hover:bg-sand/40 cursor-pointer transition-colors relative group ${
-                    !item.read ? 'bg-sand/20' : ''
+                  className={`p-3.5 px-4 flex items-start gap-3 hover:bg-surface-2/60 cursor-pointer transition-colors relative group ${
+                    !item.read ? 'bg-surface-2/30' : ''
                   }`}
                 >
                   {/* Icon */}
@@ -206,7 +226,7 @@ export function NotificationPopover() {
                       </span>
                     )}
                     {item.type === 'info' && (
-                      <span className="w-6 h-6 rounded-full bg-sand text-ink-secondary flex items-center justify-center">
+                      <span className="w-6 h-6 rounded-full bg-surface-2 text-secondary-ink flex items-center justify-center">
                         <Clock className="w-3.5 h-3.5" />
                       </span>
                     )}
@@ -215,12 +235,12 @@ export function NotificationPopover() {
                   {/* Content */}
                   <div className="flex-1 min-w-0 pr-4">
                     <div className="flex items-center justify-between gap-1">
-                      <p className={`text-xs truncate ${!item.read ? 'font-bold text-ink-dark' : 'font-medium text-ink-secondary'}`}>
+                      <p className={`text-xs truncate ${!item.read ? 'font-bold text-ink' : 'font-medium text-secondary-ink'}`}>
                         {item.title}
                       </p>
-                      <span className="text-[10px] text-ink-muted whitespace-nowrap">{item.time}</span>
+                      <span className="text-[10px] text-ink-3 whitespace-nowrap">{item.time}</span>
                     </div>
-                    <p className="text-[11px] text-ink-muted line-clamp-2 mt-0.5 leading-snug">
+                    <p className="text-[11px] text-secondary-ink line-clamp-2 mt-0.5 leading-snug">
                       {item.description}
                     </p>
                   </div>
@@ -230,8 +250,9 @@ export function NotificationPopover() {
                     <button
                       type="button"
                       onClick={(e) => deleteNotification(e, item.id)}
-                      className="p-1 rounded hover:bg-sand text-ink-muted hover:text-ink-dark"
+                      className="p-1 rounded hover:bg-surface-2 text-ink-3 hover:text-ink"
                       title="Dismiss"
+                      aria-label="Dismiss notification"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -246,15 +267,15 @@ export function NotificationPopover() {
           </div>
 
           {/* Footer */}
-          <div className="p-2.5 px-4 border-t border-sand-dark/30 bg-surface-subtle/50 flex items-center justify-between text-[11px]">
+          <div className="p-2.5 px-4 border-t border-line bg-surface-2/40 flex items-center justify-between text-[11px]">
             <Link
               href="/reviews"
               onClick={() => setIsOpen(false)}
-              className="text-ink-secondary hover:text-brand font-medium flex items-center gap-1 transition-colors"
+              className="text-secondary-ink hover:text-brand font-medium flex items-center gap-1 transition-colors"
             >
               View all reviews <ArrowRight className="w-3 h-3" />
             </Link>
-            <span className="text-ink-muted text-[10px]">BrandVault AI Monitor</span>
+            <span className="text-ink-3 text-[10px]">BrandVault AI Monitor</span>
           </div>
         </div>
       )}

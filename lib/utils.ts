@@ -21,7 +21,9 @@ export function formatDateTime(dateString: string): string {
 export function formatRelative(dateString: string): string {
   const now = new Date();
   const date = new Date(dateString);
+  if (isNaN(date.getTime())) return dateString;
   const diff = now.getTime() - date.getTime();
+  if (diff < 0) return 'just now';
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return 'just now';
   if (mins < 60) return `${mins}m ago`;
@@ -31,6 +33,78 @@ export function formatRelative(dateString: string): string {
   if (days < 7) return `${days}d ago`;
   return formatDate(dateString);
 }
+
+export type BadgeVariant = 'low' | 'medium' | 'high' | 'neutral' | 'outline' | 'gold' | 'success' | 'danger' | 'warning';
+
+export function statusToVariant(status: string): BadgeVariant {
+  const s = (status || '').toUpperCase();
+  switch (s) {
+    case 'APPROVED':
+    case 'SUPPORTED':
+    case 'ACCEPTED':
+    case 'DISMISSED':
+    case 'RESOLVED':
+      return 'low';
+    case 'NEEDS_REVIEW':
+    case 'CHANGES_REQUESTED':
+    case 'OVERRIDDEN':
+    case 'UNVERIFIED':
+    case 'PARTIALLY_SUPPORTED':
+      return 'medium';
+    case 'REJECTED':
+    case 'FAILED':
+    case 'CONTRADICTED':
+      return 'high';
+    case 'DRAFT':
+    case 'ANALYZING':
+    case 'OPEN':
+    case 'PENDING':
+    default:
+      return 'neutral';
+  }
+}
+
+export function riskToVariant(risk: string): BadgeVariant {
+  const r = (risk || '').toUpperCase();
+  switch (r) {
+    case 'CRITICAL':
+    case 'HIGH':
+      return 'high';
+    case 'MEDIUM':
+      return 'medium';
+    case 'LOW':
+      return 'low';
+    default:
+      return 'neutral';
+  }
+}
+
+export const safeStorage = {
+  getItem: (key: string): string | null => {
+    if (typeof window === 'undefined') return null;
+    try {
+      return window.localStorage.getItem(`bv:${key}`);
+    } catch {
+      return null;
+    }
+  },
+  setItem: (key: string, value: string): void => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem(`bv:${key}`, value);
+    } catch {
+      // quota or disabled
+    }
+  },
+  removeItem: (key: string): void => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.removeItem(`bv:${key}`);
+    } catch {
+      // disabled
+    }
+  },
+};
 
 export function getRiskColor(level: string): string {
   if (level === 'HIGH') return 'text-critical';

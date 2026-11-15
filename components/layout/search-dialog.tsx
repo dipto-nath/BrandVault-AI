@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useDeferredValue } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Search, FileText, BookOpen, Shield, Sparkles, ExternalLink,
@@ -18,6 +18,15 @@ export interface SearchResultItem {
   badge?: string;
   badgeVariant?: 'neutral' | 'success' | 'danger' | 'warning' | 'outline' | 'low' | 'medium' | 'high';
 }
+
+// In-memory module-level cache for search items
+let searchCache: {
+  submissions: any[];
+  guidelines: any[];
+  facts: any[];
+  timestamp: number;
+} | null = null;
+const CACHE_TTL_MS = 60000; // 60 seconds
 
 const STATIC_NAV_ITEMS: SearchResultItem[] = [
   {
@@ -94,12 +103,13 @@ export function SearchDialog({
 }) {
   const router = useRouter();
   const [query, setQuery] = useState('');
+  const deferredQuery = useDeferredValue(query);
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   // Dynamic search data cached from API
-  const [submissions, setSubmissions] = useState<any[]>([]);
-  const [guidelines, setGuidelines] = useState<any[]>([]);
-  const [facts, setFacts] = useState<any[]>([]);
+  const [submissions, setSubmissions] = useState<any[]>(() => searchCache?.submissions || []);
+  const [guidelines, setGuidelines] = useState<any[]>(() => searchCache?.guidelines || []);
+  const [facts, setFacts] = useState<any[]>(() => searchCache?.facts || []);
   const [loading, setLoading] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -107,17 +117,30 @@ export function SearchDialog({
   // Load data when dialog opens
   useEffect(() => {
     if (isOpen) {
-      setLoading(true);
-      Promise.all([
-        fetch('/api/submissions').then(res => res.ok ? res.json() : []).catch(() => []),
-        fetch('/api/guidelines').then(res => res.ok ? res.json() : []).catch(() => []),
-        fetch('/api/knowledge/facts').then(res => res.ok ? res.json() : []).catch(() => []),
-      ]).then(([subs, gds, fts]) => {
-        setSubmissions(Array.isArray(subs) ? subs : []);
-        setGuidelines(Array.isArray(gds) ? gds : []);
-        setFacts(Array.isArray(fts) ? fts : []);
-        setLoading(false);
-      });
+      const now = Date.now();
+      if (!searchCache || now - searchCache.timestamp > CACHE_TTL_MS) {
+        setLoading(true);
+        Promise.all([
+          fetch('/api/submissions').then(res => res.ok ? res.json() : []).catch(() => []),
+          fetch('/api/guidelines').then(res => res.ok ? res.json() : []).catch(() => []),
+          fetch('/api/knowledge/facts').then(res => res.ok ? res.json() : []).catch(() => []),
+        ]).then(([subs, gds, fts]) => {
+          const s = Array.isArray(subs) ? subs : [];
+          const g = Array.isArray(gds) ? gds : [];
+          const f = Array.isArray(fts) ? fts : [];
+          searchCache = { submissions: s, guidelines: g, facts: f, timestamp: Date.now() };
+          setSubmissions(s);
+          setGuidelines(g);
+          setFacts(f);
+          setLoading(false);
+        }).catch(() => {
+          setLoading(false);
+        });
+      } else {
+        setSubmissions(searchCache.submissions);
+        setGuidelines(searchCache.guidelines);
+        setFacts(searchCache.facts);
+      }
 
       // Focus input on open
       setTimeout(() => inputRef.current?.focus(), 50);
@@ -129,7 +152,7 @@ export function SearchDialog({
 
   // Compute matched results
   const results = useMemo<SearchResultItem[]>(() => {
-    const q = query.trim().toLowerCase();
+    const q = deferredQuery.trim().toLowerCase();
 
     if (!q) {
       // Empty query: Show quick navigation shortcuts
@@ -205,12 +228,12 @@ export function SearchDialog({
     });
 
     return matched.slice(0, 12);
-  }, [query, submissions, facts, guidelines]);
+  }, [deferredQuery, submissions, facts, guidelines]);
 
   // Reset index when query changes
   useEffect(() => {
     setSelectedIndex(0);
-  }, [query]);
+  }, [deferredQuery]);
 
   // Keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -236,48 +259,67 @@ export function SearchDialog({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 sm:pt-24 px-4 bg-ink-dark/40 backdrop-blur-xs animate-in fade-in-50 duration-150">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Global Search"
+      className="fixed inset-0 z-50 flex items-start justify-center pt-16 sm:pt-24 px-4 bg-ink/40 backdrop-blur-xs animate-in fade-in-50 duration-150"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div
-        className="w-full max-w-2xl rounded-2xl bg-surface border border-sand-dark/60 shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-150"
+        className="w-full max-w-2xl rounded-2xl bg-surface border border-line shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-150"
         onKeyDown={handleKeyDown}
       >
         {/* Search Input Bar */}
-        <div className="p-4 border-b border-sand-dark/40 flex items-center gap-3 bg-surface">
+        <div className="p-4 border-b border-line flex items-center gap-3 bg-surface">
           <Search className="w-5 h-5 text-brand shrink-0" />
           <input
             ref={inputRef}
             type="text"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded={results.length > 0}
+            aria-controls="search-results-list"
+            aria-activedescendant={results[selectedIndex] ? results[selectedIndex].id : undefined}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search facts, rules, submissions, or jump to page..."
-            className="w-full text-sm bg-transparent text-ink-dark placeholder:text-ink-muted focus:outline-none font-medium"
+            className="w-full text-sm bg-transparent text-ink placeholder:text-ink-3 focus:outline-none font-medium"
           />
           {query ? (
             <button
               type="button"
               onClick={() => setQuery('')}
-              className="p-1 rounded-md text-ink-muted hover:text-ink-dark hover:bg-sand/60"
+              className="p-1 rounded-md text-ink-3 hover:text-ink hover:bg-surface-2"
+              aria-label="Clear search input"
             >
               <X className="w-4 h-4" />
             </button>
           ) : (
-            <span className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded bg-sand/60 border border-sand-dark/40 text-[10px] font-mono font-semibold text-ink-muted">
+            <span className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded bg-surface-2 border border-line text-[10px] font-mono font-semibold text-ink-3">
               ESC to close
             </span>
           )}
         </div>
 
         {/* Results List */}
-        <div className="max-h-[420px] overflow-y-auto p-2 divide-y divide-sand-dark/20">
+        <div
+          id="search-results-list"
+          role="listbox"
+          aria-label="Search suggestions"
+          className="max-h-[420px] overflow-y-auto p-2 divide-y divide-line/30"
+        >
           {loading && results.length === 0 ? (
-            <div className="p-8 text-center text-xs text-ink-muted">
+            <div className="p-8 text-center text-xs text-secondary-ink">
               Loading searchable knowledge...
             </div>
           ) : results.length === 0 ? (
-            <div className="p-8 text-center text-xs text-ink-muted">
-              <Search className="w-7 h-7 mx-auto mb-2 text-ink-muted/60" />
-              <p className="font-semibold text-ink-dark">No matches found for "{query}"</p>
-              <p className="text-[11px] mt-1">Try searching by keyword like "battery", "waterproof", or "rule".</p>
+            <div className="p-8 text-center text-xs text-secondary-ink">
+              <Search className="w-7 h-7 mx-auto mb-2 text-ink-3/60" />
+              <p className="font-semibold text-ink">No matches found for "{query}"</p>
+              <p className="text-[11px] mt-1 text-ink-3">Try searching by keyword like "battery", "waterproof", or "rule".</p>
             </div>
           ) : (
             results.map((item, index) => {
@@ -285,25 +327,28 @@ export function SearchDialog({
               return (
                 <div
                   key={item.id}
+                  id={item.id}
+                  role="option"
+                  aria-selected={isSelected}
                   onClick={() => {
                     onClose();
                     router.push(item.href);
                   }}
                   onMouseEnter={() => setSelectedIndex(index)}
                   className={`p-3 px-3.5 rounded-xl cursor-pointer flex items-center justify-between gap-3 transition-colors ${
-                    isSelected ? 'bg-sand/70 text-ink-dark' : 'hover:bg-sand/40 text-ink-secondary'
+                    isSelected ? 'bg-surface-2 text-ink' : 'hover:bg-surface-2/60 text-secondary-ink'
                   }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="shrink-0 text-ink-muted">
+                    <div className="shrink-0 text-ink-3">
                       {item.category === 'submission' && <FileText className="w-4 h-4 text-brand" />}
                       {item.category === 'fact' && <CheckCircle className="w-4 h-4 text-evidence-supported" />}
                       {item.category === 'guideline' && <BookOpen className="w-4 h-4 text-accent-terracotta" />}
-                      {item.category === 'navigation' && <ArrowRight className="w-4 h-4 text-ink-muted" />}
+                      {item.category === 'navigation' && <ArrowRight className="w-4 h-4 text-ink-3" />}
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className={`text-xs truncate ${isSelected ? 'font-bold text-ink-dark' : 'font-semibold text-ink-dark'}`}>
+                        <span className={`text-xs truncate ${isSelected ? 'font-bold text-ink' : 'font-semibold text-ink'}`}>
                           {item.title}
                         </span>
                         {item.badge && (
@@ -313,7 +358,7 @@ export function SearchDialog({
                         )}
                       </div>
                       {item.subtitle && (
-                        <p className="text-[11px] text-ink-muted truncate mt-0.5">
+                        <p className="text-[11px] text-secondary-ink truncate mt-0.5">
                           {item.subtitle}
                         </p>
                       )}
@@ -330,19 +375,19 @@ export function SearchDialog({
         </div>
 
         {/* Footer shortcuts */}
-        <div className="p-2.5 px-4 bg-surface-subtle/70 border-t border-sand-dark/40 flex items-center justify-between text-[11px] text-ink-muted">
+        <div className="p-2.5 px-4 bg-surface-2/50 border-t border-line flex items-center justify-between text-[11px] text-secondary-ink">
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1">
-              <kbd className="px-1.5 py-0.5 rounded bg-sand border border-sand-dark/40 font-mono text-[10px] font-semibold">↑</kbd>
-              <kbd className="px-1.5 py-0.5 rounded bg-sand border border-sand-dark/40 font-mono text-[10px] font-semibold">↓</kbd>
+              <kbd className="px-1.5 py-0.5 rounded bg-surface border border-line font-mono text-[10px] font-semibold text-ink">↑</kbd>
+              <kbd className="px-1.5 py-0.5 rounded bg-surface border border-line font-mono text-[10px] font-semibold text-ink">↓</kbd>
               to navigate
             </span>
             <span className="flex items-center gap-1">
-              <kbd className="px-1.5 py-0.5 rounded bg-sand border border-sand-dark/40 font-mono text-[10px] font-semibold">↵</kbd>
+              <kbd className="px-1.5 py-0.5 rounded bg-surface border border-line font-mono text-[10px] font-semibold text-ink">↵</kbd>
               to select
             </span>
           </div>
-          <span className="text-[10px]">BrandVault AI Global Search</span>
+          <span className="text-[10px] text-ink-3">BrandVault AI Global Search</span>
         </div>
       </div>
     </div>

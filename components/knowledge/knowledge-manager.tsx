@@ -295,7 +295,16 @@ export function KnowledgeManager({
                 <input
                   type="file"
                   accept=".pdf,.docx,.txt"
-                  onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    if (file && file.size > 10 * 1024 * 1024) {
+                      setUploadError('File exceeds 10MB limit. Please choose a smaller file.');
+                      setSelectedFile(null);
+                      return;
+                    }
+                    setUploadError(null);
+                    setSelectedFile(file);
+                  }}
                   className="input text-xs w-full file:mr-3 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-surface-subtle file:text-ink-dark hover:file:bg-border"
                 />
               </div>

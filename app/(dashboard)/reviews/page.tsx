@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, Tbody, Td, Th, Thead, Tr } from '@/components/ui/table';
 import Link from 'next/link';
-import { formatRelative, getStatusLabel, getSubmissionReference, getPassportReference } from '@/lib/utils';
+import { formatRelative, getStatusLabel, getSubmissionReference, getPassportReference, statusToVariant, riskToVariant } from '@/lib/utils';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Plus, Shield, ChevronRight, X } from 'lucide-react';
 
@@ -83,12 +83,12 @@ export default async function ReviewsPage({
           <div className="flex items-center gap-2">
             <span className="font-semibold text-accent">Active Filter:</span>
             {status && (
-              <Badge variant={statusVariant(status)}>
+              <Badge variant={statusToVariant(status)}>
                 Status: {getStatusLabel(status)}
               </Badge>
             )}
             {risk && (
-              <Badge variant={risk === 'HIGH' ? 'high' : risk === 'MEDIUM' ? 'medium' : 'low'}>
+              <Badge variant={riskToVariant(risk)}>
                 Risk: {risk}
               </Badge>
             )}
@@ -164,12 +164,12 @@ export default async function ReviewsPage({
                         )}
                       </Td>
                       <Td className="py-3 px-4">
-                        <Badge variant={statusVariant(s.status)}>
+                        <Badge variant={statusToVariant(s.status)}>
                           {getStatusLabel(s.status)}
                         </Badge>
                       </Td>
                       <Td className="py-3 px-4">
-                        <Badge variant={s.risk_level === 'HIGH' ? 'high' : s.risk_level === 'MEDIUM' ? 'medium' : 'low'}>
+                        <Badge variant={riskToVariant(s.risk_level || 'LOW')}>
                           {s.risk_level || 'LOW'}
                         </Badge>
                       </Td>
@@ -206,18 +206,4 @@ export default async function ReviewsPage({
       </Card>
     </div>
   );
-}
-
-function statusVariant(s: string): 'low' | 'medium' | 'high' | 'neutral' {
-  switch (s) {
-    case 'APPROVED':
-      return 'low';
-    case 'REJECTED':
-      return 'high';
-    case 'NEEDS_REVIEW':
-    case 'CHANGES_REQUESTED':
-      return 'medium';
-    default:
-      return 'neutral';
-  }
 }

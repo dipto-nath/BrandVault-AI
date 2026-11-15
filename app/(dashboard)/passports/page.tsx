@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, Tbody, Td, Th, Thead, Tr } from '@/components/ui/table';
-import { formatDateTime, getPassportReference } from '@/lib/utils';
+import { formatDateTime, getPassportReference, statusToVariant } from '@/lib/utils';
 import { Shield, ArrowRight } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
 
@@ -138,18 +138,4 @@ export default async function PassportsPage() {
       </Card>
     </div>
   );
-}
-
-function statusToVariant(status: string): 'low' | 'medium' | 'high' | 'neutral' {
-  switch (status) {
-    case 'APPROVED':
-      return 'low';
-    case 'REJECTED':
-      return 'high';
-    case 'NEEDS_REVIEW':
-    case 'CHANGES_REQUESTED':
-      return 'medium';
-    default:
-      return 'neutral';
-  }
 }

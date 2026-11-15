@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, Tbody, Td, Th, Thead, Tr } from '@/components/ui/table';
-import { formatDateTime, getPassportReference } from '@/lib/utils';
+import { formatDateTime, getPassportReference, statusToVariant } from '@/lib/utils';
 import type {
   ContentSubmission, ExtractedClaim, Finding, ReviewDecisionRecord,
   ContentVersion, AnalysisRun, AuditLog, FindingEvidence, ApprovedFact
@@ -347,19 +347,5 @@ export function PassportView({
       </div>
     </div>
   );
-}
-
-function statusToVariant(status: string): 'low' | 'medium' | 'high' | 'neutral' {
-  switch (status) {
-    case 'APPROVED':
-      return 'low';
-    case 'REJECTED':
-      return 'high';
-    case 'NEEDS_REVIEW':
-    case 'CHANGES_REQUESTED':
-      return 'medium';
-    default:
-      return 'neutral';
-  }
 }
 

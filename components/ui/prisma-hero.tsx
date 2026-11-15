@@ -195,7 +195,7 @@ const PrismaHero = ({
               <h1
                 className="font-rounded font-bold leading-[0.82] tracking-[-0.04em] select-none text-[#EFECE1]"
                 style={{
-                  fontSize: "clamp(3.8rem, 8.2vw, 9.8rem)",
+                  fontSize: "clamp(2.6rem, 7.8vw, 9.8rem)",
                 }}
               >
                 <WordsPullUp text={title} showAsterisk={false} stacked />

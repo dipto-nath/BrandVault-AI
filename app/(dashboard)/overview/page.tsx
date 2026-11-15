@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { FlowButton } from '@/components/ui/flow-button';
 import { EmptyState } from '@/components/ui/empty-state';
 import Link from 'next/link';
-import { formatRelative, getSubmissionReference, getPassportReference } from '@/lib/utils';
+import { formatRelative, getSubmissionReference, getPassportReference, statusToVariant, riskToVariant, getStatusLabel } from '@/lib/utils';
 import {
   FileText, Clock, ShieldAlert, CheckCircle2, XCircle, AlertTriangle,
   ArrowRight, Shield, Database, Sparkles, BookOpen, TrendingUp, AlertCircle
@@ -449,34 +449,4 @@ function KnowledgeHealthRow({
       </div>
     </div>
   );
-}
-
-function statusToVariant(status: string): 'low' | 'medium' | 'high' | 'neutral' {
-  switch (status) {
-    case 'APPROVED': return 'low';
-    case 'REJECTED': return 'high';
-    case 'NEEDS_REVIEW':
-    case 'CHANGES_REQUESTED': return 'medium';
-    default: return 'neutral';
-  }
-}
-
-function riskToVariant(risk: string): 'low' | 'medium' | 'high' | 'neutral' {
-  switch (risk) {
-    case 'HIGH': return 'high';
-    case 'MEDIUM': return 'medium';
-    default: return 'low';
-  }
-}
-
-function getStatusLabel(status: string): string {
-  switch (status) {
-    case 'NEEDS_REVIEW': return 'Needs review';
-    case 'CHANGES_REQUESTED': return 'Changes requested';
-    case 'APPROVED': return 'Approved';
-    case 'REJECTED': return 'Rejected';
-    case 'DRAFT': return 'Draft';
-    case 'ANALYZING': return 'Analyzing';
-    default: return status;
-  }
 }

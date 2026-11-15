@@ -55,13 +55,22 @@ export async function listDocuments(workspaceId: string) {
 }
 
 export async function uploadDocument(workspaceId: string, userId: string | null, fileBuffer: Buffer, filename: string, mimeType: string) {
-  if (!existsSync(UPLOAD_DIR)) mkdirSync(UPLOAD_DIR, { recursive: true });
-  const storagePath = join(UPLOAD_DIR, `${Date.now()}-${filename}`);
-  writeFileSync(storagePath, fileBuffer);
-  const maxSize = 10 * 1024 * 1024;
+  const maxSize = 10 * 1024 * 1024; // 10MB
   if (fileBuffer.length > maxSize) throw new Error('File too large (max 10MB)');
-  const allowed = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword', 'text/plain'];
-  if (!allowed.includes(mimeType)) throw new Error('Unsupported file type');
+  const allowed = [
+    'application/pdf',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/msword',
+    'text/plain',
+  ];
+  if (!allowed.includes(mimeType) && !filename.match(/\.(pdf|docx|doc|txt)$/i)) {
+    throw new Error('Unsupported file type. Please upload a PDF, DOCX, or TXT file.');
+  }
+
+  if (!existsSync(UPLOAD_DIR)) mkdirSync(UPLOAD_DIR, { recursive: true });
+  const sanitizedFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const storagePath = join(UPLOAD_DIR, `${Date.now()}-${sanitizedFilename}`);
+  writeFileSync(storagePath, fileBuffer);
   const doc = await storage.createDocument({
     workspace_id: workspaceId,
     filename,

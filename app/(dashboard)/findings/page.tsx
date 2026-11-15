@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Table, Tbody, Td, Th, Thead, Tr } from '@/components/ui/table';
 import Link from 'next/link';
-import { formatRelative, getSubmissionReference } from '@/lib/utils';
+import { formatRelative, getSubmissionReference, statusToVariant } from '@/lib/utils';
 import { EmptyState } from '@/components/ui/empty-state';
 import { FileText, Filter } from 'lucide-react';
 
@@ -220,16 +220,4 @@ function typeToVariant(type: string): 'low' | 'medium' | 'high' | 'neutral' {
 
 function typeToLabel(type: string): string {
   return type.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
-}
-
-function statusToVariant(status: string): 'low' | 'medium' | 'high' | 'neutral' {
-  switch (status) {
-    case 'RESOLVED':
-      return 'low';
-    case 'OVERRIDDEN':
-      return 'high';
-    case 'OPEN':
-    default:
-      return 'medium';
-  }
 }

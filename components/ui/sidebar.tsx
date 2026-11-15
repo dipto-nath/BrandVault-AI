@@ -150,6 +150,7 @@ export const DesktopSidebar = ({
         )}
         title={pinned ? "Unpin sidebar (slide on hover)" : "Pin sidebar open"}
         aria-label={pinned ? "Unpin sidebar" : "Pin sidebar open"}
+        aria-expanded={pinned}
       >
         <motion.div
           animate={{ rotate: pinned ? 180 : 0 }}

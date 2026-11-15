@@ -10,6 +10,7 @@ import {
   NAV_LINKS,
 } from "@/components/ui/sidebar";
 import { Header } from "@/components/layout/header";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 
@@ -32,11 +33,11 @@ export default function DashboardLayout({
           <SidebarBody className="justify-between h-full">
             <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden scrollbar-none">
               <Logo />
-              <div className="flex flex-col gap-1.5 mt-2">
+              <nav aria-label="Main navigation" className="flex flex-col gap-1.5 mt-2">
                 {NAV_LINKS.map((link, idx) => (
                   <SidebarLink key={idx} link={link} />
                 ))}
-              </div>
+              </nav>
             </div>
             <UserSection
               workspaceName={workspaceName}
@@ -81,7 +82,7 @@ export default function DashboardLayout({
                     <X className="w-4 h-4" />
                   </button>
                 </div>
-                <div className="flex flex-col gap-1.5 mt-1">
+                <nav aria-label="Mobile navigation" className="flex flex-col gap-1.5 mt-1">
                   {NAV_LINKS.map((link, idx) => (
                     <SidebarLink
                       key={idx}
@@ -89,7 +90,7 @@ export default function DashboardLayout({
                       onClick={() => setMobileMenuOpen(false)}
                     />
                   ))}
-                </div>
+                </nav>
               </div>
               <UserSection
                 workspaceName={workspaceName}
@@ -109,7 +110,9 @@ export default function DashboardLayout({
         {/* Central Content Workspace */}
         <main className="flex-1 w-full">
           <div className="layout-content">
-            {children}
+            <ErrorBoundary name="DashboardContent">
+              {children}
+            </ErrorBoundary>
           </div>
         </main>
       </div>
