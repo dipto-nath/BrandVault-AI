@@ -15,6 +15,10 @@ import {
   Search,
   CheckCircle2,
   Sparkles,
+  FileText,
+  Upload,
+  X,
+  Check,
 } from 'lucide-react';
 
 const INDUSTRIES = [
@@ -75,6 +79,11 @@ function SignupContent() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  
+  // File upload state
+  const [sourceDocuments, setSourceDocuments] = useState<File[]>([]);
+  const [uploadingFiles, setUploadingFiles] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
 
   // Slider state
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -99,6 +108,18 @@ function SignupContent() {
     return () => clearInterval(timer);
   }, [isHoveringSlider]);
 
+  function handleFileSelect(files: File[]) {
+    const validFiles = files.filter(f => f.type === 'application/pdf' && f.size <= 10 * 1024 * 1024);
+    if (validFiles.length !== files.length) {
+      setError('Only PDF files up to 10MB are allowed.');
+    }
+    setSourceDocuments(prev => [...prev, ...validFiles].slice(0, 10));
+  }
+
+  function removeFile(index: number) {
+    setSourceDocuments(prev => prev.filter((_, i) => i !== index));
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (loading) return;
@@ -117,6 +138,34 @@ function SignupContent() {
     setLoading(true);
 
     try {
+      if (sourceDocuments.length > 0) {
+        const formData = new FormData();
+        formData.append('company_name', companyName);
+        formData.append('workspace_slug', slugPreview || '');
+        formData.append('email', email);
+        formData.append('password', password);
+        formData.append('full_name', fullName);
+        if (industry !== INDUSTRIES[INDUSTRIES.length - 1]) {
+          formData.append('industry', industry);
+        }
+        sourceDocuments.forEach(f => formData.append('sourceDocuments', f));
+
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          body: formData,
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || 'Failed to create workspace');
+        }
+
+        setIsSuccess(true);
+        setTimeout(() => router.push(nextParam), 1000);
+        return;
+      }
+
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -441,6 +490,60 @@ function SignupContent() {
                             ? 'Good'
                             : '8+ chars'}
                         </span>
+                      </div>
+                    </div>
+
+                    {/* Source Documents Upload */}
+                    <div className="pt-3">
+                      <label className="block text-xs font-semibold text-[#1E2540] uppercase tracking-wider mb-2">
+                        Source Documents (Optional)
+                      </label>
+                      <p className="text-[11px] text-[#5A627A] mb-2">
+                        Upload PDF documents (competition specs, brand guidelines, product specs) to seed your knowledge base.
+                      </p>
+                      <div
+                        className={`border-2 border-dashed rounded-xl p-4 transition-all ${
+                          sourceDocuments.length > 0
+                            ? 'border-[#2F4FB3] bg-[#E3EAFA]/50'
+                            : 'border-[#DCD5C5] bg-[#FAF8F5]'
+                        }`}
+                        onClick={() => document.getElementById('source-docs-input')?.click()}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          e.currentTarget.classList.add('border-[#2F4FB3]', 'bg-[#E3EAFA]/50');
+                        }}
+                        onDragLeave={(e) => {
+                          e.currentTarget.classList.remove('border-[#2F4FB3]', 'bg-[#E3EAFA]/50');
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          e.currentTarget.classList.remove('border-[#2F4FB3]', 'bg-[#E3EAFA]/50');
+                          const files = Array.from(e.dataTransfer.files).filter(f => f.type === 'application/pdf');
+                          if (files.length > 0) handleFileSelect(files);
+                        }}
+                      >
+                        <input
+                          id="source-docs-input"
+                          type="file"
+                          accept=".pdf"
+                          multiple
+                          onChange={(e) => e.target.files && handleFileSelect(Array.from(e.target.files))}
+                          className="hidden"
+                          disabled={uploadingFiles}
+                        />
+                        <div className="flex flex-col items-center gap-3">
+                          {sourceDocuments.length === 0 ? (
+                            <div className="flex flex-col items-center gap-2 text-[#5A627A]">
+                              <div className="w-12 h-12 rounded-full border-2 border-dashed border-[#DCD5C5] flex items-center justify-center">
+                                <Upload className="w-5 h-5 text-[#8C93A8]" />
+                              </div>
+                              <span className="text-sm font-medium text-[#1E2540]">
+                                Drag & drop PDF files here, or click to browse
+                              </span>
+                              <span className="text-[11px] text-[#8C93A8]">Max 10 files, 10MB each</span>
+                            </div>
+                          ) : null}
+                        </div>
                       </div>
                     </div>
 

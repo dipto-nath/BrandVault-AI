@@ -277,14 +277,102 @@ class OpenAIProvider(LLMProvider):
         return response.choices[0].message.content
 
 
+class GroqProvider(LLMProvider):
+    """Groq LLM provider for ultra-fast structured outputs."""
+
+    def __init__(self):
+        self.api_key = settings.GROQ_API_KEY
+        self.model = settings.GROQ_MODEL or "openai/gpt-oss-120b"
+        self.endpoint = "https://api.groq.com/openai/v1/chat/completions"
+
+    async def generate_json(
+        self,
+        prompt: str,
+        schema: Type[T],
+        temperature: float = 0.2,
+        max_tokens: int = 2000,
+    ) -> T:
+        import httpx
+        schema_dict = schema.model_json_schema()
+        full_prompt = (
+            f"{prompt}\n\n"
+            f"Output MUST be valid JSON adhering strictly to this JSON schema without any markdown formatting:\n"
+            f"{json.dumps(schema_dict, indent=2)}"
+        )
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": "You are a brand governance analyst. Output only valid JSON without markdown code blocks."},
+                {"role": "user", "content": full_prompt},
+            ],
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        }
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(self.endpoint, json=payload, headers=headers)
+            if resp.status_code != 200:
+                raise ValueError(f"Groq API error ({resp.status_code}): {resp.text}")
+            data = resp.json()
+            content = data["choices"][0]["message"]["content"]
+
+            clean = content.strip()
+            if clean.startswith("```"):
+                lines = clean.split("\n")
+                if lines[0].startswith("```"):
+                    lines = lines[1:]
+                if lines and lines[-1].startswith("```"):
+                    lines = lines[:-1]
+                clean = "\n".join(lines).strip()
+
+            parsed = json.loads(clean)
+            return schema(**parsed)
+
+    async def generate_text(
+        self,
+        prompt: str,
+        temperature: float = 0.2,
+        max_tokens: int = 2000,
+    ) -> str:
+        import httpx
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "user", "content": prompt},
+            ],
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        }
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(self.endpoint, json=payload, headers=headers)
+            if resp.status_code != 200:
+                raise ValueError(f"Groq API error ({resp.status_code}): {resp.text}")
+            data = resp.json()
+            return data["choices"][0]["message"]["content"]
+
+
 def get_llm_provider() -> LLMProvider:
     """Get configured LLM provider."""
-    if settings.USE_MOCK_LLM or not settings.GEMINI_API_KEY:
-        logger.info("using_mock_llm_provider")
-        return MockLLMProvider()
+    if settings.GROQ_API_KEY:
+        try:
+            return GroqProvider()
+        except Exception as e:
+            logger.warning("groq_init_failed", error=str(e))
+
+    if not settings.USE_MOCK_LLM and settings.GEMINI_API_KEY:
+        try:
+            return GeminiProvider()
+        except Exception as e:
+            logger.warning("gemini_init_failed_falling_back_to_mock", error=str(e))
     
-    try:
-        return GeminiProvider()
-    except Exception as e:
-        logger.warning("gemini_init_failed_falling_back_to_mock", error=str(e))
-        return MockLLMProvider()
+    logger.info("using_mock_llm_provider")
+    return MockLLMProvider()

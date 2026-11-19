@@ -41,6 +41,9 @@ interface SettingsManagerProps {
   initialMembers: MemberItem[];
   initialInvitations: InvitationItem[];
   configuredModel: string;
+  aiProvider?: string;
+  aiModel?: string;
+  aiEnabled?: boolean;
 }
 
 const ROLES = ['ADMIN', 'MANAGER', 'REVIEWER', 'CREATOR', 'AGENCY'] as const;
@@ -50,6 +53,9 @@ export function SettingsManager({
   initialMembers,
   initialInvitations,
   configuredModel,
+  aiProvider: propAiProvider,
+  aiModel: propAiModel,
+  aiEnabled: propAiEnabled,
 }: SettingsManagerProps) {
   const [members, setMembers] = useState<MemberItem[]>(initialMembers);
   const [invitations, setInvitations] = useState<InvitationItem[]>(initialInvitations);
@@ -60,6 +66,12 @@ export function SettingsManager({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [updatingRoleId, setUpdatingRoleId] = useState<string | null>(null);
+  
+  // AI Disclosure state
+  const [aiEnabled, setAiEnabled] = useState(propAiEnabled ?? true);
+  const [aiProvider, setAiProvider] = useState(propAiProvider ?? 'Groq');
+  const [aiModel, setAiModel] = useState(propAiModel ?? 'openai/gpt-oss-120b');
+  const [updatingAi, setUpdatingAi] = useState(false);
 
   const handleInviteSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,6 +105,36 @@ export function SettingsManager({
       setErrorMsg(err.message || 'Invitation failed');
     } finally {
       setSubmittingInvite(false);
+    }
+  };
+
+  const handleAiToggle = async (enabled: boolean) => {
+    if (workspace.isDemo) {
+      setErrorMsg('Demo workspace AI settings cannot be modified.');
+      return;
+    }
+
+    setUpdatingAi(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
+    try {
+      const res = await fetch('/api/workspaces/current/ai', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled, provider: aiProvider, model: aiModel }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to update AI settings');
+      }
+      setAiEnabled(enabled);
+      setSuccessMsg(enabled ? 'AI verification enabled' : 'AI verification disabled — running in deterministic mode');
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to update AI settings');
+      setAiEnabled(!enabled); // Revert on error
+    } finally {
+      setUpdatingAi(false);
     }
   };
 
@@ -308,6 +350,73 @@ export function SettingsManager({
             </span>
             All verification and guideline extraction requests execute strictly server-side. Company API keys never reach client browsers. Content evaluated against approved ground truth only; missing company specs yield UNVERIFIED findings rather than synthetic guesses.
           </div>
+        </CardContent>
+      </Card>
+
+      {/* AI Verification Controls */}
+      <Card className="bg-surface border border-sand-dark/60 rounded-xl shadow-xs overflow-hidden">
+        <CardHeader className="p-4 bg-cream/40 border-b border-sand-dark/50">
+          <div className="flex items-center gap-2">
+            <Cpu className="w-4 h-4 text-brand" />
+            <CardTitle className="text-base font-serif font-bold text-ink-dark">
+              AI Verification Controls & Disclosure
+            </CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="p-5 space-y-4 text-xs">
+          <div className="p-4 rounded-xl border border-brand/20 bg-brand/5 text-xs text-ink leading-relaxed">
+            <span className="font-bold text-brand block mb-1 uppercase tracking-wide text-[10px]">
+              AI Provider Disclosure:
+            </span>
+            <div className="space-y-1">
+              <div className="flex justify-between">
+                <span className="text-ink-muted">Provider</span>
+                <span className="font-medium text-ink-dark">{aiProvider}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-ink-muted">Model</span>
+                <span className="font-mono text-ink-dark">{aiModel}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-ink-muted">Status</span>
+                <Badge variant={aiEnabled ? 'low' : 'medium'}>
+                  {aiEnabled ? 'AI-Assisted Verification' : 'Deterministic-Only Mode'}
+                </Badge>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between p-4 rounded-xl border border-sand-dark/60 bg-cream/30">
+            <div>
+              <span className="font-semibold text-ink-dark block">Use External AI for Verification</span>
+              <span className="text-xs text-ink-muted block mt-0.5">
+                When enabled, AI assists with claim extraction, contextual verification, and tone analysis. 
+                When disabled, only deterministic rule matching runs (exact fact checks, guideline terms).
+              </span>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={aiEnabled}
+                onChange={(e) => handleAiToggle(e.target.checked)}
+                disabled={updatingAi || workspace.isDemo}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-sand-dark/30 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-sand-dark/30 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand"></div>
+            </label>
+          </div>
+
+          {workspace.isDemo && (
+            <p className="text-xs text-ink-muted italic">
+              AI settings are locked in demo mode. Create a workspace to configure AI verification.
+            </p>
+          )}
+
+          <p className="text-xs text-ink-muted leading-relaxed pt-3 border-t border-sand-dark/40">
+            <span className="font-bold text-ink-dark">Design Approach:</span> All verification and guideline extraction requests execute strictly server-side. 
+            Company API keys never reach client browsers. Content evaluated against approved ground truth only; 
+            missing company specs yield UNVERIFIED findings rather than synthetic guesses.
+          </p>
         </CardContent>
       </Card>
 
