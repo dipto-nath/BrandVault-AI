@@ -4,9 +4,11 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { cookies } from 'next/headers';
 import { runAnalysis } from '@/lib/services/submissions';
+import { getRequestContext } from '@/lib/auth';
 
 export default async function ReviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const ctx = await getRequestContext();
   let submission = await storage.getSubmission(id);
 
   // If not found in this serverless container instance, attempt recovery from session cookie
@@ -118,6 +120,8 @@ export default async function ReviewPage({ params }: { params: Promise<{ id: str
       versions={versions}
       allGuidelines={allGuidelines}
       allFacts={allFacts}
+      userRole={ctx.role}
+      userId={ctx.userId}
     />
   );
 }

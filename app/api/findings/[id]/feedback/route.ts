@@ -33,6 +33,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (!finding || finding.workspace_id !== ctx.workspaceId) {
       return NextResponse.json({ error: 'Finding not found' }, { status: 404 });
     }
+    
+    // Enforce role-based permissions for OVERRIDDEN feedback
+    if (parsed.feedback_type === 'OVERRIDDEN') {
+      if (!['ADMIN', 'REVIEWER'].includes(ctx.role)) {
+        return NextResponse.json(
+          { error: 'Override requires Reviewer or Admin role' },
+          { status: 403 }
+        );
+      }
+      // Require a reason for override
+      if (!parsed.reason || !parsed.reason.trim()) {
+        return NextResponse.json(
+          { error: 'Override requires a written reason' },
+          { status: 400 }
+        );
+      }
+    }
+    
     await storage.createFindingFeedback({
       workspace_id: ctx.workspaceId,
       finding_id: id,

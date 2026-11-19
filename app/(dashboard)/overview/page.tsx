@@ -14,17 +14,21 @@ import {
 
 export default async function OverviewPage() {
   const ctx = await getRequestContext();
-  const ws = (ctx.workspaceId ? await storage.getWorkspace(ctx.workspaceId) : null) || (await storage.getDemoWorkspace());
+  
+  // Get the actual workspace for this authenticated user
+  // Don't fall back to demo workspace - show real data or empty states
+  const ws = ctx.workspaceId ? await storage.getWorkspace(ctx.workspaceId) : null;
   const workspaceId = ws?.id || ctx.workspaceId;
   const workspaceName = ws?.name || 'Brand';
 
+  // For new workspaces with no data, show zeros - don't use demo fallback
   const [data, guidelines, facts, allFindings, submissions] = await Promise.all([
     workspaceId
       ? storage.dashboardStats(workspaceId)
       : Promise.resolve({ total: 0, pending: 0, approved: 0, rejected: 0, highRisk: 0, recent: [] }),
     workspaceId ? storage.listGuidelines(workspaceId, { active: true }) : Promise.resolve([]),
     workspaceId ? storage.listFacts(workspaceId, { active: true }) : Promise.resolve([]),
-    workspaceId ? storage.listFindings() : Promise.resolve([]),
+    workspaceId ? storage.listFindings(undefined, workspaceId) : Promise.resolve([]),
     workspaceId ? storage.listSubmissions(workspaceId) : Promise.resolve([]),
   ]);
 

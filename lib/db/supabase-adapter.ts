@@ -239,10 +239,11 @@ export class SupabaseStorage implements Storage {
     if (error) throw error;
     return (data ?? []) as Finding[];
   }
-  async listFindings(submissionId?: string): Promise<Finding[]> {
+  async listFindings(submissionId?: string, workspaceId?: string): Promise<Finding[]> {
     try {
       let q = db().from('findings').select('*');
       if (submissionId) q = q.eq('submission_id', submissionId);
+      if (workspaceId) q = q.eq('workspace_id', workspaceId);
       const { data, error } = await q.order('created_at', { ascending: true });
       if (error) throw error;
       return (data ?? []) as Finding[];

@@ -93,7 +93,7 @@ export interface Storage {
 
   // ---------- Findings ----------
   createFindings(findings: Array<Omit<Finding, 'id' | 'created_at'> & { created_by?: string | null }>): Promise<Finding[]>;
-  listFindings(submissionId?: string): Promise<Finding[]>;
+  listFindings(submissionId?: string, workspaceId?: string): Promise<Finding[]>;
   getFinding(id: string): Promise<Finding | null>;
   createFindingEvidence(evidence: Array<Omit<FindingEvidence, 'id' | 'created_at'>>): Promise<FindingEvidence[]>;
   listFindingEvidence(findingId: string): Promise<FindingEvidence[]>;

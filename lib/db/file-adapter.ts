@@ -379,7 +379,11 @@ export class FileStorage implements Storage {
     for (const f of findings) { const x: Finding = { id: uid(), workspace_id: f.workspace_id, submission_id: f.submission_id, analysis_run_id: f.analysis_run_id, claim_id: f.claim_id ?? null, finding_type: f.finding_type, severity: f.severity, rule_id: f.rule_id ?? null, title: f.title, excerpt: f.excerpt, explanation: f.explanation, suggested_correction: f.suggested_correction ?? null, confidence: f.confidence, status: f.status ?? 'OPEN', created_at: now() }; store.findings.push(x); out.push(clone(x)); }
     persist(store); return out;
   }
-  async listFindings(submissionId?: string): Promise<Finding[]> { if (!submissionId) return clone(this.store().findings); return clone(this.store().findings.filter((f) => f.submission_id === submissionId)); }
+  async listFindings(submissionId?: string, workspaceId?: string): Promise<Finding[]> { 
+    if (submissionId) return clone(this.store().findings.filter((f) => f.submission_id === submissionId));
+    if (workspaceId) return clone(filterByWorkspace(this.store().findings, workspaceId));
+    return clone(this.store().findings); 
+  }
   async getFinding(id: string): Promise<Finding | null> { return this.store().findings.find((f) => f.id === id) ?? null; }
   async createFindingEvidence(evidence: Array<Omit<FindingEvidence, 'id' | 'created_at'>>): Promise<FindingEvidence[]> {
     const store = this.store(); const out: FindingEvidence[] = [];

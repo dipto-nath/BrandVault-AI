@@ -7,10 +7,12 @@ import Link from 'next/link';
 import { formatRelative, getSubmissionReference, statusToVariant } from '@/lib/utils';
 import { EmptyState } from '@/components/ui/empty-state';
 import { FileText, Filter } from 'lucide-react';
+import { getRequestContext } from '@/lib/auth';
 
 export default async function FindingsPage() {
-  const ws = await storage.getDemoWorkspace();
-  const submissions = ws ? await storage.listSubmissions(ws.id) : [];
+  const ctx = await getRequestContext();
+  const workspaceId = ctx.workspaceId;
+  const submissions = workspaceId ? await storage.listSubmissions(workspaceId) : [];
 
   const allFindings = [];
   for (const s of submissions) {

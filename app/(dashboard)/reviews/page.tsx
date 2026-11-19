@@ -7,14 +7,16 @@ import Link from 'next/link';
 import { formatRelative, getStatusLabel, getSubmissionReference, getPassportReference, statusToVariant, riskToVariant } from '@/lib/utils';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Plus, Shield, ChevronRight, X } from 'lucide-react';
+import { getRequestContext } from '@/lib/auth';
 
 export default async function ReviewsPage({
   searchParams,
 }: {
   searchParams?: Promise<{ status?: string; risk?: string }>;
 }) {
-  const ws = await storage.getDemoWorkspace();
-  const submissions = ws ? await storage.listSubmissions(ws.id) : [];
+  const ctx = await getRequestContext();
+  const workspaceId = ctx.workspaceId;
+  const submissions = workspaceId ? await storage.listSubmissions(workspaceId) : [];
   const params = (await searchParams) || {};
   const { status, risk } = params;
 
