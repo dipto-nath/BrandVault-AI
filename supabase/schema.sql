@@ -288,3 +288,11 @@ VALUES
   ('00000000-0000-0000-0002-000000000005', '11111111-1111-1111-1111-111111111111', 'FACT-005', 'Launch date', 'The NexaTech Nova launch is scheduled for 15 December 2026.', 'NexaTech Nova', 'NexaTech Launch Plan', 'Launch scheduled for 15 December 2026.', 'APPROVED')
 ON CONFLICT (id) DO NOTHING;
 
+-- Grant API roles full access to tables and sequences
+GRANT ALL ON ALL TABLES IN SCHEMA public TO postgres, service_role, authenticated, anon;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO postgres, service_role, authenticated, anon;
+GRANT ALL ON ALL ROUTINES IN SCHEMA public TO postgres, service_role, authenticated, anon;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO postgres, service_role, authenticated, anon;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO postgres, service_role, authenticated, anon;
+
+
