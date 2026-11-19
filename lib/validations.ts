@@ -25,7 +25,7 @@ export const UpdateSubmissionSchema = z.object({
   current_content: z.string().max(50000).optional(),
   status: z.enum(['DRAFT', 'ANALYZING', 'NEEDS_REVIEW', 'CHANGES_REQUESTED', 'APPROVED', 'REJECTED', 'FAILED']).optional(),
   risk_level: z.enum(['LOW', 'MEDIUM', 'HIGH']).optional().nullable(),
-  reviewer_id: z.string().uuid().optional().nullable(),
+  reviewer_id: z.string().max(100).optional().nullable(),
   submitted_at: z.string().datetime().optional().nullable(),
 });
 
@@ -55,7 +55,7 @@ export const CreateFactSchema = z.object({
   title: z.string().min(1).max(200),
   fact_text: z.string().min(1).max(5000),
   entity_name: z.string().max(200).optional().nullable(),
-  source_document_id: z.string().uuid().optional().nullable(),
+  source_document_id: z.string().max(100).optional().nullable(),
   source_name: z.string().min(1).max(200),
   source_reference: z.string().max(500).optional().nullable(),
   source_excerpt: z.string().max(2000).optional().nullable(),
@@ -85,7 +85,7 @@ export const ReviewDecisionSchema = z.object({
 
 export const FindingFeedbackSchema = z.object({
   feedback_type: z.enum(['ACCEPTED', 'OVERRIDDEN', 'EDITED_CORRECTION', 'REJECTED_CORRECTION', 'MARKED_AMBIGUOUS']),
-  reason: z.enum(['Guideline is unclear', 'Rules conflict', 'AI misinterpreted context', 'Evidence is outdated', 'Finding is incorrect', 'Suggested correction changes the intended meaning', 'Other']).optional().nullable(),
+  reason: z.string().max(1000).optional().nullable(),
 });
 
 export const GuidelineSuggestionSchema = z.object({

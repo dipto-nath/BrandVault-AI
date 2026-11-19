@@ -304,7 +304,7 @@ export const LogoIcon = () => {
 };
 
 export const UserSection = ({
-  workspaceName = "NexTech",
+  workspaceName = "NexaTech",
   userName = "Demo Reviewer",
   userRole = "Reviewer",
 }: {

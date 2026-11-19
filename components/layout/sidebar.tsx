@@ -24,7 +24,7 @@ export const NAV: NavItem[] = [
 ];
 
 export function Sidebar({
-  workspaceName = 'NexTech',
+  workspaceName = 'NexaTech',
   userName = 'Demo Reviewer',
   onNavigate,
 }: {

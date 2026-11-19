@@ -47,7 +47,7 @@ export async function generateJson(options: GenerateJsonOptions): Promise<string
 }
 
 export function extractJsonBlock(text: string): string {
-  const fenced = text.match(/```json\s*([\s\S]*?)\s*```/);
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
   if (fenced) return fenced[1].trim();
   const start = text.indexOf('{');
   const end = text.lastIndexOf('}');

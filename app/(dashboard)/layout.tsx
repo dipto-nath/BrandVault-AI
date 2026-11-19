@@ -20,7 +20,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [workspaceName, setWorkspaceName] = useState("NexTech");
+  const [workspaceName, setWorkspaceName] = useState("NexaTech");
   const [userName, setUserName] = useState("Demo Reviewer");
   const [userRole, setUserRole] = useState("Reviewer");
 
