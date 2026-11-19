@@ -256,3 +256,35 @@ CREATE INDEX IF NOT EXISTS idx_facts_ws ON approved_facts(workspace_id);
 CREATE INDEX IF NOT EXISTS idx_submissions_ws ON content_submissions(workspace_id);
 CREATE INDEX IF NOT EXISTS idx_findings_sub ON findings(submission_id);
 CREATE INDEX IF NOT EXISTS idx_audit_ws ON audit_logs(workspace_id);
+
+-- Demo Workspace Seed Data
+INSERT INTO workspaces (id, name, slug, description)
+VALUES ('11111111-1111-1111-1111-111111111111', 'NexaTech', 'nexatech', 'Fictional Indian consumer technology company — demo workspace for BrandVault AI.')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO profiles (id, email, full_name)
+VALUES ('22222222-2222-2222-2222-222222222222', 'demo@nexatech.example', 'Demo Reviewer')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO workspace_members (id, workspace_id, user_id, role)
+VALUES ('33333333-3333-3333-3333-333333333333', '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222', 'ADMIN')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO brand_guidelines (id, workspace_id, rule_code, title, description, category, severity, examples, active, version)
+VALUES 
+  ('00000000-0000-0000-0001-000000000001', '11111111-1111-1111-1111-111111111111', 'RULE-TONE-001', 'Professional and helpful voice', 'Content must be clear, helpful and professional. Avoid exaggerated statements, aggressive urgency and unnecessary slang.', 'TONE', 'MEDIUM', '{"good": ["Our solution helps teams ship faster."], "bad": ["This is the worlds best tool, buy now!"]}'::jsonb, true, 1),
+  ('00000000-0000-0000-0001-000000000002', '11111111-1111-1111-1111-111111111111', 'RULE-TONE-002', 'Avoid unsupported superlatives', 'Statements such as "worlds best", "number one" or "unmatched" must have approved evidence.', 'TONE', 'HIGH', '{"good": ["Rated 4.5 stars by independent reviewers."], "bad": ["The worlds best smartphone for everyone."]}'::jsonb, true, 1),
+  ('00000000-0000-0000-0001-000000000003', '11111111-1111-1111-1111-111111111111', 'RULE-TERM-001', 'Preferred terminology', 'Use "smart assistant" instead of "AI robot buddy".', 'TERMINOLOGY', 'MEDIUM', '{"good": ["The smart assistant helps you set reminders."], "bad": ["Our AI robot buddy is ready to help."]}'::jsonb, true, 1),
+  ('00000000-0000-0000-0001-000000000004', '11111111-1111-1111-1111-111111111111', 'RULE-CLAIM-001', 'Product specifications require evidence', 'All product performance claims must be consistent with active approved specifications.', 'CLAIMS', 'HIGH', '{"good": ["Up to 24 hours of battery life."], "bad": ["48 hours of battery life."]}'::jsonb, true, 1),
+  ('00000000-0000-0000-0001-000000000005', '11111111-1111-1111-1111-111111111111', 'RULE-CLAIM-002', 'Waterproof claims require explicit approval', 'Do not communicate waterproofing or water-resistance ratings without an approved source.', 'CLAIMS', 'HIGH', '{"good": [], "bad": ["Completely waterproof."]}'::jsonb, true, 1)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO approved_facts (id, workspace_id, fact_code, title, fact_text, entity_name, source_name, source_excerpt, verification_status)
+VALUES
+  ('00000000-0000-0000-0002-000000000001', '11111111-1111-1111-1111-111111111111', 'FACT-001', 'Battery life', 'NexaTech Nova offers up to 24 hours of battery life under specified test conditions.', 'NexaTech Nova', 'Nova Product Specification', 'Up to 24 hours of battery life under specified test conditions.', 'APPROVED'),
+  ('00000000-0000-0000-0002-000000000002', '11111111-1111-1111-1111-111111111111', 'FACT-002', 'Device weight', 'NexaTech Nova weighs 185 grams.', 'NexaTech Nova', 'Nova Product Specification', '185 grams.', 'APPROVED'),
+  ('00000000-0000-0000-0002-000000000003', '11111111-1111-1111-1111-111111111111', 'FACT-003', 'Materials', 'The NexaTech Nova chassis uses recycled aluminium.', 'NexaTech Nova', 'Sustainability Fact Sheet', 'Recycled aluminium chassis.', 'APPROVED'),
+  ('00000000-0000-0000-0002-000000000004', '11111111-1111-1111-1111-111111111111', 'FACT-004', 'Waterproofing', 'No approved waterproof rating is currently documented.', 'NexaTech Nova', 'Product Claims Register', 'No waterproof rating documented.', 'APPROVED'),
+  ('00000000-0000-0000-0002-000000000005', '11111111-1111-1111-1111-111111111111', 'FACT-005', 'Launch date', 'The NexaTech Nova launch is scheduled for 15 December 2026.', 'NexaTech Nova', 'NexaTech Launch Plan', 'Launch scheduled for 15 December 2026.', 'APPROVED')
+ON CONFLICT (id) DO NOTHING;
+
