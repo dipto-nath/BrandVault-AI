@@ -56,8 +56,7 @@ export default function RegisterPage() {
         throw new Error(data.error || 'Failed to create workspace');
       }
 
-      router.push('/overview');
-      router.refresh();
+      window.location.href = '/overview';
     } catch (err: any) {
       setError(err.message || 'Something went wrong. Please try again.');
     } finally {

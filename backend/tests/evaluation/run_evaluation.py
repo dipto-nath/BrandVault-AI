@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from typing import Dict, List
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+import tests.conftest  # Register sqlite compiles hooks
 
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
@@ -66,15 +67,35 @@ async def run_evaluation():
             role=WorkspaceRole.ADMIN,
         )
         db.add(member)
+
+        from app.models.content import ContentItem, ContentStatus, ContentType, Channel
+        content_item = ContentItem(
+            id=UUID("33333333-3333-3333-3333-333333333333"),
+            org_id=org.id,
+            title="Eval Content",
+            content_type=ContentType.WEBSITE_COPY,
+            channel=Channel.WEBSITE,
+            original_content="Initial eval draft",
+            current_content="Initial eval draft",
+            content_hash="mock-hash",
+            status=ContentStatus.DRAFT,
+            created_by=user.id,
+        )
+        db.add(content_item)
         await db.flush()
         
+        seen_rules = set()
         guidelines = []
         for case in EVALUATION_CASES:
             for g_data in case.guidelines:
+                rule_code = g_data["rule_code"]
+                if rule_code in seen_rules:
+                    continue
+                seen_rules.add(rule_code)
                 guideline = BrandGuideline(
                     org_id=org.id,
-                    rule_code=g_data["rule_code"],
-                    title=f"Rule {g_data['rule_code']}",
+                    rule_code=rule_code,
+                    title=f"Rule {rule_code}",
                     description="Test guideline",
                     category=GuidelineCategory.TERMINOLOGY,
                     severity=Severity.HIGH,
@@ -87,11 +108,14 @@ async def run_evaluation():
                 guidelines.append(guideline)
         
         facts = []
+        fact_idx = 0
         for case in EVALUATION_CASES:
             for f_data in case.approved_facts:
+                fact_idx += 1
+                attr = f_data.get("attribute", "UNKNOWN")
                 fact = ApprovedFact(
                     org_id=org.id,
-                    fact_code=f"FACT-{f_data.get('attribute', 'UNKNOWN')}",
+                    fact_code=f"FACT-{attr}-{fact_idx}",
                     title=f_data.get("attribute", "").replace("_", " ").title(),
                     fact_text=f_data.get("value_text") or f"{f_data.get('value', '')} {f_data.get('unit', '')}".strip(),
                     entity_name=f_data.get("entity", "NexaTech Buds X"),
@@ -124,10 +148,27 @@ async def run_evaluation():
         
         for case in EVALUATION_CASES:
             results["total"] += 1
-            
+            import hashlib
+            from uuid import uuid4
+            case_content_id = uuid4()
+            case_item = ContentItem(
+                id=case_content_id,
+                org_id=org.id,
+                title=f"Eval {case.id}",
+                content_type=ContentType.WEBSITE_COPY,
+                channel=Channel.WEBSITE,
+                original_content=case.content,
+                current_content=case.content,
+                content_hash=hashlib.sha256(case.content.encode()).hexdigest(),
+                status=ContentStatus.DRAFT,
+                created_by=user.id,
+            )
+            db.add(case_item)
+            await db.flush()
+
             try:
                 result = await verification_engine.analyze_content(
-                    content_id=UUID("33333333-3333-3333-3333-333333333333"),
+                    content_id=case_content_id,
                     org_id=org.id,
                     content_text=case.content,
                     guidelines=list(guidelines),
@@ -164,6 +205,7 @@ async def run_evaluation():
                 print(f"  {status} {case.id} ({cat}): {case.description}")
                 
             except Exception as e:
+                await db.rollback()
                 results["failed"] += 1
                 results["details"].append({
                     "id": case.id,

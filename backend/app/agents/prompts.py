@@ -233,7 +233,7 @@ def format_deterministic_check_prompt(
         normalized_value=normalized_value,
         unit=unit,
         qualifier=qualifier or "none",
-        approved_facts_json=json.dumps(approved_facts, indent=2),
+        approved_facts_json=json.dumps(approved_facts, indent=2, default=str),
     )
 
 
@@ -257,7 +257,7 @@ def format_contextual_verification_prompt(
         unit=unit,
         qualifier=qualifier or "none",
         claim_type=claim_type,
-        source_chunks_json=json.dumps(source_chunks, indent=2),
+        source_chunks_json=json.dumps(source_chunks, indent=2, default=str),
     )
 
 
@@ -266,7 +266,7 @@ def format_tone_analysis_prompt(content: str, guidelines: list) -> str:
     return TONE_ANALYSIS_PROMPT.format(
         system_prompt=SYSTEM_PROMPT,
         content=content,
-        guidelines_json=json.dumps(guidelines, indent=2),
+        guidelines_json=json.dumps(guidelines, indent=2, default=str),
     )
 
 
@@ -275,7 +275,7 @@ def format_guideline_check_prompt(content: str, guidelines: list) -> str:
     return GUIDELINE_CHECK_PROMPT.format(
         system_prompt=SYSTEM_PROMPT,
         content=content,
-        guidelines_json=json.dumps(guidelines, indent=2),
+        guidelines_json=json.dumps(guidelines, indent=2, default=str),
     )
 
 
@@ -284,6 +284,6 @@ def format_correction_prompt(content: str, findings: list, claims: list) -> str:
     return CORRECTION_PROMPT.format(
         system_prompt=SYSTEM_PROMPT,
         content=content,
-        findings_json=json.dumps(findings, indent=2),
-        claims_json=json.dumps(claims, indent=2),
+        findings_json=json.dumps(findings, indent=2, default=str),
+        claims_json=json.dumps(claims, indent=2, default=str),
     )

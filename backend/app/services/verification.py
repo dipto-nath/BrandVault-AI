@@ -150,7 +150,7 @@ class VerificationEngine:
         
         from app.agents.llm import ClaimExtractionResponse
         result = await self.llm.generate_json(prompt, ClaimExtractionResponse)
-        return result.claims
+        return [c.model_dump() for c in result.claims]
 
     async def _stage2_deterministic_check(
         self,
@@ -220,7 +220,12 @@ class VerificationEngine:
         
         claim_texts = [c["claim_text"] for c in claims]
         embeddings = await get_embeddings(claim_texts)
-        
+
+        # Fallback for SQLite in-memory test environments where pgvector <=> is unavailable
+        bind = getattr(self.db, "bind", None)
+        if bind and getattr(bind, "dialect", None) and bind.dialect.name == "sqlite":
+            return {c["claim_text"]: [] for c in claims}
+
         results = {}
         for claim, embedding in zip(claims, embeddings):
             # Vector search with pgvector
@@ -323,7 +328,7 @@ class VerificationEngine:
                 findings.append({
                     "finding_type": FindingType.TERMINOLOGY_VIOLATION if guideline.category.value == "TERMINOLOGY" else FindingType.GUIDELINE_VIOLATION,
                     "severity": guideline.severity,
-                    "rule_id": str(guideline.id),
+                    "rule_id": guideline.id,
                     "title": f"Guideline violation: {guideline.title}",
                     "excerpt": match.group(),
                     "explanation": guideline.description,
@@ -479,13 +484,23 @@ class VerificationEngine:
         # Persist findings
         finding_objects = []
         for finding_data in findings:
+            raw_rule = finding_data.get("rule_id")
+            rule_uuid = None
+            if isinstance(raw_rule, UUID):
+                rule_uuid = raw_rule
+            elif isinstance(raw_rule, str):
+                try:
+                    rule_uuid = UUID(raw_rule)
+                except Exception:
+                    rule_uuid = None
+
             finding = Finding(
                 org_id=org_id,
                 content_id=content_id,
                 analysis_run_id=run_id,
                 finding_type=finding_data["finding_type"],
                 severity=finding_data["severity"],
-                rule_id=finding_data.get("rule_id"),
+                rule_id=rule_uuid,
                 title=finding_data["title"],
                 excerpt=finding_data["excerpt"],
                 explanation=finding_data["explanation"],

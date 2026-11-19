@@ -27,6 +27,7 @@ class UserContext(BaseModel):
     role: str
     email: str
     full_name: Optional[str] = None
+    is_demo: bool = False
 
 
 def create_access_token(

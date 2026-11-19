@@ -29,8 +29,7 @@ export default function LoginPage() {
         throw new Error(data.error || 'Failed to sign in');
       }
 
-      router.push('/overview');
-      router.refresh();
+      window.location.href = '/overview';
     } catch (err: any) {
       setError(err.message || 'Invalid email or password');
     } finally {

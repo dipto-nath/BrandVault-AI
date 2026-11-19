@@ -73,3 +73,5 @@ export async function backendFetch<T = any>(
 
   return response.json();
 }
+
+export const backendApi = backendFetch;

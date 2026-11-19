@@ -5,6 +5,17 @@ from app.schemas.auth import (
     UserResponse,
     OrganizationResponse,
 )
+from app.schemas.product import (
+    ProductCreate,
+    ProductUpdate,
+    ProductResponse,
+)
+from app.schemas.fact_candidate import (
+    FactCandidateCreate,
+    FactCandidateUpdate,
+    FactCandidateResponse,
+    ApproveCandidateRequest,
+)
 from app.schemas.source import (
     SourceUploadResponse,
     SourceResponse,

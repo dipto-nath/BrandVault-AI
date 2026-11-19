@@ -7,6 +7,7 @@ from app.models.fact import FactVerificationStatus
 
 
 class ApprovedFactBase(BaseModel):
+    product_id: Optional[UUID] = None
     fact_code: str = Field(..., min_length=1, max_length=50, pattern=r'^[A-Z0-9-]+$')
     title: str = Field(..., min_length=1, max_length=200)
     fact_text: str = Field(..., min_length=1, max_length=5000)

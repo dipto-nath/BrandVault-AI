@@ -1,6 +1,7 @@
 from app.api.v1 import (
     auth,
     workspaces,
+    products,
     sources,
     facts,
     guidelines,
@@ -14,6 +15,7 @@ from app.api.v1 import (
 __all__ = [
     "auth",
     "workspaces",
+    "products",
     "sources",
     "facts",
     "guidelines",

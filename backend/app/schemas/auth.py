@@ -76,6 +76,20 @@ class InviteMemberRequest(BaseModel):
     role: str = "REVIEWER"
 
 
+class UpdateMemberRoleRequest(BaseModel):
+    role: str
+
+
+class InvitationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    org_id: UUID
+    email: EmailStr
+    role: str
+    created_at: datetime
+    expires_at: datetime
+
+
 class AcceptInviteRequest(BaseModel):
     token: str
     full_name: str

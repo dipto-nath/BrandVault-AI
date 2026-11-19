@@ -23,6 +23,20 @@ export interface Workspace {
   updated_at: string;
 }
 
+export interface Product {
+  id: string;
+  workspace_id: string;
+  name: string;
+  category: string | null;
+  model_or_version: string | null;
+  launch_date: string | null;
+  status: 'ACTIVE' | 'ARCHIVED' | 'DRAFT';
+  description: string | null;
+  facts_count?: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Profile {
   id: string;
   full_name: string | null;
@@ -57,6 +71,7 @@ export interface BrandGuideline {
 export interface ApprovedFact {
   id: string;
   workspace_id: string;
+  product_id?: string | null;
   fact_code: string;
   title: string;
   fact_text: string;

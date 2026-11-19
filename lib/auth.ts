@@ -26,11 +26,19 @@ function parseJwtPayload(token: string): any {
   try {
     const parts = token.split('.');
     if (parts.length === 3) {
-      const decoded = Buffer.from(parts[1], 'base64').toString('utf-8');
+      const decoded = Buffer.from(parts[1], 'base64url').toString('utf-8');
       return JSON.parse(decoded);
     }
   } catch (e) {
-    // Ignore invalid JWT format
+    try {
+      const parts = token.split('.');
+      if (parts.length === 3) {
+        const decoded = Buffer.from(parts[1], 'base64').toString('utf-8');
+        return JSON.parse(decoded);
+      }
+    } catch {
+      // Ignore invalid JWT format
+    }
   }
   return null;
 }
@@ -51,7 +59,7 @@ export async function getRequestContext(): Promise<RequestContext> {
       return {
         userId: payload.sub,
         userEmail: payload.email ?? null,
-        userName: payload.email ? payload.email.split('@')[0] : 'User',
+        userName: payload.name || payload.full_name || (payload.email ? payload.email.split('@')[0] : 'User'),
         workspaceId: payload.org_id,
         workspaceSlug: wsSlug || (isDemoOrg ? 'nexatech' : 'workspace'),
         role,

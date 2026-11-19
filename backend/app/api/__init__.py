@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.api.v1 import (
     auth,
     workspaces,
+    products,
     sources,
     facts,
     guidelines,
@@ -17,6 +18,7 @@ api_router = APIRouter()
 
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 api_router.include_router(workspaces.router, prefix="/workspaces", tags=["workspaces"])
+api_router.include_router(products.router, prefix="/products", tags=["products"])
 api_router.include_router(sources.router, prefix="/sources", tags=["sources"])
 api_router.include_router(facts.router, prefix="/facts", tags=["facts"])
 api_router.include_router(guidelines.router, prefix="/guidelines", tags=["guidelines"])

@@ -1,13 +1,21 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from uuid import UUID
+from sqlalchemy import select, and_
+from uuid import UUID, uuid4
+from datetime import datetime, timezone, timedelta
+import secrets
 from typing import List
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user_flexible, get_db_with_org, require_admin
-from app.models.organization import Organization, User, WorkspaceMember, WorkspaceRole
-from app.schemas.auth import UserResponse, OrganizationResponse
+from app.models.organization import Organization, User, WorkspaceMember, WorkspaceRole, Invitation
+from app.schemas.auth import (
+    UserResponse,
+    OrganizationResponse,
+    UpdateMemberRoleRequest,
+    InviteMemberRequest,
+    InvitationResponse,
+)
 from app.schemas.content import ContentResponse
 from app.services.audit import AuditService
 
@@ -106,4 +114,128 @@ async def get_dashboard_stats(
         "recent": [ContentResponse.model_validate(r) for r in recent],
     }
 
-from fastapi import HTTPException
+
+@router.patch("/current/members/{target_user_id}")
+async def update_member_role(
+    target_user_id: UUID,
+    request: UpdateMemberRoleRequest,
+    user = Depends(get_current_user_flexible),
+    db: AsyncSession = Depends(get_db_with_org),
+):
+    """Change workspace member role (admin or manager only)."""
+    if getattr(user, "is_demo", False) or str(user.org_id) == "11111111-1111-1111-1111-111111111111":
+        raise HTTPException(status_code=403, detail="Demo workspace members cannot be modified")
+
+    res = await db.execute(
+        select(WorkspaceMember).where(
+            and_(WorkspaceMember.org_id == user.org_id, WorkspaceMember.user_id == target_user_id)
+        )
+    )
+    member = res.scalar_one_or_none()
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+
+    try:
+        new_role = WorkspaceRole(request.role.upper())
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid role: {request.role}")
+
+    member.role = new_role
+    await db.commit()
+    await db.refresh(member)
+
+    return {"status": "ok", "user_id": str(target_user_id), "role": member.role.value}
+
+
+@router.get("/current/invitations", response_model=List[InvitationResponse])
+async def list_invitations(
+    user = Depends(get_current_user_flexible),
+    db: AsyncSession = Depends(get_db_with_org),
+):
+    """List pending invitations for the workspace."""
+    res = await db.execute(
+        select(Invitation)
+        .where(Invitation.org_id == user.org_id, Invitation.accepted_at.is_(None))
+        .order_by(Invitation.created_at.desc())
+    )
+    invites = res.scalars().all()
+    return [
+        InvitationResponse(
+            id=inv.id,
+            org_id=inv.org_id,
+            email=inv.email,
+            role=inv.role.value,
+            created_at=inv.created_at,
+            expires_at=inv.expires_at,
+        )
+        for inv in invites
+    ]
+
+
+@router.post("/current/invitations", response_model=InvitationResponse, status_code=status.HTTP_201_CREATED)
+async def create_invitation(
+    request: InviteMemberRequest,
+    user = Depends(get_current_user_flexible),
+    db: AsyncSession = Depends(get_db_with_org),
+):
+    """Invite a new member to the workspace."""
+    if getattr(user, "is_demo", False):
+        raise HTTPException(status_code=403, detail="Demo workspace cannot invite members")
+
+    # Check if already a member
+    existing_user_res = await db.execute(
+        select(User).where(and_(User.org_id == user.org_id, User.email == request.email.lower()))
+    )
+    if existing_user_res.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="User is already a member of this workspace")
+
+    try:
+        target_role = WorkspaceRole(request.role.upper())
+    except ValueError:
+        target_role = WorkspaceRole.CREATOR
+
+    token = secrets.token_urlsafe(32)
+    invitation = Invitation(
+        org_id=user.org_id,
+        email=request.email.lower(),
+        role=target_role,
+        token_hash=token,
+        invited_by=user.user_id,
+        expires_at=datetime.now(timezone.utc) + timedelta(days=7),
+    )
+    db.add(invitation)
+    await db.commit()
+    await db.refresh(invitation)
+
+    return InvitationResponse(
+        id=invitation.id,
+        org_id=invitation.org_id,
+        email=invitation.email,
+        role=invitation.role.value,
+        created_at=invitation.created_at,
+        expires_at=invitation.expires_at,
+    )
+
+
+@router.delete("/current/invitations/{invitation_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_invitation(
+    invitation_id: UUID,
+    user = Depends(get_current_user_flexible),
+    db: AsyncSession = Depends(get_db_with_org),
+):
+    """Revoke a workspace invitation."""
+    if getattr(user, "is_demo", False):
+        raise HTTPException(status_code=403, detail="Demo workspace cannot modify invitations")
+
+    res = await db.execute(
+        select(Invitation).where(
+            and_(Invitation.org_id == user.org_id, Invitation.id == invitation_id)
+        )
+    )
+    inv = res.scalar_one_or_none()
+    if not inv:
+        raise HTTPException(status_code=404, detail="Invitation not found")
+
+    await db.delete(inv)
+    await db.commit()
+

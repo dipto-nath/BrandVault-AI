@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Type, TypeVar
+from typing import List, Dict, Any, Type, TypeVar, Optional
 from abc import ABC, abstractmethod
 from pydantic import BaseModel, Field
 import json
@@ -15,13 +15,13 @@ T = TypeVar('T', bound=BaseModel)
 # Response models for LLM structured output
 class ClaimExtractionItem(BaseModel):
     claim_text: str
-    claim_type: str
-    entity_name: str
-    attribute_name: str
-    normalized_value: str
-    unit: str
-    qualifier: str
-    confidence: float = Field(ge=0, le=1)
+    claim_type: str = "FACTUAL"
+    entity_name: Optional[str] = None
+    attribute_name: Optional[str] = None
+    normalized_value: Optional[str] = None
+    unit: Optional[str] = None
+    qualifier: Optional[str] = None
+    confidence: float = Field(default=0.9, ge=0, le=1)
 
 class ClaimExtractionResponse(BaseModel):
     claims: List[ClaimExtractionItem]
@@ -34,11 +34,11 @@ class DeterministicCheckResponse(BaseModel):
     matched_fact_text: str = ""
 
 class EvidenceItem(BaseModel):
-    source_chunk_id: str
-    source_name: str
-    page: int
-    excerpt: str
-    relation: str  # SUPPORTS, CONTRADICTS, RELATED
+    source_chunk_id: Optional[str] = None
+    source_name: Optional[str] = None
+    page: Optional[int] = None
+    excerpt: Optional[str] = None
+    relation: str = "RELATED"  # SUPPORTS, CONTRADICTS, RELATED
 
 class ContextualVerificationItem(BaseModel):
     claim_text: str

@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   FileText, Plus, Upload, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp,
-  X, ShieldCheck, Database, FileUp, Sparkles, Clock
+  X, ShieldCheck, Database, FileUp, Sparkles, Clock, Check, Trash2, Box, Eye
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,30 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, Tbody, Td, Th, Thead, Tr } from '@/components/ui/table';
 import { formatDateTime } from '@/lib/utils';
 import type { ApprovedFact, SourceDocument } from '@/types/database';
+
+interface ProductItem {
+  id: string;
+  name: string;
+  category?: string;
+  model_or_version?: string;
+  facts_count?: number;
+}
+
+interface FactCandidate {
+  id: string;
+  product_id?: string;
+  entity: string;
+  attribute: string;
+  value_text?: string;
+  value_numeric?: number;
+  unit?: string;
+  qualifier?: string;
+  source_page?: number;
+  excerpt?: string;
+  confidence: number;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'EDITED';
+  created_at: string;
+}
 
 interface KnowledgeManagerProps {
   facts: ApprovedFact[];
@@ -25,10 +49,23 @@ export function KnowledgeManager({
   const router = useRouter();
   const [facts, setFacts] = useState(initialFacts);
   const [documents, setDocuments] = useState(initialDocuments);
+  const [candidates, setCandidates] = useState<FactCandidate[]>([]);
+  const [products, setProducts] = useState<ProductItem[]>([]);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'facts' | 'candidates'>('facts');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+
+  // Add Product Modal State
+  const [productModalOpen, setProductModalOpen] = useState(false);
+  const [prodName, setProdName] = useState('');
+  const [prodCategory, setProdCategory] = useState('');
+  const [prodVersion, setProdVersion] = useState('');
+  const [submittingProd, setSubmittingProd] = useState(false);
 
   // Add Fact Modal State
   const [factModalOpen, setFactModalOpen] = useState(false);
+  const [factProductId, setFactProductId] = useState<string>('');
   const [factCode, setFactCode] = useState('');
   const [title, setTitle] = useState('');
   const [factText, setFactText] = useState('');
@@ -41,9 +78,104 @@ export function KnowledgeManager({
 
   // Document Upload State
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadProductId, setUploadProductId] = useState<string>('');
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
+
+  // Fetch products and candidates on mount
+  useEffect(() => {
+    fetch('/api/products')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (Array.isArray(data)) setProducts(data);
+      })
+      .catch(() => {});
+
+    fetch('/api/knowledge/candidates')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (Array.isArray(data)) setCandidates(data);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Filter facts by selected product
+  const filteredFacts = selectedProductId
+    ? facts.filter((f) => {
+        const prod = products.find((p) => p.id === selectedProductId);
+        return (
+          f.product_id === selectedProductId ||
+          (prod && f.entity_name && prod.name.toLowerCase().includes(f.entity_name.toLowerCase()))
+        );
+      })
+    : facts;
+
+  // Filter candidates by selected product
+  const filteredCandidates = candidates.filter((c) => {
+    if (c.status !== 'PENDING' && c.status !== 'EDITED') return false;
+    if (!selectedProductId) return true;
+    return c.product_id === selectedProductId;
+  });
+
+  const handleCreateProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmittingProd(true);
+    try {
+      const res = await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: prodName.trim(),
+          category: prodCategory.trim() || undefined,
+          model_or_version: prodVersion.trim() || undefined,
+        }),
+      });
+      if (res.ok) {
+        const newProd = await res.json();
+        setProducts((prev) => [...prev, newProd]);
+        setSelectedProductId(newProd.id);
+        setProductModalOpen(false);
+        setProdName('');
+        setProdCategory('');
+        setProdVersion('');
+      }
+    } catch {
+      // ignore
+    } finally {
+      setSubmittingProd(false);
+    }
+  };
+
+  const handleApproveCandidate = async (candidateId: string) => {
+    setActionLoadingId(candidateId);
+    try {
+      const res = await fetch(`/api/knowledge/candidates/${candidateId}/approve`, {
+        method: 'POST',
+      });
+      if (res.ok) {
+        const newFact = await res.json();
+        setFacts((prev) => [newFact, ...prev]);
+        setCandidates((prev) => prev.filter((c) => c.id !== candidateId));
+      }
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleRejectCandidate = async (candidateId: string) => {
+    setActionLoadingId(candidateId);
+    try {
+      const res = await fetch(`/api/knowledge/candidates/${candidateId}/reject`, {
+        method: 'POST',
+      });
+      if (res.ok) {
+        setCandidates((prev) => prev.filter((c) => c.id !== candidateId));
+      }
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
 
   const handleCreateFact = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,6 +187,7 @@ export function KnowledgeManager({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          product_id: factProductId || undefined,
           fact_code: factCode.trim(),
           title: title.trim(),
           fact_text: factText.trim(),
@@ -70,7 +203,7 @@ export function KnowledgeManager({
         throw new Error(json.error?.message || json.error || 'Failed to save fact');
       }
 
-      setFacts((prev) => [json.data, ...prev]);
+      setFacts((prev) => [json.data || json, ...prev]);
       setFactModalOpen(false);
       setFactCode('');
       setTitle('');
@@ -97,6 +230,7 @@ export function KnowledgeManager({
 
     const formData = new FormData();
     formData.append('file', selectedFile);
+    if (uploadProductId) formData.append('product_id', uploadProductId);
 
     try {
       const res = await fetch('/api/knowledge/documents', {
@@ -109,14 +243,18 @@ export function KnowledgeManager({
         throw new Error(json.error?.message || json.error || 'Failed to upload document');
       }
 
-      setUploadSuccess(`Document "${selectedFile.name}" processed and text extracted successfully.`);
+      setUploadSuccess(`Document "${selectedFile.name}" processed. Extracted candidates have been added to the Review Queue.`);
       setSelectedFile(null);
-      // Fetch updated docs
+
+      // Refresh documents & candidates
       const docsRes = await fetch('/api/knowledge/documents');
       const docsJson = await docsRes.json();
-      if (docsJson.data) {
-        setDocuments(docsJson.data);
-      }
+      if (docsJson.data) setDocuments(docsJson.data);
+
+      const candsRes = await fetch('/api/knowledge/candidates');
+      const candsJson = await candsRes.json();
+      if (Array.isArray(candsJson)) setCandidates(candsJson);
+
       router.refresh();
     } catch (err: any) {
       setUploadError(err.message || 'Error processing document.');
@@ -143,130 +281,298 @@ export function KnowledgeManager({
             Authoritative source material, verified hardware specifications, and certified product claims used by BrandVault AI for evidence-backed verification.
           </p>
         </div>
-        <Button onClick={() => setFactModalOpen(true)} className="btn-primary text-xs flex items-center gap-2 shadow-sm shadow-accent/20">
-          <Plus className="w-4 h-4 text-white" />
-          <span>Add Approved Fact</span>
-        </Button>
+        <div className="flex items-center gap-2.5">
+          <Button
+            onClick={() => setProductModalOpen(true)}
+            variant="outline"
+            className="text-xs flex items-center gap-1.5"
+          >
+            <Box className="w-3.5 h-3.5 text-accent" />
+            <span>New Product</span>
+          </Button>
+          <Button
+            onClick={() => setFactModalOpen(true)}
+            className="btn-primary text-xs flex items-center gap-2 shadow-sm shadow-accent/20"
+          >
+            <Plus className="w-4 h-4 text-white" />
+            <span>Add Approved Fact</span>
+          </Button>
+        </div>
       </div>
 
-      {/* Facts Table Card */}
-      <Card className="bg-surface border border-border rounded-xl shadow-sm overflow-hidden">
-        <CardHeader className="p-4 bg-surface-subtle/50 border-b border-border">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Database className="w-4 h-4 text-accent" />
-              <CardTitle className="text-base font-bold text-ink-dark font-jakarta tracking-tight">
-                Verified Facts & Specifications ({facts.length})
-              </CardTitle>
+      {/* Product Selector Filter Bar */}
+      <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-surface border border-border overflow-x-auto no-scrollbar">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold text-ink-secondary uppercase tracking-wider pl-1">
+            Product:
+          </span>
+          <button
+            onClick={() => setSelectedProductId(null)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
+              selectedProductId === null
+                ? 'bg-accent text-white shadow-xs'
+                : 'bg-surface-subtle text-ink-secondary hover:text-ink-dark border border-border/80'
+            }`}
+          >
+            All Products ({facts.length})
+          </button>
+          {products.map((prod) => {
+            const isSelected = selectedProductId === prod.id;
+            return (
+              <button
+                key={prod.id}
+                onClick={() => setSelectedProductId(prod.id)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                  isSelected
+                    ? 'bg-accent text-white shadow-xs'
+                    : 'bg-surface-subtle text-ink-secondary hover:text-ink-dark border border-border/80'
+                }`}
+              >
+                <span>{prod.name}</span>
+                {prod.category && (
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded ${isSelected ? 'bg-white/20 text-white' : 'bg-sand/60 text-ink-muted'}`}>
+                    {prod.category}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Dual Tab Navigation */}
+      <div className="flex items-center gap-2 border-b border-border">
+        <button
+          onClick={() => setActiveTab('facts')}
+          className={`pb-3 px-3 text-sm font-semibold transition-all flex items-center gap-2 border-b-2 ${
+            activeTab === 'facts'
+              ? 'border-accent text-accent'
+              : 'border-transparent text-ink-secondary hover:text-ink-dark'
+          }`}
+        >
+          <Database className="w-4 h-4" />
+          <span>Verified Ground Truth ({filteredFacts.length})</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('candidates')}
+          className={`pb-3 px-3 text-sm font-semibold transition-all flex items-center gap-2 border-b-2 ${
+            activeTab === 'candidates'
+              ? 'border-accent text-accent'
+              : 'border-transparent text-ink-secondary hover:text-ink-dark'
+          }`}
+        >
+          <Sparkles className="w-4 h-4" />
+          <span>Extracted Candidates Queue ({filteredCandidates.length})</span>
+          {filteredCandidates.length > 0 && (
+            <span className="w-2 h-2 rounded-full bg-evidence-unverified animate-pulse" />
+          )}
+        </button>
+      </div>
+
+      {/* Tab 1: Verified Ground Truth */}
+      {activeTab === 'facts' && (
+        <Card className="bg-surface border border-border rounded-xl shadow-sm overflow-hidden">
+          <CardHeader className="p-4 bg-surface-subtle/50 border-b border-border">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Database className="w-4 h-4 text-accent" />
+                <CardTitle className="text-base font-bold text-ink-dark font-jakarta tracking-tight">
+                  Verified Facts & Specifications ({filteredFacts.length})
+                </CardTitle>
+              </div>
+              <span className="text-xs font-semibold text-accent uppercase tracking-wider bg-accent-soft/60 px-2 py-0.5 rounded border border-accent/20">
+                Authoritative Ground Truth
+              </span>
             </div>
-            <span className="text-xs font-semibold text-accent uppercase tracking-wider bg-accent-soft/60 px-2 py-0.5 rounded border border-accent/20">
-              Authoritative Ground Truth
-            </span>
-          </div>
-        </CardHeader>
-        <div className="overflow-x-auto">
-          <Table>
-            <Thead>
-              <Tr className="bg-surface-subtle/80 border-b border-border">
-                <Th className="w-36 py-3 px-4 text-xs font-bold uppercase tracking-wider text-ink-secondary">Fact Code</Th>
-                <Th className="py-3 px-4 text-xs font-bold uppercase tracking-wider text-ink-secondary">Title & Verified Fact</Th>
-                <Th className="w-40 py-3 px-4 text-xs font-bold uppercase tracking-wider text-ink-secondary">Entity</Th>
-                <Th className="w-48 py-3 px-4 text-xs font-bold uppercase tracking-wider text-ink-secondary">Source Document</Th>
-                <Th className="w-28 py-3 px-4 text-xs font-bold uppercase tracking-wider text-ink-secondary">Status</Th>
-                <Th className="w-20 py-3 px-4 text-xs font-bold uppercase tracking-wider text-ink-secondary text-right">Details</Th>
-              </Tr>
-            </Thead>
-            <Tbody>
-              {facts.length === 0 ? (
-                <Tr>
-                  <Td colSpan={6} className="py-12 text-center text-sm text-ink-secondary">
-                    No approved facts found. Add your first fact to begin evidence verification.
-                  </Td>
+          </CardHeader>
+          <div className="overflow-x-auto">
+            <Table>
+              <Thead>
+                <Tr className="bg-surface-subtle/80 border-b border-border">
+                  <Th className="w-36 py-3 px-4 text-xs font-bold uppercase tracking-wider text-ink-secondary">Fact Code</Th>
+                  <Th className="py-3 px-4 text-xs font-bold uppercase tracking-wider text-ink-secondary">Title & Verified Fact</Th>
+                  <Th className="w-40 py-3 px-4 text-xs font-bold uppercase tracking-wider text-ink-secondary">Entity</Th>
+                  <Th className="w-48 py-3 px-4 text-xs font-bold uppercase tracking-wider text-ink-secondary">Source Document</Th>
+                  <Th className="w-28 py-3 px-4 text-xs font-bold uppercase tracking-wider text-ink-secondary">Status</Th>
+                  <Th className="w-20 py-3 px-4 text-xs font-bold uppercase tracking-wider text-ink-secondary text-right">Details</Th>
                 </Tr>
-              ) : (
-                facts.map((fact) => {
-                  const isExpanded = expandedId === fact.id;
-                  return (
-                    <Tr key={fact.id} className="hover:bg-surface-hover/60 border-b border-border-soft transition-colors">
-                      <Td className="py-3 px-4 font-mono text-xs font-bold text-ink-dark">
-                        <span className="bg-surface-subtle px-2 py-1 rounded border border-border">
-                          {fact.fact_code}
-                        </span>
-                      </Td>
-                      <Td className="py-3 px-4">
-                        <div className="font-bold text-ink-dark text-sm mb-1 tracking-tight">
-                          {fact.title}
-                        </div>
-                        <p className="text-xs text-ink-secondary leading-relaxed">
-                          {fact.fact_text}
-                        </p>
-                        {isExpanded && (
-                          <div className="mt-3 p-3.5 rounded-lg bg-surface-subtle border border-border space-y-2 text-xs">
-                            {fact.source_reference && (
-                              <div className="flex items-center gap-2">
-                                <span className="font-bold text-ink-secondary uppercase text-[10px] tracking-wider">Citation:</span>
-                                <span className="font-mono text-ink-dark font-medium">{fact.source_reference}</span>
-                              </div>
-                            )}
-                            {fact.source_excerpt && (
-                              <div className="p-2.5 rounded bg-surface border border-border/80">
-                                <span className="font-bold text-accent uppercase text-[10px] tracking-wider block mb-1">Source Excerpt</span>
-                                <span className="text-ink-dark italic font-serif">&ldquo;{fact.source_excerpt}&rdquo;</span>
-                              </div>
-                            )}
-                            {fact.effective_from && (
-                              <div className="flex items-center gap-2 text-ink-muted">
-                                <span className="font-medium text-[11px]">Effective Date:</span>
-                                <span className="text-ink-secondary font-medium">{fact.effective_from}</span>
-                              </div>
-                            )}
+              </Thead>
+              <Tbody>
+                {filteredFacts.length === 0 ? (
+                  <Tr>
+                    <Td colSpan={6} className="py-12 text-center text-sm text-ink-secondary">
+                      No approved facts found for this product filter. Ingest documents or add facts to begin evidence verification.
+                    </Td>
+                  </Tr>
+                ) : (
+                  filteredFacts.map((fact) => {
+                    const isExpanded = expandedId === fact.id;
+                    return (
+                      <Tr key={fact.id} className="hover:bg-surface-hover/60 border-b border-border-soft transition-colors">
+                        <Td className="py-3 px-4 font-mono text-xs font-bold text-ink-dark">
+                          <span className="bg-surface-subtle px-2 py-1 rounded border border-border">
+                            {fact.fact_code}
+                          </span>
+                        </Td>
+                        <Td className="py-3 px-4">
+                          <div className="font-bold text-ink-dark text-sm mb-1 tracking-tight">
+                            {fact.title}
                           </div>
-                        )}
-                      </Td>
-                      <Td className="py-3 px-4 text-xs font-medium text-ink-secondary">
-                        <span className="bg-surface-subtle px-2 py-0.5 rounded text-[11px] font-semibold text-ink-dark border border-border">
-                          {fact.entity_name || 'NexTech Nova'}
+                          <p className="text-xs text-ink-secondary leading-relaxed">
+                            {fact.fact_text}
+                          </p>
+                          {isExpanded && (
+                            <div className="mt-3 p-3.5 rounded-lg bg-surface-subtle border border-border space-y-2 text-xs">
+                              {fact.source_reference && (
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold text-ink-secondary uppercase text-[10px] tracking-wider">Citation:</span>
+                                  <span className="font-mono text-ink-dark font-medium">{fact.source_reference}</span>
+                                </div>
+                              )}
+                              {fact.source_excerpt && (
+                                <div className="p-2.5 rounded bg-surface border border-border/80">
+                                  <span className="font-bold text-accent uppercase text-[10px] tracking-wider block mb-1">Source Excerpt</span>
+                                  <span className="text-ink-dark italic font-serif">&ldquo;{fact.source_excerpt}&rdquo;</span>
+                                </div>
+                              )}
+                              {fact.effective_from && (
+                                <div className="flex items-center gap-2 text-ink-muted">
+                                  <span className="font-medium text-[11px]">Effective Date:</span>
+                                  <span className="text-ink-secondary font-medium">{fact.effective_from}</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </Td>
+                        <Td className="py-3 px-4 text-xs font-medium text-ink-secondary">
+                          <span className="bg-surface-subtle px-2 py-0.5 rounded text-[11px] font-semibold text-ink-dark border border-border">
+                            {fact.entity_name || 'NexTech Nova'}
+                          </span>
+                        </Td>
+                        <Td className="text-xs text-ink-secondary">
+                          <span className="font-medium text-ink-dark block truncate">
+                            {fact.source_name}
+                          </span>
+                          {fact.source_reference && (
+                            <span className="text-[11px] text-ink-secondary truncate block">
+                              {fact.source_reference}
+                            </span>
+                          )}
+                        </Td>
+                        <Td>
+                          <Badge variant={fact.verification_status === 'APPROVED' ? 'low' : 'neutral'}>
+                            {fact.verification_status}
+                          </Badge>
+                        </Td>
+                        <Td className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setExpandedId(isExpanded ? null : fact.id)}
+                            className="h-7 px-2 text-xs"
+                          >
+                            {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                          </Button>
+                        </Td>
+                      </Tr>
+                    );
+                  })
+                )}
+              </Tbody>
+            </Table>
+          </div>
+        </Card>
+      )}
+
+      {/* Tab 2: Candidate Review Queue */}
+      {activeTab === 'candidates' && (
+        <Card className="bg-surface border border-border rounded-xl shadow-sm overflow-hidden">
+          <CardHeader className="p-4 bg-surface-subtle/50 border-b border-border">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-accent" />
+                <CardTitle className="text-base font-bold text-ink-dark font-jakarta tracking-tight">
+                  Extracted Specification Candidates ({filteredCandidates.length})
+                </CardTitle>
+              </div>
+              <span className="text-xs text-ink-secondary">
+                Candidates extracted from documents require human approval before becoming ground truth.
+              </span>
+            </div>
+          </CardHeader>
+          <div className="p-4">
+            {filteredCandidates.length === 0 ? (
+              <div className="text-center py-12 text-sm text-ink-secondary">
+                <ShieldCheck className="w-10 h-10 text-evidence-supported mx-auto mb-2 opacity-80" />
+                <p className="font-medium text-ink-dark">All extracted candidates have been reviewed</p>
+                <p className="text-xs text-ink-muted mt-1">Upload additional specification sheets below to extract new ground truth candidates.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredCandidates.map((cand) => (
+                  <div
+                    key={cand.id}
+                    className="p-4 rounded-xl border border-border bg-surface-subtle/60 hover:bg-surface-subtle transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
+                  >
+                    <div className="space-y-1.5 max-w-2xl">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-accent uppercase tracking-wider">
+                          {cand.entity} &middot; {cand.attribute}
                         </span>
-                      </Td>
-                      <Td className="text-xs text-ink-secondary">
-                        <span className="font-medium text-ink-dark block truncate">
-                          {fact.source_name}
+                        <span className="px-2 py-0.5 rounded-full bg-evidence-supported/15 text-evidence-supported font-mono text-[10px] font-semibold">
+                          {Math.round(cand.confidence * 100)}% confidence
                         </span>
-                        {fact.source_reference && (
-                          <span className="text-[11px] text-ink-secondary truncate block">
-                            {fact.source_reference}
+                        {cand.source_page && (
+                          <span className="text-[10px] text-ink-muted font-mono">
+                            Page {cand.source_page}
                           </span>
                         )}
-                      </Td>
-                      <Td>
-                        <Badge variant={fact.verification_status === 'APPROVED' ? 'low' : 'neutral'}>
-                          {fact.verification_status}
-                        </Badge>
-                      </Td>
-                      <Td className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setExpandedId(isExpanded ? null : fact.id)}
-                          className="h-7 px-2 text-xs"
-                        >
-                          {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                        </Button>
-                      </Td>
-                    </Tr>
-                  );
-                })
-              )}
-            </Tbody>
-          </Table>
-        </div>
-      </Card>
+                      </div>
+                      <div className="text-sm font-semibold text-ink-dark">
+                        {cand.value_text || cand.value_numeric}
+                        {cand.unit && ` ${cand.unit}`}
+                        {cand.qualifier && <span className="text-xs text-ink-secondary font-normal ml-1.5">({cand.qualifier})</span>}
+                      </div>
+                      {cand.excerpt && (
+                        <p className="text-xs text-ink-secondary italic font-serif bg-surface px-3 py-1.5 rounded-lg border border-border/60">
+                          &ldquo;{cand.excerpt}&rdquo;
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={actionLoadingId === cand.id}
+                        onClick={() => handleRejectCandidate(cand.id)}
+                        className="text-xs text-critical hover:bg-critical-soft"
+                      >
+                        <X className="w-3.5 h-3.5 mr-1" />
+                        <span>Dismiss</span>
+                      </Button>
+                      <Button
+                        size="sm"
+                        disabled={actionLoadingId === cand.id}
+                        onClick={() => handleApproveCandidate(cand.id)}
+                        className="btn-primary text-xs flex items-center gap-1.5"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Approve as Fact</span>
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
 
       {/* Document Ingestion & Extraction Layer */}
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Document Upload Box */}
         <div className="lg:col-span-1">
-          <Card className="p-6 bg-surface border border-border">
+          <Card className="p-6 bg-surface border border-border rounded-xl">
             <div className="flex items-center gap-2 mb-3">
               <FileUp className="w-5 h-5 text-accent" />
               <h3 className="text-base font-bold text-ink-dark">
@@ -274,7 +580,7 @@ export function KnowledgeManager({
               </h3>
             </div>
             <p className="text-xs text-ink-secondary mb-4 leading-relaxed">
-              Upload PDF, DOCX or TXT files. Content is extracted server-side as untrusted input and held for human verification.
+              Upload PDF, DOCX or TXT files. Specifications are parsed and queued as candidates for human verification.
             </p>
 
             {uploadSuccess && (
@@ -291,7 +597,23 @@ export function KnowledgeManager({
 
             <form onSubmit={handleFileUpload} className="space-y-4">
               <div>
-                <label className="label">Select File</label>
+                <label className="label">Target Product (Optional)</label>
+                <select
+                  value={uploadProductId}
+                  onChange={(e) => setUploadProductId(e.target.value)}
+                  className="input text-xs w-full"
+                >
+                  <option value="">General Company Document</option>
+                  {products.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="label">Select Specification File</label>
                 <input
                   type="file"
                   accept=".pdf,.docx,.txt"
@@ -314,7 +636,7 @@ export function KnowledgeManager({
                 disabled={!selectedFile || uploadingDoc}
                 className="btn-primary w-full text-xs"
               >
-                {uploadingDoc ? 'Extracting Text Safely…' : 'Ingest Document'}
+                {uploadingDoc ? 'Extracting Specifications…' : 'Ingest & Extract Facts'}
               </Button>
             </form>
           </Card>
@@ -322,7 +644,7 @@ export function KnowledgeManager({
 
         {/* Uploaded Documents List */}
         <div className="lg:col-span-2">
-          <Card className="bg-surface border border-border">
+          <Card className="bg-surface border border-border rounded-xl">
             <CardHeader className="pb-3 border-b border-border/60">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base font-bold text-ink-dark">
@@ -369,10 +691,69 @@ export function KnowledgeManager({
         </div>
       </div>
 
+      {/* Add Product Modal */}
+      {productModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink-dark/40 backdrop-blur-sm">
+          <div className="bg-surface rounded-2xl border border-border shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in-95 duration-100">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-border">
+              <div>
+                <h3 className="text-base font-bold text-ink-dark">Register New Product</h3>
+                <p className="text-xs text-ink-secondary">Assign specs and review content by product line.</p>
+              </div>
+              <button onClick={() => setProductModalOpen(false)} className="p-1 rounded text-ink-secondary hover:text-ink-dark">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateProduct} className="space-y-4">
+              <div>
+                <label className="label">Product Name</label>
+                <input
+                  required
+                  value={prodName}
+                  onChange={(e) => setProdName(e.target.value)}
+                  placeholder="e.g. NexaTech Nova Ultra"
+                  className="input w-full text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="label">Category / Line</label>
+                <input
+                  value={prodCategory}
+                  onChange={(e) => setProdCategory(e.target.value)}
+                  placeholder="e.g. Smartphones, Audio, Wearables"
+                  className="input w-full text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="label">Model or Version</label>
+                <input
+                  value={prodVersion}
+                  onChange={(e) => setProdVersion(e.target.value)}
+                  placeholder="e.g. v2.1 or 2026 Edition"
+                  className="input w-full text-xs"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-border">
+                <Button type="button" variant="outline" onClick={() => setProductModalOpen(false)} className="text-xs">
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={submittingProd || !prodName.trim()} className="btn-primary text-xs">
+                  {submittingProd ? 'Creating…' : 'Register Product'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Add Fact Modal */}
       {factModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink-dark/40 backdrop-blur-sm">
-          <div className="bg-surface rounded-lg border border-border shadow-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
+          <div className="bg-surface rounded-2xl border border-border shadow-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-100">
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-border">
               <div>
                 <h3 className="text-base font-bold text-ink-dark">Add Approved Fact</h3>
@@ -393,6 +774,22 @@ export function KnowledgeManager({
             )}
 
             <form onSubmit={handleCreateFact} className="space-y-4">
+              <div>
+                <label className="label">Associated Product (Optional)</label>
+                <select
+                  value={factProductId}
+                  onChange={(e) => setFactProductId(e.target.value)}
+                  className="input text-xs w-full"
+                >
+                  <option value="">General Company Specification</option>
+                  {products.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="label">Fact Code</label>
@@ -496,4 +893,3 @@ export function KnowledgeManager({
     </div>
   );
 }
-

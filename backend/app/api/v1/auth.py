@@ -29,6 +29,8 @@ from app.services.auth import AuthService
 from app.services.audit import AuditService
 import structlog
 
+DEMO_ORG_ID = UUID("11111111-1111-1111-1111-111111111111")
+
 logger = structlog.get_logger()
 
 router = APIRouter()
@@ -68,6 +70,7 @@ async def demo_login(
     if not org:
         # Auto-create demo workspace if not seeded yet
         org = Organization(
+            id=DEMO_ORG_ID,
             name="NexaTech",
             slug=request.workspace_slug,
             description="Leading AI hardware and robotics consumer technology",
@@ -111,6 +114,7 @@ async def demo_login(
             "org_id": str(org.id),
             "role": "ADMIN",
             "email": user.email,
+            "is_demo": True,
         },
         expires_delta=timedelta(minutes=settings.JWT_EXPIRE_MINUTES),
     )

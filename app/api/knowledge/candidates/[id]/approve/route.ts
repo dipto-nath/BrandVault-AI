@@ -1,0 +1,31 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { backendFetch, ApiError } from '@/lib/api/client';
+import { getRequestContext } from '@/lib/auth';
+
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const ctx = await getRequestContext();
+
+  if (ctx.isDemo) {
+    return NextResponse.json(
+      { error: 'The demo workspace is read-only. Candidate promotion requires a company workspace.' },
+      { status: 403 }
+    );
+  }
+
+  try {
+    const body = await req.json().catch(() => ({}));
+    const fact = await backendFetch(`/api/v1/facts/candidates/${id}/approve`, {
+      method: 'POST',
+      token: ctx.token,
+      body: JSON.stringify(body),
+    });
+    return NextResponse.json(fact);
+  } catch (err: any) {
+    const status = err instanceof ApiError ? err.status : 500;
+    return NextResponse.json({ error: err.message }, { status });
+  }
+}

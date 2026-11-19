@@ -46,11 +46,15 @@ async def get_current_user(
             detail="Invalid or expired access token",
         )
 
+    org_uuid = UUID(payload.org_id)
+    is_demo = (org_uuid == DEMO_ORG_ID) or getattr(payload, "is_demo", False)
+
     return UserContext(
         user_id=UUID(payload.sub),
-        org_id=UUID(payload.org_id),
+        org_id=org_uuid,
         role=payload.role,
         email=payload.email,
+        is_demo=is_demo,
     )
 
 
@@ -64,6 +68,7 @@ async def get_current_user_demo(
         role="ADMIN",
         email="demo@nexatech.example",
         full_name="Demo Reviewer",
+        is_demo=True,
     )
 
 
@@ -87,16 +92,20 @@ async def get_current_user_flexible(
             role="ADMIN",
             email="demo@nexatech.example",
             full_name="Demo Reviewer",
+            is_demo=True,
         )
     else:
         token = authorization[7:]
         try:
             payload = verify_token(token)
+            user_org_uuid = UUID(payload.org_id)
+            is_demo = (user_org_uuid == DEMO_ORG_ID) or bool(getattr(payload, "is_demo", False))
             user = UserContext(
                 user_id=UUID(payload.sub),
-                org_id=UUID(payload.org_id),
+                org_id=user_org_uuid,
                 role=payload.role,
                 email=payload.email,
+                is_demo=is_demo,
             )
         except Exception:
             raise HTTPException(
@@ -110,7 +119,7 @@ async def get_current_user_flexible(
         path = request.url.path
         if not (path.endswith("/auth/demo") or path.endswith("/auth/login") or path.endswith("/auth/register")):
             # Check if current org is demo
-            if user.org_id == DEMO_ORG_ID:
+            if user.org_id == DEMO_ORG_ID or user.is_demo:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="The demo workspace is read-only. Please create a new company account to add or edit data.",

@@ -94,20 +94,61 @@ class PassportService:
             content, version_number, claims, findings, decisions, audit_events
         )
 
-        # Save passport record
-        passport_record = PassportRecord(
-            org_id=org_id,
-            content_id=content_id,
-            content_version_id=version_id,
-            passport_id=f"PASS-{content_id}",
-            content_hash=content.content_hash,
-            findings_json=[f.model_dump() for f in passport.findings],
-            claims_json=[c.model_dump() for c in passport.claims],
-            decisions_json=[d.__dict__ for d in decisions],
-            audit_trail_json=[e.__dict__ for e in audit_events],
-            generated_by=None,  # Would be set from context
+        # Save or update passport record
+        def safe_dict(obj):
+            if not obj:
+                return {}
+            data = {}
+            for k, v in obj.__dict__.items():
+                if k.startswith("_"):
+                    continue
+                if isinstance(v, datetime):
+                    data[k] = v.isoformat()
+                elif isinstance(v, UUID):
+                    data[k] = str(v)
+                elif hasattr(v, "value"):
+                    data[k] = v.value
+                elif isinstance(v, (str, int, float, bool, type(None))):
+                    data[k] = v
+                elif isinstance(v, (list, dict)):
+                    try:
+                        json.dumps(v)
+                        data[k] = v
+                    except Exception:
+                        continue
+            return data
+
+        existing_record_res = await self.db.execute(
+            select(PassportRecord).where(
+                PassportRecord.content_id == content_id,
+                PassportRecord.content_version_id == version_id,
+            )
         )
-        self.db.add(passport_record)
+        existing_record = existing_record_res.scalar_one_or_none()
+
+        if existing_record:
+            existing_record.passport_id = f"PASS-{content_id}"
+            existing_record.content_hash = content.content_hash
+            existing_record.findings_json = [f.model_dump() for f in passport.findings]
+            existing_record.claims_json = [c.model_dump() for c in passport.claims]
+            existing_record.decisions_json = [safe_dict(d) for d in decisions]
+            existing_record.audit_trail_json = [safe_dict(e) for e in audit_events]
+            existing_record.generated_at = datetime.now(timezone.utc)
+        else:
+            passport_record = PassportRecord(
+                org_id=org_id,
+                content_id=content_id,
+                content_version_id=version_id,
+                passport_id=f"PASS-{content_id}",
+                content_hash=content.content_hash,
+                findings_json=[f.model_dump() for f in passport.findings],
+                claims_json=[c.model_dump() for c in passport.claims],
+                decisions_json=[safe_dict(d) for d in decisions],
+                audit_trail_json=[safe_dict(e) for e in audit_events],
+                generated_by=None,
+            )
+            self.db.add(passport_record)
+
         await self.db.commit()
 
         return passport
@@ -126,7 +167,8 @@ class PassportService:
         passport_claims = []
         for claim in claims:
             evidence = []
-            for ev in claim.evidence or []:
+            claim_evidence = getattr(claim, "evidence", None) or []
+            for ev in claim_evidence:
                 evidence.append(PassportEvidence(
                     source_name=ev.get("source_name", ""),
                     source_version=ev.get("source_version"),

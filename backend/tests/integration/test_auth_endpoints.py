@@ -73,3 +73,26 @@ async def test_register_and_login_flow(test_db):
             assert ref_data["access_token"] is not None
     finally:
         app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_demo_mutation_guard(test_db):
+    app.dependency_overrides[get_db] = lambda: test_db
+    app.dependency_overrides[get_db_with_org] = lambda: test_db
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            demo_resp = await client.post("/api/v1/auth/demo", json={"workspace_slug": "nexatech"})
+            assert demo_resp.status_code == 200
+            token = demo_resp.json()["access_token"]
+
+            # Try to modify demo workspace member role -> must return 403 Forbidden
+            patch_resp = await client.patch(
+                "/api/v1/workspaces/current/members/22222222-2222-2222-2222-222222222222",
+                headers={"Authorization": f"Bearer {token}"},
+                json={"role": "AGENCY"},
+            )
+            assert patch_resp.status_code == 403
+            assert "demo workspace" in patch_resp.json()["detail"].lower()
+    finally:
+        app.dependency_overrides.clear()

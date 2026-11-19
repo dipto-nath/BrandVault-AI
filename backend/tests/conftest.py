@@ -1,9 +1,14 @@
 import asyncio
+import json
+import sqlite3
 import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from uuid import UUID
+
+sqlite3.register_adapter(list, json.dumps)
+sqlite3.register_adapter(dict, json.dumps)
 
 from app.core.config import settings
 from sqlalchemy.ext.compiler import compiles

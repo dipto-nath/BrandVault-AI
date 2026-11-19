@@ -304,12 +304,11 @@ export function ReviewStudio({
 
       setTimeout(() => {
         if (dec === 'APPROVED') {
-          router.push(`/passports/${submission.id}`);
+          window.location.href = `/passports/${submission.id}`;
         } else {
-          router.refresh();
           window.location.reload();
         }
-      }, 1800);
+      }, 1500);
     } catch (err: any) {
       alert(err.message || 'Error recording review decision.');
     } finally {
