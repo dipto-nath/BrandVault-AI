@@ -69,13 +69,25 @@ export class SupabaseStorage implements Storage {
     return { id: data.user.id, email: data.user.email ?? null, full_name: data.user.user_metadata?.full_name ?? null };
   }
   async getProfile(userId: string): Promise<Profile | null> {
-    return one(await db().from('profiles').select('*').eq('id', userId).single());
+    try {
+      const { data, error } = await db().from('profiles').select('*').eq('id', userId).maybeSingle();
+      if (error || !data) return null;
+      return data as Profile;
+    } catch {
+      return null;
+    }
   }
   async createProfile(data: { id: string; email: string | null; full_name: string | null }): Promise<Profile> {
     return one(await db().from('profiles').insert({ id: data.id, email: data.email, full_name: data.full_name }).select().single());
   }
   async getMember(workspaceId: string, userId: string): Promise<WorkspaceMember | null> {
-    return one(await db().from('workspace_members').select('*').eq('workspace_id', workspaceId).eq('user_id', userId).single());
+    try {
+      const { data, error } = await db().from('workspace_members').select('*').eq('workspace_id', workspaceId).eq('user_id', userId).maybeSingle();
+      if (error || !data) return null;
+      return data as WorkspaceMember;
+    } catch {
+      return null;
+    }
   }
   async listMembers(workspaceId: string): Promise<WorkspaceMember[]> {
     return many(await db().from('workspace_members').select('*').eq('workspace_id', workspaceId).order('created_at', { ascending: true }));
@@ -95,7 +107,13 @@ export class SupabaseStorage implements Storage {
     return (data ?? []) as BrandGuideline[];
   }
   async getGuideline(id: string): Promise<BrandGuideline | null> {
-    return one(await db().from('brand_guidelines').select('*').eq('id', id).single());
+    try {
+      const { data, error } = await db().from('brand_guidelines').select('*').eq('id', id).maybeSingle();
+      if (error || !data) return null;
+      return data as BrandGuideline;
+    } catch {
+      return null;
+    }
   }
   async createGuideline(data: Omit<BrandGuideline, 'id' | 'created_at' | 'updated_at'> & { created_by?: string | null }): Promise<BrandGuideline> {
     const { rule_code, title, description, category, severity, examples, active, version, workspace_id, created_by } = data;
@@ -116,7 +134,13 @@ export class SupabaseStorage implements Storage {
     return (data ?? []) as ApprovedFact[];
   }
   async getFact(id: string): Promise<ApprovedFact | null> {
-    return one(await db().from('approved_facts').select('*').eq('id', id).single());
+    try {
+      const { data, error } = await db().from('approved_facts').select('*').eq('id', id).maybeSingle();
+      if (error || !data) return null;
+      return data as ApprovedFact;
+    } catch {
+      return null;
+    }
   }
   async createFact(data: Omit<ApprovedFact, 'id' | 'created_at' | 'updated_at'> & { created_by?: string | null }): Promise<ApprovedFact> {
     return one(await db().from('approved_facts').insert(data).select().single());
@@ -130,7 +154,13 @@ export class SupabaseStorage implements Storage {
     return (data ?? []) as SourceDocument[];
   }
   async getDocument(id: string): Promise<SourceDocument | null> {
-    return one(await db().from('source_documents').select('*').eq('id', id).single());
+    try {
+      const { data, error } = await db().from('source_documents').select('*').eq('id', id).maybeSingle();
+      if (error || !data) return null;
+      return data as SourceDocument;
+    } catch {
+      return null;
+    }
   }
   async createDocument(data: Omit<SourceDocument, 'id' | 'uploaded_at'> & { uploaded_by?: string | null }): Promise<SourceDocument> {
     return one(await db().from('source_documents').insert(data).select().single());
@@ -152,7 +182,13 @@ export class SupabaseStorage implements Storage {
     return (data ?? []) as ContentSubmission[];
   }
   async getSubmission(id: string): Promise<ContentSubmission | null> {
-    return one(await db().from('content_submissions').select('*').eq('id', id).single());
+    try {
+      const { data, error } = await db().from('content_submissions').select('*').eq('id', id).maybeSingle();
+      if (error || !data) return null;
+      return data as ContentSubmission;
+    } catch {
+      return null;
+    }
   }
   async createSubmission(data: Omit<ContentSubmission, 'id' | 'created_at' | 'updated_at' | 'submitted_at'> & { id?: string; created_by?: string | null }): Promise<ContentSubmission> {
     return one(await db().from('content_submissions').insert(data).select().single());
@@ -172,7 +208,13 @@ export class SupabaseStorage implements Storage {
     return one(await db().from('analysis_runs').insert(data).select().single());
   }
   async getAnalysisRun(id: string): Promise<AnalysisRun | null> {
-    return one(await db().from('analysis_runs').select('*').eq('id', id).single());
+    try {
+      const { data, error } = await db().from('analysis_runs').select('*').eq('id', id).maybeSingle();
+      if (error || !data) return null;
+      return data as AnalysisRun;
+    } catch {
+      return null;
+    }
   }
   async updateAnalysisRun(id: string, data: Partial<Pick<AnalysisRun, 'status' | 'result' | 'error_message' | 'completed_at' | 'duration_ms' | 'provider' | 'model_name'>>): Promise<AnalysisRun> {
     return one(await db().from('analysis_runs').update(data).eq('id', id).select().single());
@@ -198,14 +240,25 @@ export class SupabaseStorage implements Storage {
     return (data ?? []) as Finding[];
   }
   async listFindings(submissionId?: string): Promise<Finding[]> {
-    let q = db().from('findings').select('*, brand_guidelines:rule_id(*), finding_evidence(*, approved_facts(*))');
-    if (submissionId) q = q.eq('submission_id', submissionId);
-    const { data, error } = await q.order('created_at', { ascending: true });
-    if (error) throw error;
-    return (data ?? []) as Finding[];
+    try {
+      let q = db().from('findings').select('*');
+      if (submissionId) q = q.eq('submission_id', submissionId);
+      const { data, error } = await q.order('created_at', { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as Finding[];
+    } catch (e) {
+      console.warn('Failed to list findings from Supabase:', e);
+      return [];
+    }
   }
   async getFinding(id: string): Promise<Finding | null> {
-    return one(await db().from('findings').select('*, brand_guidelines:rule_id(*), finding_evidence(*)').eq('id', id).single());
+    try {
+      const { data, error } = await db().from('findings').select('*').eq('id', id).maybeSingle();
+      if (error || !data) return null;
+      return data as Finding;
+    } catch {
+      return null;
+    }
   }
   async createFindingEvidence(evidence: Array<Omit<FindingEvidence, 'id' | 'created_at'>>): Promise<FindingEvidence[]> {
     const { data, error } = await db().from('finding_evidence').insert(evidence).select();
