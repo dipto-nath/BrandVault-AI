@@ -36,6 +36,7 @@ export interface DashboardStats {
 
 export interface Storage {
   // ---------- Workspace ----------
+  getWorkspace(id: string): Promise<Workspace | null>;
   getWorkspaceBySlug(slug: string): Promise<Workspace | null>;
   getDemoWorkspace(): Promise<Workspace | null>;
   createWorkspace(data: { name: string; slug: string; description?: string }): Promise<Workspace>;

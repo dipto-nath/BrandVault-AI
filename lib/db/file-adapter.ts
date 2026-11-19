@@ -247,6 +247,9 @@ function filterByWorkspace<T extends { workspace_id: string }>(arr: T[], workspa
 
 export class FileStorage implements Storage {
   private store(): Store { return getStore(); }
+  async getWorkspace(id: string): Promise<Workspace | null> {
+    return this.store().workspaces.find((w) => w.id === id) ?? null;
+  }
   async getWorkspaceBySlug(slug: string): Promise<Workspace | null> {
     const s = (slug || '').toLowerCase();
     return this.store().workspaces.find((w) => {

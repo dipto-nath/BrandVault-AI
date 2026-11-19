@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Sidebar,
   SidebarBody,
@@ -14,16 +14,28 @@ import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 
-const workspaceName = "NexTech";
-const userName = "Demo Reviewer";
-const userRole = "Reviewer";
-
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [workspaceName, setWorkspaceName] = useState("NexTech");
+  const [userName, setUserName] = useState("Demo Reviewer");
+  const [userRole, setUserRole] = useState("Reviewer");
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.authenticated) {
+          if (data.organization?.name) setWorkspaceName(data.organization.name);
+          if (data.user?.full_name) setUserName(data.user.full_name);
+          if (data.user?.role) setUserRole(data.user.role === 'ADMIN' ? 'Admin' : 'Reviewer');
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-background">

@@ -1,4 +1,5 @@
 import { storage } from '@/lib/db/adaptor';
+import { getRequestContext } from '@/lib/auth';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,8 +13,10 @@ import {
 } from 'lucide-react';
 
 export default async function OverviewPage() {
-  const ws = await storage.getDemoWorkspace();
-  const workspaceId = ws?.id;
+  const ctx = await getRequestContext();
+  const ws = (ctx.workspaceId ? await storage.getWorkspace(ctx.workspaceId) : null) || (await storage.getDemoWorkspace());
+  const workspaceId = ws?.id || ctx.workspaceId;
+  const workspaceName = ws?.name || 'Brand';
 
   const [data, guidelines, facts, allFindings, submissions] = await Promise.all([
     workspaceId
@@ -75,10 +78,12 @@ export default async function OverviewPage() {
           <div className='flex-1 min-w-0 lg:max-w-[460px] xl:max-w-[500px] pl-1 sm:pl-3'>
             <div className='inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-brand-soft/80 border border-brand/20 backdrop-blur-sm mb-3'>
               <span className='w-2 h-2 rounded-full bg-supported animate-pulse' />
-              <span className='text-[11px] font-bold uppercase tracking-wider text-brand font-jakarta'>Production workspace</span>
+              <span className='text-[11px] font-bold uppercase tracking-wider text-brand font-jakarta'>
+                {ctx.isDemo ? 'Demo workspace' : 'Production workspace'}
+              </span>
             </div>
             <h1 className='text-[34px] sm:text-[38px] xl:text-[42px] font-extrabold text-ink mb-3 font-jakarta leading-[1.15] tracking-tight'>
-              NexTech brand governance
+              {workspaceName} brand governance
             </h1>
             <p className='text-ink-2 text-sm sm:text-base leading-relaxed mb-6 font-medium font-jakarta'>
               Every claim checked against approved sources before it goes live.

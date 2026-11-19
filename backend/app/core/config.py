@@ -34,7 +34,7 @@ class Settings(BaseSettings):
 
     # Storage
     STORAGE_TYPE: str = Field(default="local")
-    STORAGE_PATH: str = Field(default="/app/uploads")
+    STORAGE_PATH: str = Field(default="./uploads")
 
     # App
     ENVIRONMENT: str = Field(default="development")

@@ -24,6 +24,15 @@ function many<T>(result: { data: T[] | null; error: unknown }): T[] {
 }
 
 export class SupabaseStorage implements Storage {
+  async getWorkspace(id: string): Promise<Workspace | null> {
+    try {
+      const { data, error } = await db().from('workspaces').select('*').eq('id', id).maybeSingle();
+      if (error || !data) return null;
+      return data as Workspace;
+    } catch {
+      return null;
+    }
+  }
   async getWorkspaceBySlug(slug: string): Promise<Workspace | null> {
     try {
       const { data, error } = await db().from('workspaces').select('*').eq('slug', slug).maybeSingle();

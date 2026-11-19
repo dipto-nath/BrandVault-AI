@@ -18,9 +18,12 @@ export async function GET(req: NextRequest) {
         sameSite: 'lax',
         maxAge: 60 * 60 * 24 * 30,
       });
+    } else {
+      response.cookies.delete('bv_session');
     }
   } catch (err) {
-    // Backend may be offline, file-storage fallback handles demo
+    // Backend may be offline, clear any previous session so demo works cleanly
+    response.cookies.delete('bv_session');
   }
 
   // Set demo cookies for local and frontend recognition
