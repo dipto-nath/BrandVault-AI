@@ -6,8 +6,51 @@ from sqlalchemy.orm import sessionmaker
 from uuid import UUID
 
 from app.core.config import settings
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.dialects.postgresql import JSONB, INET, UUID as PG_UUID, ARRAY
+from sqlalchemy import ARRAY as SQLA_ARRAY
+from pgvector.sqlalchemy import Vector
+
+@compiles(JSONB, "sqlite")
+def compile_jsonb_sqlite(type_, compiler, **kw):
+    return "TEXT"
+
+@compiles(ARRAY, "sqlite")
+@compiles(SQLA_ARRAY, "sqlite")
+def compile_array_sqlite(type_, compiler, **kw):
+    return "TEXT"
+
+@compiles(INET, "sqlite")
+def compile_inet_sqlite(type_, compiler, **kw):
+    return "VARCHAR(45)"
+
+@compiles(Vector, "sqlite")
+def compile_vector_sqlite(type_, compiler, **kw):
+    return "TEXT"
+
+@compiles(PG_UUID, "sqlite")
+def compile_pg_uuid_sqlite(type_, compiler, **kw):
+    return "CHAR(36)"
+
 from app.models.base import Base
-from app.models import organization, source, fact, guideline, content, analysis, finding, review, suggestion, audit, passport
+from app.models import (
+    organization,
+    product,
+    source,
+    fact,
+    fact_candidate,
+    guideline,
+    guideline_candidate,
+    guideline_template,
+    content,
+    analysis,
+    finding,
+    review,
+    suggestion,
+    audit,
+    passport,
+    usage,
+)
 
 
 @pytest.fixture(scope="session")

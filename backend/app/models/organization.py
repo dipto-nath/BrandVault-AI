@@ -2,7 +2,7 @@ import enum
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 from typing import Optional, List
-from sqlalchemy import String, Text, Enum as SQLEnum, ForeignKey, UniqueConstraint, Index
+from sqlalchemy import String, Text, Enum as SQLEnum, ForeignKey, UniqueConstraint, Index, DateTime, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID, JSONB
 
@@ -11,8 +11,10 @@ from app.models.base import Base, TimestampMixin, UUIDMixin, OrgMixin
 
 class WorkspaceRole(str, enum.Enum):
     ADMIN = "ADMIN"
-    CREATOR = "CREATOR"
+    MANAGER = "MANAGER"
     REVIEWER = "REVIEWER"
+    CREATOR = "CREATOR"
+    AGENCY = "AGENCY"
 
 
 class Organization(Base, UUIDMixin, TimestampMixin):
@@ -23,6 +25,14 @@ class Organization(Base, UUIDMixin, TimestampMixin):
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     logo_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     settings: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    industry: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    website: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    regions: Mapped[dict] = mapped_column(JSONB, default=list, nullable=False)
+    languages: Mapped[dict] = mapped_column(JSONB, default=list, nullable=False)
+    is_demo: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    external_ai_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    plan: Mapped[str] = mapped_column(String(50), default="pro", nullable=False)
+    onboarding_state: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
 
     # Relationships
     users: Mapped[List["User"]] = relationship(
@@ -33,7 +43,7 @@ class Organization(Base, UUIDMixin, TimestampMixin):
     )
 
     def __repr__(self) -> str:
-        return f"<Organization(id={self.id}, name={self.name}, slug={self.slug})>"
+        return f"<Organization(id={self.id}, name={self.name}, slug={self.slug}, is_demo={self.is_demo})>"
 
 
 class User(Base, UUIDMixin, TimestampMixin, OrgMixin):
@@ -48,7 +58,10 @@ class User(Base, UUIDMixin, TimestampMixin, OrgMixin):
     full_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     avatar_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     hashed_password: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    is_active: Mapped[bool] = mapped_column(default=True, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    email_verified_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     last_login_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -58,7 +71,10 @@ class User(Base, UUIDMixin, TimestampMixin, OrgMixin):
         "Organization", back_populates="users", lazy="selectin"
     )
     memberships: Mapped[List["WorkspaceMember"]] = relationship(
-        "WorkspaceMember", back_populates="user", lazy="selectin"
+        "WorkspaceMember",
+        back_populates="user",
+        primaryjoin="User.id == WorkspaceMember.user_id",
+        lazy="selectin",
     )
 
     __table_args__ = (
@@ -86,6 +102,11 @@ class WorkspaceMember(Base, UUIDMixin, TimestampMixin, OrgMixin):
     role: Mapped[WorkspaceRole] = mapped_column(
         SQLEnum(WorkspaceRole, native_enum=False),
         default=WorkspaceRole.CREATOR,
+        nullable=False,
+    )
+    status: Mapped[str] = mapped_column(
+        String(20),
+        default="active",
         nullable=False,
     )
     invited_by: Mapped[Optional[UUID]] = mapped_column(
@@ -117,3 +138,49 @@ class WorkspaceMember(Base, UUIDMixin, TimestampMixin, OrgMixin):
 
     def __repr__(self) -> str:
         return f"<WorkspaceMember(user_id={self.user_id}, org_id={self.org_id}, role={self.role})>"
+
+
+class Invitation(Base, UUIDMixin, TimestampMixin, OrgMixin):
+    __tablename__ = "invitations"
+
+    org_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    role: Mapped[WorkspaceRole] = mapped_column(
+        SQLEnum(WorkspaceRole, native_enum=False),
+        default=WorkspaceRole.CREATOR,
+        nullable=False,
+    )
+    token_hash: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    invited_by: Mapped[Optional[UUID]] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    accepted_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+
+class RefreshToken(Base, UUIDMixin, TimestampMixin, OrgMixin):
+    __tablename__ = "refresh_tokens"
+
+    user_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    token_hash: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    revoked_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )

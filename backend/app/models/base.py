@@ -36,10 +36,6 @@ class OrgMixin:
             index=True,
         )
 
-    @declared_attr
-    def __table_args__(cls):
-        return (Index(f"ix_{cls.__tablename__}_org_id", "org_id"),)
-
 
 class UUIDMixin:
     """Mixin for UUID primary key."""

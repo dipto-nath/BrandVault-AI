@@ -57,19 +57,32 @@ def verify_token(token: str) -> TokenPayload:
         raise ValueError("Invalid token")
 
 
+import bcrypt
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        return bcrypt.checkpw(
+            plain_password.encode("utf-8")[:72],
+            hashed_password.encode("utf-8"),
+        )
+    except Exception:
+        return False
 
 
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(
+        password.encode("utf-8")[:72],
+        bcrypt.gensalt(),
+    ).decode("utf-8")
 
 
 # Role hierarchy for permission checks
 ROLE_HIERARCHY = {
-    "ADMIN": 3,
+    "ADMIN": 4,
+    "MANAGER": 3,
     "REVIEWER": 2,
     "CREATOR": 1,
+    "AGENCY": 1,
 }
 
 
@@ -79,8 +92,11 @@ def has_permission(user_role: str, required_roles: List[str]) -> bool:
     return user_level >= required_level
 
 
+from fastapi import HTTPException, status
+
 def require_role(user: UserContext, allowed_roles: List[str]) -> None:
     if not has_permission(user.role, allowed_roles):
-        raise PermissionError(
-            f"Role {user.role} not authorized. Required: {allowed_roles}"
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Role {user.role} not authorized. Required: {allowed_roles}",
         )

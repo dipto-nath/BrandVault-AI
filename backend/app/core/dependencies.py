@@ -1,7 +1,8 @@
 from typing import Optional, List
 from uuid import UUID
-from fastapi import Depends, HTTPException, Header, status
+from fastapi import Depends, HTTPException, Header, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from app.core.database import db_manager, get_db
 from app.core.security import (
@@ -11,9 +12,12 @@ from app.core.security import (
     TokenPayload,
 )
 from app.core.config import settings
+from app.models.organization import Organization
 import structlog
 
 logger = structlog.get_logger()
+
+DEMO_ORG_ID = UUID("11111111-1111-1111-1111-111111111111")
 
 
 async def get_current_user(
@@ -34,7 +38,13 @@ async def get_current_user(
         )
 
     token = authorization[7:]  # Remove "Bearer "
-    payload = verify_token(token)
+    try:
+        payload = verify_token(token)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired access token",
+        )
 
     return UserContext(
         user_id=UUID(payload.sub),
@@ -47,42 +57,66 @@ async def get_current_user(
 async def get_current_user_demo(
     db: AsyncSession = Depends(get_db),
 ) -> UserContext:
-    """Demo mode user context - no auth required."""
-    from uuid import UUID
-
+    """Demo mode user context."""
     return UserContext(
         user_id=UUID(settings.DEMO_USER_ID),
-        org_id=UUID("11111111-1111-1111-1111-111111111111"),  # Will be resolved from demo workspace
+        org_id=DEMO_ORG_ID,
         role="ADMIN",
         email="demo@nexatech.example",
         full_name="Demo Reviewer",
     )
 
 
-def get_current_user_flexible(
+async def get_current_user_flexible(
+    request: Request,
     authorization: Optional[str] = Header(None),
+    db: AsyncSession = Depends(get_db),
 ) -> UserContext:
-    """Flexible auth - uses demo if no token, otherwise validates JWT."""
+    """Flexible auth - uses demo if allowed and no token, otherwise validates JWT."""
     if not authorization or not authorization.startswith("Bearer "):
-        # Return demo user
-        from uuid import UUID
+        if not settings.ALLOW_DEMO_AUTH:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required",
+            )
 
-        return UserContext(
+        # Return demo user
+        user = UserContext(
             user_id=UUID(settings.DEMO_USER_ID),
-            org_id=UUID("11111111-1111-1111-1111-111111111111"),
+            org_id=DEMO_ORG_ID,
             role="ADMIN",
             email="demo@nexatech.example",
             full_name="Demo Reviewer",
         )
+    else:
+        token = authorization[7:]
+        try:
+            payload = verify_token(token)
+            user = UserContext(
+                user_id=UUID(payload.sub),
+                org_id=UUID(payload.org_id),
+                role=payload.role,
+                email=payload.email,
+            )
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired access token",
+            )
 
-    token = authorization[7:]
-    payload = verify_token(token)
-    return UserContext(
-        user_id=UUID(payload.sub),
-        org_id=UUID(payload.org_id),
-        role=payload.role,
-        email=payload.email,
-    )
+    # Demo workspace protection: disallow mutation requests (POST, PUT, PATCH, DELETE)
+    # except for login/demo auth endpoints
+    if request.method in ("POST", "PUT", "PATCH", "DELETE"):
+        path = request.url.path
+        if not (path.endswith("/auth/demo") or path.endswith("/auth/login") or path.endswith("/auth/register")):
+            # Check if current org is demo
+            if user.org_id == DEMO_ORG_ID:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="The demo workspace is read-only. Please create a new company account to add or edit data.",
+                )
+
+    return user
 
 
 async def get_db_with_org(
@@ -99,17 +133,25 @@ def require_admin(user: UserContext = Depends(get_current_user_flexible)) -> Use
     return user
 
 
+def require_manager_or_admin(
+    user: UserContext = Depends(get_current_user_flexible),
+) -> UserContext:
+    """Require MANAGER or ADMIN role."""
+    require_role(user, ["MANAGER", "ADMIN"])
+    return user
+
+
 def require_reviewer_or_admin(
     user: UserContext = Depends(get_current_user_flexible),
 ) -> UserContext:
-    """Require REVIEWER or ADMIN role."""
-    require_role(user, ["REVIEWER", "ADMIN"])
+    """Require REVIEWER, MANAGER, or ADMIN role."""
+    require_role(user, ["REVIEWER", "MANAGER", "ADMIN"])
     return user
 
 
 def require_creator_or_above(
     user: UserContext = Depends(get_current_user_flexible),
 ) -> UserContext:
-    """Require CREATOR, REVIEWER, or ADMIN role."""
-    require_role(user, ["CREATOR", "REVIEWER", "ADMIN"])
+    """Require CREATOR, REVIEWER, MANAGER, or ADMIN role."""
+    require_role(user, ["CREATOR", "REVIEWER", "MANAGER", "ADMIN", "AGENCY"])
     return user

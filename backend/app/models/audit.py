@@ -28,7 +28,7 @@ class AuditEvent(Base, UUIDMixin, TimestampMixin, OrgMixin):
     action: Mapped[str] = mapped_column(String(50), nullable=False)
     old_value: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
     new_value: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
-    metadata: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    audit_metadata: Mapped[dict] = mapped_column("metadata", JSONB, default=dict, nullable=False)
     ip_address: Mapped[Optional[str]] = mapped_column(INET, nullable=True)
     user_agent: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 

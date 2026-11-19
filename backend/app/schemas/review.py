@@ -2,18 +2,18 @@ from datetime import datetime
 from uuid import UUID
 from typing import Optional, List
 from pydantic import BaseModel, Field, ConfigDict
-from app.models.review import ReviewDecision, FeedbackType
+from app.models.review import ReviewDecisionType, FeedbackType
 from app.models.content import ContentStatus, RiskLevel, ContentType, Channel
 from app.models.finding import FindingType, Severity
 
 
 class FindingDecisionRequest(BaseModel):
-    decision: ReviewDecision
+    decision: ReviewDecisionType
     reason: Optional[str] = Field(None, max_length=2000)
 
 
 class ContentDecisionRequest(BaseModel):
-    decision: ReviewDecision
+    decision: ReviewDecisionType
     comment: Optional[str] = Field(None, max_length=2000)
     finding_decisions: List[FindingDecisionRequest] = []
 
@@ -31,7 +31,7 @@ class ReviewDecisionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
-    decision: ReviewDecision
+    decision: ReviewDecisionType
     comment: Optional[str]
     reviewer: "UserResponse"
     created_at: datetime

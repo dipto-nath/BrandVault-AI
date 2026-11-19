@@ -2,7 +2,7 @@ import enum
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 from typing import Optional, List
-from sqlalchemy import String, Text, Enum as SQLEnum, ForeignKey, Integer, Index, ARRAY
+from sqlalchemy import String, Text, Enum as SQLEnum, ForeignKey, Integer, Index, ARRAY, DateTime, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID, JSONB
 
@@ -21,6 +21,7 @@ class VerificationStatus(str, enum.Enum):
     SUPPORTED = "SUPPORTED"
     CONTRADICTED = "CONTRADICTED"
     UNVERIFIED = "UNVERIFIED"
+    OUTDATED_CONFLICTING = "OUTDATED_CONFLICTING"
 
 
 class AnalysisRun(Base, UUIDMixin, TimestampMixin, OrgMixin):
@@ -60,7 +61,7 @@ class AnalysisRun(Base, UUIDMixin, TimestampMixin, OrgMixin):
         DateTime(timezone=True), nullable=True
     )
     duration_ms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    metadata: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    run_metadata: Mapped[dict] = mapped_column("metadata", JSONB, default=dict, nullable=False)
 
     # Relationships
     content: Mapped["ContentItem"] = relationship(

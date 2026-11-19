@@ -127,15 +127,16 @@ const defaultNavItems: NavItem[] = [
   { label: "Guidelines", href: "/guidelines" },
   { label: "Passports", href: "/passports" },
   { label: "Insights", href: "/insights" },
+  { label: "Sign in", href: "/login" },
 ];
 
 const PrismaHero = ({
   title = "BrandVault",
   description = "BrandVault AI is a pre-publication review gate for brand content. It verifies claims against approved knowledge, explains every finding with traceable citations, and keeps every decision accountable.",
-  ctaText = "Explore Platform",
-  ctaHref = "/overview",
-  secondaryCtaText = "Open Demo",
-  secondaryCtaHref = "/demo",
+  ctaText = "Try the Demo",
+  ctaHref = "/demo",
+  secondaryCtaText = "Create Workspace",
+  secondaryCtaHref = "/register",
   navItems = defaultNavItems,
   videoSrc = "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260405_170732_8a9ccda6-5cff-4628-b164-059c500a2b41.mp4",
 }: PrismaHeroProps) => {

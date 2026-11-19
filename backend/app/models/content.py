@@ -1,8 +1,8 @@
 import enum
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
-from typing import Optional
-from sqlalchemy import String, Text, Enum as SQLEnum, ForeignKey, Index, UniqueConstraint
+from typing import Optional, List
+from sqlalchemy import String, Text, Enum as SQLEnum, ForeignKey, Index, UniqueConstraint, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 
@@ -73,9 +73,14 @@ class ContentItem(Base, UUIDMixin, TimestampMixin, OrgMixin):
         SQLEnum(RiskLevel, native_enum=False),
         nullable=True,
     )
+    product_id: Mapped[Optional[UUID]] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("products.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     product_context: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     campaign_context: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    locale: Mapped[str] = mappedColumn(String(10), default="en", nullable=False)
+    locale: Mapped[str] = mapped_column(String(10), default="en", nullable=False)
     created_by: Mapped[Optional[UUID]] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
@@ -85,6 +90,14 @@ class ContentItem(Base, UUIDMixin, TimestampMixin, OrgMixin):
         PG_UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
+    )
+    assignee_id: Mapped[Optional[UUID]] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    due_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
     submitted_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True

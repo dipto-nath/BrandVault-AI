@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
 )
 from sqlalchemy.orm import DeclarativeBase, declared_attr
-from sqlalchemy import Index, text, event
+from sqlalchemy import Index, text, event, Engine
 from sqlalchemy.pool import NullPool
 import structlog
 
@@ -115,13 +115,13 @@ async def get_db_with_rls(org_id: str) -> AsyncGenerator[AsyncSession, None]:
 
 
 # Event listener to log slow queries in development
-@event.listens_for(AsyncEngine, "before_cursor_execute")
+@event.listens_for(Engine, "before_cursor_execute")
 def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
     if settings.ENVIRONMENT == "development":
         context._query_start_time = __import__("time").time()
 
 
-@event.listens_for(AsyncEngine, "after_cursor_execute")
+@event.listens_for(Engine, "after_cursor_execute")
 def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
     if settings.ENVIRONMENT == "development":
         import time

@@ -6,13 +6,31 @@ import structlog
 
 logger = structlog.get_logger()
 
-# Token encoder for chunking
-encoder = tiktoken.get_encoding("cl100k_base")
+# Token encoder for chunking (lazy-loaded with fallback)
+_encoder = None
+
+
+def get_encoder():
+    global _encoder
+    if _encoder is None:
+        try:
+            _encoder = tiktoken.get_encoding("cl100k_base")
+        except Exception as e:
+            logger.warning("tiktoken_encoder_unavailable", error=str(e))
+            _encoder = False
+    return _encoder if _encoder is not False else None
 
 
 def count_tokens(text: str) -> int:
     """Count tokens in text."""
-    return len(encoder.encode(text))
+    enc = get_encoder()
+    if enc:
+        try:
+            return len(enc.encode(text))
+        except Exception:
+            pass
+    # Resilient fallback: ~4 characters per token
+    return max(1, len(text) // 4)
 
 
 def extract_text_from_pdf(file_path: str) -> tuple[str, int]:
@@ -59,36 +77,62 @@ def chunk_text(
     """Split text into overlapping chunks with metadata.
     Returns list of dicts with text, token_count, char positions, page estimates.
     """
-    tokens = encoder.encode(text)
+    enc = get_encoder()
+    if enc:
+        tokens = enc.encode(text)
+        chunks = []
+        
+        for i in range(0, len(tokens), chunk_size - overlap):
+            chunk_tokens = tokens[i:i + chunk_size]
+            chunk_text_val = enc.decode(chunk_tokens)
+            
+            if len(chunk_text_val.strip()) < 50:  # Skip very small chunks
+                continue
+
+            # Estimate character positions
+            char_start = len(enc.decode(tokens[:i]))
+            char_end = char_start + len(chunk_text_val)
+            
+            # Estimate page numbers (rough)
+            page_start = max(1, char_start // 3000 + 1)
+            page_end = max(1, char_end // 3000 + 1)
+            
+            chunks.append({
+                "text": chunk_text_val.strip(),
+                "token_count": len(chunk_tokens),
+                "char_start": char_start,
+                "char_end": char_end,
+                "page_start": page_start,
+                "page_end": page_end,
+            })
+
+            if i + chunk_size >= len(tokens):
+                break
+
+        return chunks
+
+    # Fallback word-based chunking if encoder is not available
+    words = text.split()
     chunks = []
-    
-    for i in range(0, len(tokens), chunk_size - overlap):
-        chunk_tokens = tokens[i:i + chunk_size]
-        chunk_text = encoder.decode(chunk_tokens)
-        
-        if len(chunk_text.strip()) < 50:  # Skip very small chunks
+    word_chunk_size = max(50, chunk_size // 2)
+    word_overlap = max(5, overlap // 2)
+    step = max(1, word_chunk_size - word_overlap)
+
+    for i in range(0, len(words), step):
+        chunk_words = words[i:i + word_chunk_size]
+        chunk_text_val = " ".join(chunk_words)
+        if len(chunk_text_val.strip()) < 50:
             continue
-
-        # Estimate character positions
-        char_start = len(encoder.decode(tokens[:i]))
-        char_end = char_start + len(chunk_text)
-        
-        # Estimate page numbers (rough)
-        page_start = max(1, char_start // 3000 + 1)
-        page_end = max(1, char_end // 3000 + 1)
-        
         chunks.append({
-            "text": chunk_text.strip(),
-            "token_count": len(chunk_tokens),
-            "char_start": char_start,
-            "char_end": char_end,
-            "page_start": page_start,
-            "page_end": page_end,
+            "text": chunk_text_val.strip(),
+            "token_count": len(chunk_words),
+            "char_start": i * 5,
+            "char_end": (i + len(chunk_words)) * 5,
+            "page_start": max(1, i // 400 + 1),
+            "page_end": max(1, (i + len(chunk_words)) // 400 + 1),
         })
-
-        if i + chunk_size >= len(tokens):
+        if i + word_chunk_size >= len(words):
             break
-
     return chunks
 
 

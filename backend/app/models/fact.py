@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from uuid import UUID, uuid4
 from typing import Optional
 from decimal import Decimal
-from sqlalchemy import String, Text, Enum as SQLEnum, ForeignKey, Numeric, Index, UniqueConstraint
+from sqlalchemy import String, Text, Enum as SQLEnum, ForeignKey, Numeric, Index, UniqueConstraint, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 
@@ -23,6 +23,11 @@ class ApprovedFact(Base, UUIDMixin, TimestampMixin, OrgMixin):
         PG_UUID(as_uuid=True),
         ForeignKey("organizations.id", ondelete="CASCADE"),
         nullable=False,
+    )
+    product_id: Mapped[Optional[UUID]] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("products.id", ondelete="SET NULL"),
+        nullable=True,
     )
     fact_code: Mapped[str] = mapped_column(String(50), nullable=False)
     title: Mapped[str] = mapped_column(String(200), nullable=False)

@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     # Demo
     DEMO_WORKSPACE_SLUG: str = Field(default="nexatech")
     DEMO_USER_ID: str = Field(default="22222222-2222-2222-2222-222222222222")
+    ALLOW_DEMO_AUTH: bool = Field(default=True)
 
     # Celery
     CELERY_BROKER_URL: str = Field(default="redis://localhost:6379/0")

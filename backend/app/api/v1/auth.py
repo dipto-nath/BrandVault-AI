@@ -18,10 +18,14 @@ from app.models.organization import Organization, User, WorkspaceMember, Workspa
 from app.schemas.auth import (
     TokenResponse,
     LoginRequest,
+    RegisterRequest,
+    RefreshTokenRequest,
+    ForgotPasswordRequest,
     DemoLoginRequest,
     UserResponse,
     OrganizationResponse,
 )
+from app.services.auth import AuthService
 from app.services.audit import AuditService
 import structlog
 
@@ -30,79 +34,24 @@ logger = structlog.get_logger()
 router = APIRouter()
 
 
+@router.post("/register", response_model=TokenResponse)
+async def register(
+    request: RegisterRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Register a new company and admin user."""
+    auth_service = AuthService(db)
+    return await auth_service.register_company(request)
+
+
 @router.post("/login", response_model=TokenResponse)
 async def login(
     request: LoginRequest,
     db: AsyncSession = Depends(get_db),
 ):
     """Authenticate user and return JWT token."""
-    result = await db.execute(
-        select(User).where(User.email == request.email)
-    )
-    user = result.scalar_one_or_none()
-
-    if not user or not user.hashed_password:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials",
-        )
-
-    if not verify_password(request.password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials",
-        )
-
-    if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User account is disabled",
-        )
-
-    org_result = await db.execute(
-        select(Organization).where(Organization.id == user.org_id)
-    )
-    org = org_result.scalar_one_or_none()
-
-    member_result = await db.execute(
-        select(WorkspaceMember).where(
-            WorkspaceMember.org_id == user.org_id,
-            WorkspaceMember.user_id == user.id,
-        )
-    )
-    member = member_result.scalar_one_or_none()
-    role = member.role if member else WorkspaceRole.CREATOR
-
-    access_token = create_access_token(
-        data={
-            "sub": str(user.id),
-            "org_id": str(user.org_id),
-            "role": role.value,
-            "email": user.email,
-        },
-        expires_delta=timedelta(minutes=settings.JWT_EXPIRE_MINUTES),
-    )
-
-    from datetime import datetime, timezone
-    user.last_login_at = datetime.now(timezone.utc)
-    await db.commit()
-
-    audit_service = AuditService(db)
-    await audit_service.log(
-        org_id=user.org_id,
-        user_id=user.id,
-        entity_type="user",
-        entity_id=user.id,
-        action="LOGIN",
-        old_value=None,
-        new_value={"email": user.email},
-    )
-
-    return TokenResponse(
-        access_token=access_token,
-        user=UserResponse.model_validate(user),
-        organization=OrganizationResponse.model_validate(org),
-    )
+    auth_service = AuthService(db)
+    return await auth_service.login(request.email, request.password)
 
 
 @router.post("/demo", response_model=TokenResponse)
@@ -117,10 +66,18 @@ async def demo_login(
     org = result.scalar_one_or_none()
 
     if not org:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Demo workspace '{request.workspace_slug}' not found",
+        # Auto-create demo workspace if not seeded yet
+        org = Organization(
+            name="NexaTech",
+            slug=request.workspace_slug,
+            description="Leading AI hardware and robotics consumer technology",
+            industry="Consumer Electronics",
+            is_demo=True,
+            plan="ENTERPRISE",
+            onboarding_state="COMPLETED",
         )
+        db.add(org)
+        await db.flush()
 
     demo_user_id = UUID(settings.DEMO_USER_ID)
     user_result = await db.execute(
@@ -143,6 +100,7 @@ async def demo_login(
             org_id=org.id,
             user_id=user.id,
             role=WorkspaceRole.ADMIN,
+            status="ACTIVE",
         )
         db.add(member)
         await db.commit()
@@ -157,11 +115,47 @@ async def demo_login(
         expires_delta=timedelta(minutes=settings.JWT_EXPIRE_MINUTES),
     )
 
+    user_resp = UserResponse.model_validate(user)
+    user_resp.role = "ADMIN"
+
     return TokenResponse(
         access_token=access_token,
-        user=UserResponse.model_validate(user),
+        refresh_token="demo-refresh-token",
+        user=user_resp,
         organization=OrganizationResponse.model_validate(org),
     )
+
+
+@router.post("/refresh", response_model=TokenResponse)
+async def refresh_token(
+    request: RefreshTokenRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Refresh access token using refresh token."""
+    auth_service = AuthService(db)
+    return await auth_service.refresh_tokens(request.refresh_token)
+
+
+@router.post("/logout")
+async def logout(
+    request: RefreshTokenRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Revoke refresh token on logout."""
+    auth_service = AuthService(db)
+    await auth_service.logout(refresh_token_str=request.refresh_token)
+    return {"status": "ok"}
+
+
+@router.post("/forgot-password")
+async def forgot_password(
+    request: ForgotPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Request password reset."""
+    logger.info("password_reset_requested", email=request.email)
+    # Return 200 without leaking if email exists
+    return {"message": "If this email exists in our records, a reset link will be sent."}
 
 
 @router.get("/me", response_model=TokenResponse)
@@ -186,55 +180,11 @@ async def get_current_user_info(
     )
     org = org_result.scalar_one_or_none()
 
-    member_result = await db.execute(
-        select(WorkspaceMember).where(
-            WorkspaceMember.org_id == user.org_id,
-            WorkspaceMember.user_id == user.user_id,
-        )
-    )
-    member = member_result.scalar_one_or_none()
+    user_resp = UserResponse.model_validate(user_obj)
+    user_resp.role = user.role
 
     return TokenResponse(
         access_token="",
-        user=UserResponse.model_validate(user_obj),
-        organization=OrganizationResponse.model_validate(org),
-    )
-
-
-@router.post("/refresh", response_model=TokenResponse)
-async def refresh_token(
-    user: UserContext = Depends(get_current_user_flexible),
-    db: AsyncSession = Depends(get_db_with_org),
-):
-    """Refresh access token."""
-    result = await db.execute(
-        select(User).where(User.id == user.user_id)
-    )
-    user_obj = result.scalar_one_or_none()
-
-    if not user_obj:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found",
-        )
-
-    org_result = await db.execute(
-        select(Organization).where(Organization.id == user.org_id)
-    )
-    org = org_result.scalar_one_or_none()
-
-    access_token = create_access_token(
-        data={
-            "sub": str(user.user_id),
-            "org_id": str(user.org_id),
-            "role": user.role,
-            "email": user.email,
-        },
-        expires_delta=timedelta(minutes=settings.JWT_EXPIRE_MINUTES),
-    )
-
-    return TokenResponse(
-        access_token=access_token,
-        user=UserResponse.model_validate(user_obj),
+        user=user_resp,
         organization=OrganizationResponse.model_validate(org),
     )

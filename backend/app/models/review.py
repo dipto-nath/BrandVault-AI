@@ -2,17 +2,21 @@ import enum
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 from typing import Optional
-from sqlalchemy import String, Text, Enum as SQLEnum, ForeignKey, Index
+from sqlalchemy import String, Text, Enum as SQLEnum, ForeignKey, Index, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 
 from app.models.base import Base, TimestampMixin, UUIDMixin, OrgMixin
 
 
-class ReviewDecision(str, enum.Enum):
+class ReviewDecisionType(str, enum.Enum):
     APPROVED = "APPROVED"
     REJECTED = "REJECTED"
     CHANGES_REQUESTED = "CHANGES_REQUESTED"
+
+
+# Alias for backward compatibility
+ReviewDecisionEnum = ReviewDecisionType
 
 
 class FeedbackType(str, enum.Enum):
@@ -41,8 +45,8 @@ class ReviewDecision(Base, UUIDMixin, TimestampMixin, OrgMixin):
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
     )
-    decision: Mapped[ReviewDecision] = mapped_column(
-        SQLEnum(ReviewDecision, native_enum=False),
+    decision: Mapped[ReviewDecisionType] = mapped_column(
+        SQLEnum(ReviewDecisionType, native_enum=False),
         nullable=False,
     )
     comment: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

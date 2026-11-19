@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 
 from app.models.content import ContentItem, ContentStatus
 from app.models.finding import Finding
-from app.models.review import ReviewDecision, FindingFeedback, ReviewDecision as ReviewDecisionEnum, FeedbackType
+from app.models.review import ReviewDecision, FindingFeedback, ReviewDecisionType as ReviewDecisionEnum, FeedbackType
 from app.schemas.review import (
     FindingDecisionRequest,
     ContentDecisionRequest,

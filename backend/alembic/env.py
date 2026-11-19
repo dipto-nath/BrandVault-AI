@@ -11,7 +11,24 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from app.core.config import settings
 from app.models.base import Base
-from app.models import organization, source, fact, guideline, content, analysis, finding, review, suggestion, audit, passport
+from app.models import (
+    organization,
+    product,
+    source,
+    fact,
+    fact_candidate,
+    guideline,
+    guideline_candidate,
+    guideline_template,
+    content,
+    analysis,
+    finding,
+    review,
+    suggestion,
+    audit,
+    passport,
+    usage,
+)
 
 # this is the Alembic Config object
 config = context.config

@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 from typing import List, Dict, Any, Optional
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from app.models.suggestion import SuggestionStatus
 
 

@@ -20,7 +20,7 @@ class AnalysisStatusResponse(BaseModel):
 
 
 class AnalysisRunResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, protected_namespaces=())
 
     id: UUID
     provider: str
@@ -32,6 +32,18 @@ class AnalysisRunResponse(BaseModel):
     started_at: datetime
     completed_at: Optional[datetime]
     duration_ms: Optional[int]
+
+
+class ClaimCreate(BaseModel):
+    claim_text: str
+    claim_type: str = "FACTUAL"
+    normalized_value: Optional[str] = None
+    unit: Optional[str] = None
+    qualifier: Optional[str] = None
+    entity_name: Optional[str] = None
+    attribute_name: Optional[str] = None
+    explanation: Optional[str] = None
+    confidence: Optional[float] = None
 
 
 class ClaimResponse(BaseModel):

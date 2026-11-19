@@ -2,9 +2,10 @@ import enum
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 from typing import Optional, List
-from sqlalchemy import String, Text, Enum as SQLEnum, ForeignKey, Integer, BigInteger, Index
+from sqlalchemy import String, Text, Enum as SQLEnum, ForeignKey, Integer, BigInteger, Index, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID, JSONB, VECTOR
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID, JSONB
+from pgvector.sqlalchemy import Vector
 
 from app.models.base import Base, TimestampMixin, UUIDMixin, OrgMixin
 
@@ -65,7 +66,7 @@ class Source(Base, UUIDMixin, TimestampMixin, OrgMixin):
         DateTime(timezone=True), nullable=True
     )
     version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
-    metadata: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    doc_metadata: Mapped[dict] = mapped_column("metadata", JSONB, default=dict, nullable=False)
 
     # Relationships
     chunks: Mapped[List["SourceChunk"]] = relationship(
@@ -116,9 +117,9 @@ class SourceChunk(Base, UUIDMixin, TimestampMixin, OrgMixin):
     text: Mapped[str] = mapped_column(Text, nullable=False)
     token_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     embedding: Mapped[Optional[List[float]]] = mapped_column(
-        VECTOR(1536), nullable=True
+        Vector(1536), nullable=True
     )
-    metadata: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    chunk_metadata: Mapped[dict] = mapped_column("metadata", JSONB, default=dict, nullable=False)
 
     # Relationships
     source: Mapped["Source"] = relationship(
