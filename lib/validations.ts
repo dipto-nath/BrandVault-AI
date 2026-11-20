@@ -51,6 +51,7 @@ export const UpdateGuidelineSchema = z.object({
 });
 
 export const CreateFactSchema = z.object({
+  product_id: z.string().uuid().optional().nullable(),
   fact_code: z.string().min(1).max(50),
   title: z.string().min(1).max(200),
   fact_text: z.string().min(1).max(5000),

@@ -162,7 +162,7 @@ function SignupContent() {
         }
 
         setIsSuccess(true);
-        setTimeout(() => router.push(nextParam), 1000);
+        setTimeout(() => router.push('/knowledge?welcome=1'), 1000);
         return;
       }
 
@@ -186,8 +186,7 @@ function SignupContent() {
 
       setIsSuccess(true);
       setTimeout(() => {
-        const target = nextParam.startsWith('/') && !nextParam.startsWith('//') ? nextParam : '/overview';
-        window.location.href = target;
+        window.location.href = '/knowledge?welcome=1';
       }, 700);
     } catch (err: any) {
       setError(err.message || 'Something went wrong. Please try again.');

@@ -1,14 +1,47 @@
-import { storage } from '@/lib/db/adaptor';
-import { KnowledgeManager } from '@/components/knowledge/knowledge-manager';
+import { Suspense } from 'react';
+import { KnowledgeManagerClient } from '@/components/knowledge/knowledge-manager-client';
 import { getRequestContext } from '@/lib/auth';
+import { storage } from '@/lib/db/adaptor';
 
-export default async function KnowledgePage() {
+interface ProductItem {
+  id: string;
+  name: string;
+  category?: string;
+  model_or_version?: string;
+  facts_count?: number;
+}
+
+export default async function KnowledgePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ welcome?: string }>;
+}) {
   const ctx = await getRequestContext();
   const workspaceId = ctx.workspaceId;
-  const [facts, documents] = await Promise.all([
+  const params = await searchParams;
+  const showWelcome = params.welcome === '1';
+  
+  const [facts, documents, products] = await Promise.all([
     workspaceId ? storage.listFacts(workspaceId, { active: true }) : Promise.resolve([]),
     workspaceId ? storage.listDocuments(workspaceId) : Promise.resolve([]),
+    workspaceId ? storage.listProducts(workspaceId) : Promise.resolve([]),
   ]);
 
-  return <KnowledgeManager facts={facts} documents={documents} />;
+  // Transform products to match ProductItem interface
+  const productItems: ProductItem[] = products.map(p => ({
+    id: p.id,
+    name: p.name,
+    category: p.category ?? undefined,
+    model_or_version: p.model_or_version ?? undefined,
+    facts_count: p.facts_count,
+  }));
+
+  return (
+    <KnowledgeManagerClient
+      initialFacts={facts}
+      initialDocuments={documents}
+      initialProducts={productItems}
+      showWelcome={showWelcome}
+    />
+  );
 }

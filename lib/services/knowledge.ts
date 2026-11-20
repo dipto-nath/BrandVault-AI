@@ -13,6 +13,7 @@ export async function listFacts(workspaceId: string) {
 export async function createFact(workspaceId: string, userId: string | null, data: any) {
   const fact = await storage.createFact({
     workspace_id: workspaceId,
+    product_id: data.product_id ?? null,
     fact_code: data.fact_code,
     title: data.title,
     fact_text: data.fact_text,

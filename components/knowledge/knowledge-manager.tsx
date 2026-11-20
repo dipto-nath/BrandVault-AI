@@ -62,6 +62,7 @@ export function KnowledgeManager({
   const [prodCategory, setProdCategory] = useState('');
   const [prodVersion, setProdVersion] = useState('');
   const [submittingProd, setSubmittingProd] = useState(false);
+  const [productError, setProductError] = useState<string | null>(null);
 
   // Add Fact Modal State
   const [factModalOpen, setFactModalOpen] = useState(false);
@@ -82,6 +83,14 @@ export function KnowledgeManager({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
 
+  // Filtered data
+  const filteredFacts = selectedProductId
+    ? facts.filter((f) => f.product_id === selectedProductId)
+    : facts;
+  const filteredCandidates = selectedProductId
+    ? candidates.filter((c) => c.product_id === selectedProductId)
+    : candidates;
+
   // Fetch products and candidates on mount
   useEffect(() => {
     fetch('/api/products')
@@ -98,53 +107,6 @@ export function KnowledgeManager({
       })
       .catch(() => {});
   }, []);
-
-  // Filter facts by selected product
-  const filteredFacts = selectedProductId
-    ? facts.filter((f) => {
-        const prod = products.find((p) => p.id === selectedProductId);
-        return (
-          f.product_id === selectedProductId ||
-          (prod && f.entity_name && prod.name.toLowerCase().includes(f.entity_name.toLowerCase()))
-        );
-      })
-    : facts;
-
-  // Filter candidates by selected product
-  const filteredCandidates = candidates.filter((c) => {
-    if (c.status !== 'PENDING' && c.status !== 'EDITED') return false;
-    if (!selectedProductId) return true;
-    return c.product_id === selectedProductId;
-  });
-
-  const handleCreateProduct = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmittingProd(true);
-    try {
-      const res = await fetch('/api/products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: prodName.trim(),
-          category: prodCategory.trim() || undefined,
-          model_or_version: prodVersion.trim() || undefined,
-        }),
-      });
-      if (res.ok) {
-        const newProd = await res.json();
-        setProducts((prev) => [...prev, newProd]);
-        setSelectedProductId(newProd.id);
-        setProductModalOpen(false);
-        setProdName('');
-        setProdCategory('');
-        setProdVersion('');
-      }
-    } catch {
-      // ignore
-    } finally {
-      setSubmittingProd(false);
-    }
-  };
 
   const handleApproveCandidate = async (candidateId: string) => {
     setActionLoadingId(candidateId);
@@ -176,10 +138,56 @@ export function KnowledgeManager({
     }
   };
 
+  const handleCreateProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmittingProd(true);
+    setProductError(null);
+
+    if (!prodName.trim()) {
+      setProductError('Product name is required');
+      setSubmittingProd(false);
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: prodName.trim(),
+          category: prodCategory.trim() || undefined,
+          model_or_version: prodVersion.trim() || undefined,
+          status: 'ACTIVE',
+          description: '',
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok || json.error) {
+        throw new Error(json.error?.message || json.error || 'Failed to create product');
+      }
+
+      const newProduct = json.data || json;
+      setProducts((prev) => [newProduct, ...prev]);
+      setProductModalOpen(false);
+      setProdName('');
+      setProdCategory('');
+      setProdVersion('');
+      router.refresh();
+    } catch (err: any) {
+      setProductError(err.message || 'Error creating product.');
+    } finally {
+      setSubmittingProd(false);
+    }
+  };
+
   const handleCreateFact = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmittingFact(true);
     setFactError(null);
+
+    // Auto-generate fact code if not provided
+    const code = factCode.trim() || `FACT-${Date.now().toString(36).toUpperCase()}`;
 
     try {
       const res = await fetch('/api/knowledge/facts', {
@@ -187,7 +195,7 @@ export function KnowledgeManager({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           product_id: factProductId || undefined,
-          fact_code: factCode.trim(),
+          fact_code: code,
           title: title.trim(),
           fact_text: factText.trim(),
           entity_name: entityName.trim() || undefined,
@@ -695,6 +703,12 @@ export function KnowledgeManager({
               </button>
             </div>
 
+            {productError && (
+                <div className="mb-4 p-3 rounded-md bg-critical-soft text-critical text-xs">
+                  {productError}
+                </div>
+              )}
+
             <form onSubmit={handleCreateProduct} className="space-y-4">
               <div>
                 <label className="label">Product Name</label>
@@ -728,7 +742,18 @@ export function KnowledgeManager({
               </div>
 
               <div className="flex justify-end gap-2 pt-3 border-t border-border">
-                <Button type="button" variant="outline" onClick={() => setProductModalOpen(false)} className="text-xs">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setProductModalOpen(false);
+                    setProdName('');
+                    setProdCategory('');
+                    setProdVersion('');
+                    setProductError(null);
+                  }}
+                  className="text-xs"
+                >
                   Cancel
                 </Button>
                 <Button type="submit" disabled={submittingProd || !prodName.trim()} className="btn-primary text-xs">
@@ -862,7 +887,18 @@ export function KnowledgeManager({
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setFactModalOpen(false)}
+                  onClick={() => {
+                    setFactModalOpen(false);
+                    setFactProductId('');
+                    setFactCode('');
+                    setTitle('');
+                    setFactText('');
+                    setEntityName('');
+                    setSourceName('');
+                    setSourceReference('');
+                    setSourceExcerpt('');
+                    setFactError(null);
+                  }}
                   disabled={submittingFact}
                   className="text-xs"
                 >
@@ -870,7 +906,7 @@ export function KnowledgeManager({
                 </Button>
                 <Button
                   type="submit"
-                  disabled={submittingFact || !factCode || !title || !factText || !sourceName}
+                  disabled={submittingFact || !title || !factText || !sourceName}
                   className="btn-primary text-xs"
                 >
                   {submittingFact ? 'Saving Fact…' : 'Save Approved Fact'}
