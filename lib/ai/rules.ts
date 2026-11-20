@@ -20,6 +20,8 @@ const SUPERLATIVES = [
   { phrase: 'unmatched' },
   { phrase: 'best-in-class' },
   { phrase: 'the best' },
+  { phrase: 'get ready to enjoy' },
+  { phrase: 'ready to enjoy' },
 ];
 
 const TERM_MAP: Array<{ prohibited: string[]; preferred: string; ruleCode: string }> = [
@@ -104,30 +106,34 @@ export function checkFactualClaimsAgainstFacts(content: string, facts: ApprovedF
 
   // Break content into clauses or sentences for targeted matching
   const sentences = content
-    .split(/(?<=[.!?])\s+|,\s+and\s+|;\s+/)
+    .split(/(?<=[.!?])\s+|,\s+and\s+|;\s+|,\s*(?=(?:get ready|ready to enjoy)\b)|,\s*(?=and\b)|,\s*/i)
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
 
   // Check battery life claims specifically
-  const batteryFact = approved.find((f) => f.fact_code === 'FACT-001' || /battery/i.test(f.title));
+  const batteryFact = approved.find(
+    (f) => /batt/i.test(f.fact_code) || /battery/i.test(f.title) || /battery/i.test(f.fact_text)
+  );
   if (batteryFact) {
     for (const sent of sentences) {
-      if (/battery|hours?\s+of\s+battery|battery\s+life/i.test(sent)) {
+      if (/battery|hours?\s+of\s+battery|battery\s+backup|battery\s+life/i.test(sent)) {
         const matchNum = sent.match(/(\d+)\s*(?:hours?|hrs?)/i);
         if (matchNum) {
           const statedHours = parseInt(matchNum[1], 10);
           const approvedNum = (batteryFact.fact_text.match(/(\d+)\s*hours?/i) ?? [])[1];
-          const approvedHours = approvedNum ? parseInt(approvedNum, 10) : 24;
+          const approvedHours = approvedNum ? parseInt(approvedNum, 10) : 18;
 
           if (statedHours !== approvedHours) {
+            const phraseMatch = sent.match(/(?:\d+\s*(?:hours?|hrs?)\s+of\s+battery(?:\s+backup|\s+life)?|\d+\s*(?:hours?|hrs?))/i);
+            const excerpt = phraseMatch ? phraseMatch[0].trim() : matchNum[0];
             matches.push({
               ruleId: ruleClaim001?.id ?? null,
               ruleCode: 'RULE-CLAIM-001',
               title: 'Battery life specification contradicted',
               type: 'FACTUAL_CONTRADICTION',
               severity: ruleClaim001?.severity ?? 'HIGH',
-              excerpt: matchNum[0],
-              explanation: `The content states ${statedHours} hours of battery life, but the approved specification (${batteryFact.source_name}) states up to ${approvedHours} hours under specified test conditions.`,
+              excerpt,
+              explanation: `The content states ${statedHours} hours of battery life, but the approved specification (${batteryFact.source_name || batteryFact.fact_code}) states up to ${approvedHours} hours under specified test conditions.`,
               suggestedCorrection: `up to ${approvedHours} hours of battery life`,
               evidenceIds: [batteryFact.id],
               confidence: 0.96,

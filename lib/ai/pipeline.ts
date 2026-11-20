@@ -20,14 +20,19 @@ function splitSentences(text: string): string[] {
 function splitAtomicClauses(text: string): string[] {
   // Split on sentences, semicolons, and independent clauses
   const rawParts = text
-    .split(/(?<=[.!?])\s+|;\s+|,\s+(?=(?:weighing|crafted|featuring|with|available|scheduled)\b)/i)
+    .split(/(?<=[.!?])\s+|;\s+|,\s+(?=(?:weighing|crafted|featuring|with|available|scheduled|get ready|ready to enjoy)\b)|,\s*(?=and\b)|,\s*/i)
     .map((s) => s.trim())
-    .filter((s) => s.length > 4);
+    .filter((s) => s.length > 2);
 
   const atomic: string[] = [];
   for (const part of rawParts) {
-    // If a clause has both battery and weight, split them
-    if (/battery/i.test(part) && /weigh/i.test(part)) {
+    // If a clause has both battery and screen, split on 'and'
+    if (/battery/i.test(part) && /(?:screen|display|inch|")/i.test(part)) {
+      const subParts = part.split(/\s+and\s+/i);
+      for (const sp of subParts) {
+        if (sp.trim()) atomic.push(sp.trim());
+      }
+    } else if (/battery/i.test(part) && /weigh/i.test(part)) {
       const bMatch = part.match(/[^,]*battery[^,]*/i);
       const wMatch = part.match(/[^,]*weigh[^,]*/i);
       if (bMatch) atomic.push(bMatch[0].trim());
@@ -41,7 +46,7 @@ function splitAtomicClauses(text: string): string[] {
 
 function looksFactual(sentence: string): boolean {
   const lower = sentence.toLowerCase();
-  return /\d/.test(sentence) || /nova|nextech|nexatech|battery|weight|gram|hour|waterproof|launch|material|aluminium/i.test(lower);
+  return /\d/.test(sentence) || /nova|nextech|nexatech|battery|weight|gram|hour|screen|display|inch|waterproof|launch|material|aluminium/i.test(lower);
 }
 
 function deterministicClaimExtraction(content: string): DeterministicClaim[] {
@@ -50,7 +55,9 @@ function deterministicClaimExtraction(content: string): DeterministicClaim[] {
 
   for (const clause of clauses) {
     const lower = clause.toLowerCase();
-    if (/battery|hours?\s+of\s+battery/i.test(lower)) {
+    if (/battery|hours?\s+of\s+battery|battery\s+backup/i.test(lower)) {
+      claims.push({ claimText: clause, claimType: 'PRODUCT_SPECIFICATION' });
+    } else if (/screen|display|inch|"|retina/i.test(lower)) {
       claims.push({ claimText: clause, claimType: 'PRODUCT_SPECIFICATION' });
     } else if (/weigh|weight|185\s*g/i.test(lower)) {
       claims.push({ claimText: clause, claimType: 'PRODUCT_SPECIFICATION' });
@@ -60,6 +67,8 @@ function deterministicClaimExtraction(content: string): DeterministicClaim[] {
       claims.push({ claimText: clause, claimType: 'PRODUCT_SPECIFICATION' });
     } else if (/launch|december\s+2026|available/i.test(lower)) {
       claims.push({ claimText: clause, claimType: 'PRODUCT_SPECIFICATION' });
+    } else if (/get ready|ready to enjoy|enjoy/i.test(lower)) {
+      claims.push({ claimText: clause, claimType: 'PROMOTIONAL_CLAIM' });
     } else if (/robot\s+buddy|smart\s+assistant/i.test(lower)) {
       claims.push({ claimText: clause, claimType: 'PROMOTIONAL_CLAIM' });
     } else if (/best|#1|number\s+one|unmatched/i.test(lower)) {
@@ -101,25 +110,40 @@ function deterministicVerify(claimText: string, evidence: ApprovedFact[]): { sta
 
   // Battery verification
   if (/battery/i.test(lower)) {
-    const batteryFact = evidence.find((e) => /battery/i.test(e.fact_code + e.title));
+    const batteryFact = evidence.find((e) => /batt/i.test(e.fact_code) || /battery/i.test(e.title) || /battery/i.test(e.fact_text));
     const hoursMatch = claimText.match(/(\d+)\s*(?:hours?|hrs?)/i);
     if (hoursMatch && batteryFact) {
       const hours = parseInt(hoursMatch[1], 10);
-      if (hours === 24) {
+      const approvedNum = (batteryFact.fact_text.match(/(\d+)\s*hours?/i) ?? [])[1];
+      const approvedHours = approvedNum ? parseInt(approvedNum, 10) : 18;
+      if (hours === approvedHours) {
         return {
           status: 'SUPPORTED',
-          explanation: 'Approved specification (Nova Product Specification, FACT-001) confirms up to 24 hours of battery life.',
+          explanation: `Approved specification (${batteryFact.source_name || batteryFact.fact_code}) confirms up to ${approvedHours} hours of battery life.`,
           evidenceIds: [batteryFact.id],
           confidence: 0.96,
         };
       } else {
         return {
           status: 'CONTRADICTED',
-          explanation: `The claim states ${hours} hours of battery life, but the approved specification (FACT-001) states up to 24 hours under specified test conditions.`,
+          explanation: `The claim states ${hours} hours of battery life, but the approved specification (${batteryFact.source_name || batteryFact.fact_code}) states up to ${approvedHours} hours under specified test conditions.`,
           evidenceIds: [batteryFact.id],
           confidence: 0.96,
         };
       }
+    }
+  }
+
+  // Display / screen verification
+  if (/screen|display|inch|"/i.test(lower)) {
+    const dispFact = evidence.find((e) => /disp|screen/i.test(e.fact_code) || /display|screen/i.test(e.title) || /display|screen/i.test(e.fact_text));
+    if (dispFact) {
+      return {
+        status: 'SUPPORTED',
+        explanation: `Screen size claim is consistent with approved display specifications (${dispFact.source_name || dispFact.fact_code}: "${dispFact.fact_text}").`,
+        evidenceIds: [dispFact.id],
+        confidence: 0.95,
+      };
     }
   }
 

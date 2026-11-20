@@ -231,6 +231,18 @@ export function mapRawFindingsToViewModel(
       categoryLabel = 'Unverified';
       severity = 'HIGH';
       humanTitle = f.title.replace(/_/g, ' ');
+    } else if (f.finding_type === 'TONE_VIOLATION') {
+      category = 'tone';
+      categoryLabel = 'Tone';
+      severity = f.severity === 'HIGH' ? 'CRITICAL' : 'MEDIUM';
+      humanTitle = f.title ? f.title.replace(/_/g, ' ') : 'Tone guideline violation';
+      rule = ruleTone001;
+    } else if (f.finding_type === 'TERMINOLOGY_VIOLATION') {
+      category = 'terminology';
+      categoryLabel = 'Terminology';
+      severity = f.severity === 'HIGH' ? 'CRITICAL' : 'MEDIUM';
+      humanTitle = f.title ? f.title.replace(/_/g, ' ') : 'Terminology guideline violation';
+      rule = ruleTerm001;
     }
 
     // Build Evidence Views with correct relations

@@ -14,6 +14,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const result = await runAnalysis(id, ctx.workspaceId, ctx.userId);
     return NextResponse.json(result);
   } catch (err: any) {
+    console.error(`Analysis failed for submission ${id}:`, err);
     return NextResponse.json({ error: err?.message || 'Analysis failed' }, { status: 500 });
   }
 }

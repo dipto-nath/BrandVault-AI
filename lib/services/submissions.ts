@@ -145,11 +145,12 @@ export async function runAnalysis(submissionId: string, workspaceId: string, use
     if (f.evidenceIds && f.evidenceIds.length) {
       const evidenceRows = f.evidenceIds.map((evId: string) => ({
         finding_id: createdFindings[i].id,
+        fact_id: evId,
         approved_fact_id: evId,
         source_document_id: null,
         evidence_excerpt: '',
         relevance_explanation: 'Linked approved evidence',
-        evidence_relation: 'SUPPORTS' as const,
+        evidence_relation: (f.type === 'FACTUAL_CONTRADICTION' ? 'CONTRADICTS' : 'SUPPORTS') as const,
       }));
       await storage.createFindingEvidence(evidenceRows);
     }

@@ -230,7 +230,8 @@ export class SupabaseStorage implements Storage {
     return one(await db().from('content_versions').insert(data).select().single());
   }
   async createAnalysisRun(data: Omit<AnalysisRun, 'id' | 'started_at'> & { started_at?: string }): Promise<AnalysisRun> {
-    return one(await db().from('analysis_runs').insert(data).select().single());
+    const { content_version_id, prompt_version, ...rest } = data as any;
+    return one(await db().from('analysis_runs').insert(rest).select().single());
   }
   async getAnalysisRun(id: string): Promise<AnalysisRun | null> {
     try {
@@ -250,7 +251,18 @@ export class SupabaseStorage implements Storage {
     return (data ?? []) as AnalysisRun[];
   }
   async createClaims(claims: Array<Omit<ExtractedClaim, 'id' | 'created_at'> & { created_by?: string | null }>): Promise<ExtractedClaim[]> {
-    const { data, error } = await db().from('extracted_claims').insert(claims).select();
+    const dbRows = claims.map((c: any) => ({
+      workspace_id: c.workspace_id,
+      submission_id: c.submission_id,
+      analysis_run_id: c.analysis_run_id || null,
+      claim_text: c.claim_text || c.claimText,
+      claim_type: c.claim_type || c.claimType || 'PRODUCT_SPECIFICATION',
+      verification_status: c.verification_status || c.verificationStatus || 'UNVERIFIED',
+      explanation: c.explanation || null,
+      confidence: c.confidence ?? 0.95,
+      created_by: c.created_by || null,
+    }));
+    const { data, error } = await db().from('extracted_claims').insert(dbRows).select();
     if (error) throw error;
     return (data ?? []) as ExtractedClaim[];
   }
@@ -260,9 +272,32 @@ export class SupabaseStorage implements Storage {
     return (data ?? []) as ExtractedClaim[];
   }
   async createFindings(findings: Array<Omit<Finding, 'id' | 'created_at'> & { created_by?: string | null }>): Promise<Finding[]> {
-    const { data, error } = await db().from('findings').insert(findings).select();
+    const dbRows = findings.map((f: any) => ({
+      workspace_id: f.workspace_id,
+      submission_id: f.submission_id,
+      analysis_run_id: f.analysis_run_id || null,
+      rule_id: f.rule_id || null,
+      finding_type: f.finding_type || 'OTHER',
+      severity: f.severity || 'HIGH',
+      message: f.message || f.title || 'Brand finding',
+      explanation: f.explanation || null,
+      suggested_correction: f.suggested_correction || null,
+      original_phrase: f.original_phrase || f.excerpt || null,
+      corrected_phrase: f.corrected_phrase || null,
+      diff: f.diff || null,
+      status: f.status || 'OPEN',
+      feedback_state: f.feedback_state || null,
+      override_reason: f.override_reason || null,
+      created_by: f.created_by || null,
+    }));
+    const { data, error } = await db().from('findings').insert(dbRows).select();
     if (error) throw error;
-    return (data ?? []) as Finding[];
+    return (data ?? []).map((row: any) => ({
+      ...row,
+      title: row.message || row.title || 'Brand finding',
+      excerpt: row.original_phrase || row.excerpt || '',
+      confidence: row.confidence ?? 0.95,
+    })) as Finding[];
   }
   async listFindings(submissionId?: string, workspaceId?: string): Promise<Finding[]> {
     try {
@@ -271,7 +306,12 @@ export class SupabaseStorage implements Storage {
       if (workspaceId) q = q.eq('workspace_id', workspaceId);
       const { data, error } = await q.order('created_at', { ascending: true });
       if (error) throw error;
-      return (data ?? []) as Finding[];
+      return (data ?? []).map((row: any) => ({
+        ...row,
+        title: row.message || row.title || 'Brand finding',
+        excerpt: row.original_phrase || row.excerpt || '',
+        confidence: row.confidence ?? 0.95,
+      })) as Finding[];
     } catch (e) {
       console.warn('Failed to list findings from Supabase:', e);
       return [];
@@ -281,20 +321,42 @@ export class SupabaseStorage implements Storage {
     try {
       const { data, error } = await db().from('findings').select('*').eq('id', id).maybeSingle();
       if (error || !data) return null;
-      return data as Finding;
+      return {
+        ...data,
+        title: (data as any).message || (data as any).title || 'Brand finding',
+        excerpt: (data as any).original_phrase || (data as any).excerpt || '',
+        confidence: (data as any).confidence ?? 0.95,
+      } as Finding;
     } catch {
       return null;
     }
   }
   async createFindingEvidence(evidence: Array<Omit<FindingEvidence, 'id' | 'created_at'>>): Promise<FindingEvidence[]> {
-    const { data, error } = await db().from('finding_evidence').insert(evidence).select();
+    const dbRows = evidence.map((e: any) => ({
+      finding_id: e.finding_id,
+      fact_id: e.fact_id || e.approved_fact_id || null,
+      evidence_relation: e.evidence_relation || 'SUPPORTS',
+      source_quote: e.source_quote || e.evidence_excerpt || '',
+      relevance_score: e.relevance_score ?? 0.9,
+    }));
+    const { data, error } = await db().from('finding_evidence').insert(dbRows).select();
     if (error) throw error;
-    return (data ?? []) as FindingEvidence[];
+    return (data ?? []).map((row: any) => ({
+      ...row,
+      approved_fact_id: row.fact_id || row.approved_fact_id || null,
+      evidence_excerpt: row.source_quote || row.evidence_excerpt || '',
+      relevance_explanation: 'Linked approved evidence',
+    })) as FindingEvidence[];
   }
   async listFindingEvidence(findingId: string): Promise<FindingEvidence[]> {
     const { data, error } = await db().from('finding_evidence').select('*').eq('finding_id', findingId).order('created_at', { ascending: true });
     if (error) throw error;
-    return (data ?? []) as FindingEvidence[];
+    return (data ?? []).map((row: any) => ({
+      ...row,
+      approved_fact_id: row.fact_id || row.approved_fact_id || null,
+      evidence_excerpt: row.source_quote || row.evidence_excerpt || '',
+      relevance_explanation: 'Linked approved evidence',
+    })) as FindingEvidence[];
   }
   async createReviewDecision(data: Omit<ReviewDecisionRecord, 'id' | 'created_at'> & { created_by?: string | null }): Promise<ReviewDecisionRecord> {
     return one(await db().from('review_decisions').insert(data).select().single());
