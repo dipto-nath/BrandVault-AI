@@ -1,6 +1,8 @@
 node_modules/
 .next/
-.brandvault/
+.brandvault/uploads/
+.brandvault/store.json
+.brandvault/test_assets/
 *.log
 .env
 .env.local

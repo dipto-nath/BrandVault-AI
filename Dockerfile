@@ -29,6 +29,7 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+RUN mkdir -p /app/.brandvault/uploads /app/.brandvault/approved_assets
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
@@ -44,7 +45,7 @@ COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/lib ./lib
-COPY --from=builder /app/.brandvault ./.brandvault
+COPY --from=builder /app/.brandvault /app/.brandvault
 
 EXPOSE 3000
 ENV PORT=3000
