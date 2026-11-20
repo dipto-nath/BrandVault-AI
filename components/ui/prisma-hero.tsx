@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useInView } from "framer-motion";
-import { ArrowRight, ChevronDown, LogIn, LayoutDashboard, LogOut, ShieldCheck, FileCheck, SearchCheck, CheckCircle2 } from "lucide-react";
+import { ArrowRight, LogIn, LayoutDashboard, LogOut, ShieldCheck, FileCheck, SearchCheck, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useRef, useState, useEffect } from "react";
@@ -137,8 +137,6 @@ export function PrismaHero({
   const searchParams = useSearchParams();
   const [modalOpen, setModalOpen] = useState(false);
   const [modalTarget, setModalTarget] = useState<string>("/overview");
-  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Check URL query for ?auth=required from middleware redirect
   useEffect(() => {
@@ -148,17 +146,6 @@ export function PrismaHero({
       setModalOpen(true);
     }
   }, [searchParams]);
-
-  // Close dropdown on outside click
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setUserDropdownOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   const handleNavClick = (e: React.MouseEvent, href: string) => {
     if (!initialUser) {
@@ -220,7 +207,7 @@ export function PrismaHero({
               href="/"
               className="text-[14px] sm:text-[15px] md:text-[16px] font-semibold tracking-tight text-[#EFECE1] hover:text-white transition-colors duration-200 flex items-center gap-1.5 whitespace-nowrap"
             >
-              <span className="font-outfit font-bold text-[18px] tracking-tight text-white">BrandVault</span>
+              <span className="font-rounded font-bold text-[19px] tracking-tight text-white">BrandVault</span>
               <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-[#2F4FB3]/40 border border-[#2F4FB3]/50 text-[#8EA8F5]">
                 AI
               </span>
@@ -232,54 +219,35 @@ export function PrismaHero({
                 key={item.label}
                 type="button"
                 onClick={(e) => handleNavClick(e, item.href)}
-                className="text-[13px] sm:text-[14px] font-normal tracking-tight text-[#E8E4D5]/80 hover:text-white transition-colors duration-200 whitespace-nowrap cursor-pointer"
+                className="font-rounded text-[13px] sm:text-[14px] font-normal tracking-tight text-[#E8E4D5]/80 hover:text-white transition-colors duration-200 whitespace-nowrap cursor-pointer"
               >
                 {item.label}
               </button>
             ))}
 
-            {/* Auth Pill */}
+            {/* Auth Pill - Direct Dashboard link (no dropdown) */}
             {initialUser ? (
-              <div className="relative" ref={dropdownRef}>
-                <button
-                  type="button"
-                  onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                  className="inline-flex items-center gap-2 rounded-full bg-[#EDEAE1] hover:bg-white text-[#0F141A] px-3.5 py-1.5 text-xs font-medium tracking-tight transition-all shadow-sm"
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/overview"
+                  className="inline-flex items-center gap-2 rounded-full bg-[#EDEAE1] hover:bg-white text-[#0F141A] px-3.5 py-1.5 text-xs font-semibold font-rounded tracking-tight transition-all shadow-sm"
                 >
                   <LayoutDashboard className="w-3.5 h-3.5 text-[#2F4FB3]" />
                   <span>Dashboard</span>
-                  <ChevronDown className="w-3 h-3 text-[#5A627A]" />
+                </Link>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  title="Log out"
+                  className="p-1.5 rounded-full text-[#EDEAE1]/70 hover:text-white hover:bg-white/10 transition-colors"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
                 </button>
-
-                {userDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-48 rounded-xl bg-[#FAF8F5] border border-[#E8E2D5] shadow-xl py-2 text-[#1E2540] z-50 animate-in fade-in zoom-in-95 duration-150">
-                    <div className="px-3 py-1.5 border-b border-[#E8E2D5]/70">
-                      <p className="text-xs font-semibold text-[#1E2540] truncate">{initialUser.name}</p>
-                      <p className="text-[11px] text-[#6B7280] capitalize">{initialUser.role.toLowerCase()}</p>
-                    </div>
-                    <Link
-                      href="/overview"
-                      className="flex items-center gap-2 px-3 py-2 text-xs text-[#1E2540] hover:bg-[#EDE8DE] transition-colors"
-                      onClick={() => setUserDropdownOpen(false)}
-                    >
-                      <LayoutDashboard className="w-3.5 h-3.5 text-[#2F4FB3]" />
-                      <span>Workspace Overview</span>
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={handleLogout}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-xs text-[#B24A4A] hover:bg-[#B24A4A]/10 transition-colors text-left"
-                    >
-                      <LogOut className="w-3.5 h-3.5" />
-                      <span>Log out</span>
-                    </button>
-                  </div>
-                )}
               </div>
             ) : (
               <Link
                 href="/login"
-                className="group inline-flex items-center gap-1.5 rounded-full bg-[#EDEAE1] hover:bg-white text-[#0F141A] px-4 py-1.5 text-xs sm:text-sm font-medium tracking-tight transition-all shadow-sm whitespace-nowrap"
+                className="group inline-flex items-center gap-1.5 rounded-full bg-[#EDEAE1] hover:bg-white text-[#0F141A] px-4 py-1.5 text-xs sm:text-sm font-semibold font-rounded tracking-tight transition-all shadow-sm whitespace-nowrap"
               >
                 <LogIn className="w-3.5 h-3.5 text-[#2F4FB3]" />
                 <span>Login</span>
@@ -295,12 +263,12 @@ export function PrismaHero({
             {/* Wordmark Column */}
             <div className="col-span-12 lg:col-span-7 min-w-0">
               <div className="mb-2">
-                <span className="font-outfit inline-block text-[11.5px] sm:text-[12.5px] font-semibold uppercase tracking-[0.16em] text-[#8EA8F5]">
+                <span className="font-rounded inline-block text-[12px] sm:text-[13px] font-semibold uppercase tracking-[0.16em] text-[#8EA8F5]">
                   Evidence-First Brand Governance
                 </span>
               </div>
               <h1
-                className="font-outfit font-extrabold leading-[0.88] tracking-[-0.03em] select-none text-[#EFECE1]"
+                className="font-rounded font-bold leading-[0.88] tracking-[-0.01em] select-none text-[#EFECE1]"
                 style={{
                   fontSize: "clamp(2.8rem, 8.2vw, 9.6rem)",
                 }}
@@ -313,7 +281,7 @@ export function PrismaHero({
             <div className="col-span-12 lg:col-span-5 flex flex-col gap-4 sm:gap-5 pb-1 lg:pb-3 max-w-xl lg:ml-auto">
               {/* Product value prop understood in five seconds */}
               <div className="p-3 rounded-xl bg-white/5 border border-white/10 backdrop-blur-xs">
-                <p className="font-outfit text-xs sm:text-[13.5px] font-medium text-[#EDEAE1] flex items-center gap-2">
+                <p className="font-rounded text-xs sm:text-[13.5px] font-medium text-[#EDEAE1] flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-[#8EA8F5] shrink-0" />
                   <span>Every claim checked against approved sources before it goes live.</span>
                 </p>
@@ -323,7 +291,7 @@ export function PrismaHero({
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ duration: 0.8, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                className="font-outfit text-[15px] sm:text-[16.5px] font-normal leading-[1.6] tracking-normal text-[#EDEAE2]/90"
+                className="font-rounded text-[15px] sm:text-[16.5px] font-normal leading-[1.6] tracking-normal text-[#EDEAE2]/90"
               >
                 BrandVault AI is a pre-publication review gate for brand content. It verifies claims against approved knowledge, explains every finding with traceable citations, and keeps every decision accountable.
               </motion.p>
@@ -339,7 +307,7 @@ export function PrismaHero({
                   <button
                     type="button"
                     onClick={handleExploreClick}
-                    className="group inline-flex items-center gap-3.5 self-start rounded-full py-2 pl-6 pr-2 font-outfit text-[14.5px] sm:text-[15.5px] font-medium tracking-tight transition-all duration-200 hover:gap-4 shadow-sm"
+                    className="group inline-flex items-center gap-3.5 self-start rounded-full py-2 pl-6 pr-2 font-rounded text-[14.5px] sm:text-[15.5px] font-semibold tracking-tight transition-all duration-200 hover:gap-4 shadow-sm"
                     style={{ background: "#EDEAE1", color: "#0F141A" }}
                   >
                     <span>Explore Platform</span>
@@ -351,7 +319,7 @@ export function PrismaHero({
                   {/* Secondary Glass Pill: Login */}
                   <Link
                     href="/login"
-                    className="inline-flex items-center justify-center px-6 py-2.5 rounded-full font-outfit text-[14px] sm:text-[15px] font-medium tracking-tight transition-all duration-200"
+                    className="inline-flex items-center justify-center px-6 py-2.5 rounded-full font-rounded text-[14px] sm:text-[15px] font-medium tracking-tight transition-all duration-200"
                     style={{
                       background: "rgba(237, 234, 225, 0.12)",
                       color: "#EDEAE1",
@@ -366,7 +334,7 @@ export function PrismaHero({
                 </div>
 
                 {/* Sublink: New here? Create workspace */}
-                <p className="font-outfit text-xs text-[#EDEAE2]/60 pt-1">
+                <p className="font-rounded text-xs text-[#EDEAE2]/60 pt-1">
                   New here?{" "}
                   <Link href="/signup" className="text-[#EDEAE2] font-medium underline underline-offset-4 hover:text-white transition-colors">
                     Create workspace
