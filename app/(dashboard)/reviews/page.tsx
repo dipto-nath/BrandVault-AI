@@ -7,14 +7,16 @@ import Link from 'next/link';
 import { formatRelative, getStatusLabel, getSubmissionReference, getPassportReference, statusToVariant, riskToVariant } from '@/lib/utils';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Plus, Shield, ChevronRight, X } from 'lucide-react';
+import { getRequestContext } from '@/lib/auth';
 
 export default async function ReviewsPage({
   searchParams,
 }: {
   searchParams?: Promise<{ status?: string; risk?: string }>;
 }) {
-  const ws = await storage.getDemoWorkspace();
-  const submissions = ws ? await storage.listSubmissions(ws.id) : [];
+  const ctx = await getRequestContext();
+  const workspaceId = ctx.workspaceId;
+  const submissions = workspaceId ? await storage.listSubmissions(workspaceId) : [];
   const params = (await searchParams) || {};
   const { status, risk } = params;
 
@@ -74,6 +76,25 @@ export default async function ReviewsPage({
         <div className="card p-3.5 bg-surface border border-border rounded-xl shadow-sm">
           <div className="text-[11px] font-bold text-critical uppercase tracking-wider">Rejected</div>
           <div className="text-2xl font-bold font-jakarta text-critical tnums mt-1">{rejected}</div>
+        </div>
+      </div>
+
+      {/* Status & Risk Filters */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs font-semibold text-ink-secondary uppercase tracking-wider">Filters:</span>
+        <div className="flex flex-wrap gap-2">
+          <StatusFilterBadge label="All" active={!status} href="/reviews" />
+          <StatusFilterBadge label="Needs Review" active={status === 'NEEDS_REVIEW'} href="/reviews?status=NEEDS_REVIEW" />
+          <StatusFilterBadge label="Changes Requested" active={status === 'CHANGES_REQUESTED'} href="/reviews?status=CHANGES_REQUESTED" />
+          <StatusFilterBadge label="Approved" active={status === 'APPROVED'} href="/reviews?status=APPROVED" />
+          <StatusFilterBadge label="Rejected" active={status === 'REJECTED'} href="/reviews?status=REJECTED" />
+        </div>
+        <div className="flex items-center gap-2 ml-auto">
+          <span className="text-xs font-semibold text-ink-secondary uppercase tracking-wider">Risk:</span>
+          <RiskFilterBadge label="All" active={!risk} href="/reviews" />
+          <RiskFilterBadge label="High" active={risk === 'HIGH'} href="/reviews?risk=HIGH" />
+          <RiskFilterBadge label="Medium" active={risk === 'MEDIUM'} href="/reviews?risk=MEDIUM" />
+          <RiskFilterBadge label="Low" active={risk === 'LOW'} href="/reviews?risk=LOW" />
         </div>
       </div>
 
@@ -205,5 +226,35 @@ export default async function ReviewsPage({
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function StatusFilterBadge({ label, active, href }: { label: string; active: boolean; href: string }) {
+  return (
+    <Link
+      href={href}
+      className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
+        active ? 'bg-accent text-white border-accent' : 'bg-surface border-border text-ink-secondary hover:bg-surface-hover'
+      }`}
+    >
+      {label}
+    </Link>
+  );
+}
+
+function RiskFilterBadge({ label, active, href }: { label: string; active: boolean; href: string }) {
+  const colors = {
+    All: active ? 'bg-accent text-white border-accent' : 'bg-surface border-border text-ink-secondary hover:bg-surface-hover',
+    HIGH: active ? 'bg-contradicted text-white border-contradicted' : 'bg-contradicted/10 text-contradicted border-contradicted/20 hover:bg-contradicted/20',
+    MEDIUM: active ? 'bg-unverified text-white border-unverified' : 'bg-unverified/10 text-unverified border-unverified/20 hover:bg-unverified/20',
+    LOW: active ? 'bg-supported text-white border-supported' : 'bg-supported/10 text-supported border-supported/20 hover:bg-supported/20',
+  };
+  return (
+    <Link
+      href={href}
+      className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${colors[label as keyof typeof colors] || colors.All}`}
+    >
+      {label}
+    </Link>
   );
 }

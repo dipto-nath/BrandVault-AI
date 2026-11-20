@@ -2,6 +2,7 @@ import { storage } from '@/lib/db/adaptor';
 import { FindingInspector } from '@/components/findings/finding-inspector';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { getRequestContext } from '@/lib/auth';
 
 export default async function FindingDetailPage({
   params,
@@ -9,6 +10,7 @@ export default async function FindingDetailPage({
   params: Promise<{ id: string; fid: string }>;
 }) {
   const { id, fid } = await params;
+  const ctx = await getRequestContext();
   const submission = await storage.getSubmission(id);
   const finding = await storage.getFinding(fid);
 
@@ -46,6 +48,8 @@ export default async function FindingDetailPage({
       evidence={evidence}
       guideline={guideline}
       feedback={feedback}
+      userRole={ctx.role}
+      userId={ctx.userId}
     />
   );
 }

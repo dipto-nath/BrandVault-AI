@@ -1,6 +1,6 @@
 import { storage } from '@/lib/db/adaptor';
 import { getRequestContext } from '@/lib/auth';
-import { Card } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { FlowButton } from '@/components/ui/flow-button';
@@ -14,18 +14,23 @@ import {
 
 export default async function OverviewPage() {
   const ctx = await getRequestContext();
-  const ws = (ctx.workspaceId ? await storage.getWorkspace(ctx.workspaceId) : null) || (await storage.getDemoWorkspace());
+  
+  // Get the actual workspace for this authenticated user
+  // Don't fall back to demo workspace - show real data or empty states
+  const ws = ctx.workspaceId ? await storage.getWorkspace(ctx.workspaceId) : null;
   const workspaceId = ws?.id || ctx.workspaceId;
   const workspaceName = ws?.name || 'Brand';
 
-  const [data, guidelines, facts, allFindings, submissions] = await Promise.all([
+  // For new workspaces with no data, show zeros - don't use demo fallback
+  const [data, guidelines, facts, allFindings, submissions, products] = await Promise.all([
     workspaceId
       ? storage.dashboardStats(workspaceId)
       : Promise.resolve({ total: 0, pending: 0, approved: 0, rejected: 0, highRisk: 0, recent: [] }),
     workspaceId ? storage.listGuidelines(workspaceId, { active: true }) : Promise.resolve([]),
     workspaceId ? storage.listFacts(workspaceId, { active: true }) : Promise.resolve([]),
-    workspaceId ? storage.listFindings() : Promise.resolve([]),
+    workspaceId ? storage.listFindings(undefined, workspaceId) : Promise.resolve([]),
     workspaceId ? storage.listSubmissions(workspaceId) : Promise.resolve([]),
+    workspaceId ? storage.listProducts(workspaceId) : Promise.resolve([]),
   ]);
 
   const ruleCounts = new Map<string, number>();
@@ -334,6 +339,91 @@ export default async function OverviewPage() {
           </div>
         </div>
       </section>
+
+      {/* Knowledge Health Warnings */}
+      {(() => {
+        const warnings: { label: string; message: string; severity: 'warning' | 'critical' }[] = [];
+
+        // Check for products with few facts
+        const factsByProduct = new Map<string, number>();
+        facts.forEach(f => {
+          if (f.product_id) {
+            factsByProduct.set(f.product_id, (factsByProduct.get(f.product_id) || 0) + 1);
+          }
+        });
+
+        products.forEach(p => {
+          const factCount = factsByProduct.get(p.id) || 0;
+          if (factCount === 0) {
+            warnings.push({
+              label: `${p.name} has no approved facts`,
+              message: 'Add approved facts to enable fact verification for this product.',
+              severity: 'critical',
+            });
+          } else if (factCount < 3) {
+            warnings.push({
+              label: `${p.name} has only ${factCount} approved fact${factCount !== 1 ? 's' : ''}`,
+              message: 'Consider adding more specifications for comprehensive verification.',
+              severity: 'warning',
+            });
+          }
+        });
+
+        // Check for facts without sources
+        const factsWithoutSources = facts.filter(f => !f.source_document_id || !f.source_excerpt).length;
+        if (factsWithoutSources > 0) {
+          warnings.push({
+            label: `${factsWithoutSources} fact${factsWithoutSources !== 1 ? 's' : ''} without source reference`,
+            message: 'Link facts to source documents for audit trail.',
+            severity: 'warning',
+          });
+        }
+
+        // Check for expired facts
+        const now = new Date();
+        const expiredFacts = facts.filter(f => f.expires_at && new Date(f.expires_at) < now).length;
+        if (expiredFacts > 0) {
+          warnings.push({
+            label: `${expiredFacts} expired fact${expiredFacts !== 1 ? 's' : ''}`,
+            message: 'Update or renew expired specifications.',
+            severity: 'warning',
+          });
+        }
+
+        if (warnings.length === 0) return null;
+
+        return (
+          <Card className="bg-surface border border-border rounded-xl shadow-sm overflow-hidden">
+            <CardHeader className="p-4 bg-warning-soft/20 border-b border-warning/30">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-warning" />
+                <CardTitle className="text-base font-bold text-warning">Knowledge Health Warnings</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="p-4 space-y-3">
+              {warnings.map((w, idx) => (
+                <div key={idx} className={`p-3 rounded-lg border ${w.severity === 'critical' ? 'bg-critical/5 border-critical/20' : 'bg-warning/5 border-warning/20'}`}>
+                  <div className="flex items-start gap-2">
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${w.severity === 'critical' ? 'bg-critical text-white text-[10px] font-bold' : 'bg-warning text-white text-[10px] font-bold'}`}>
+                      {w.severity === 'critical' ? '!' : '⚠'}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-ink-dark text-sm">{w.label}</p>
+                      <p className="text-xs text-ink-secondary mt-0.5">{w.message}</p>
+                    </div>
+                    <Link
+                      href="/knowledge"
+                      className="text-xs font-semibold text-brand hover:underline flex items-center gap-1 shrink-0"
+                    >
+                      View Knowledge <ArrowRight className="w-3 h-3" />
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* AI Disclosure */}
       <div className='ai-disclosure no-print'>

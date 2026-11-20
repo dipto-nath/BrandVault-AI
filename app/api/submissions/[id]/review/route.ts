@@ -20,6 +20,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (!submission || submission.workspace_id !== ctx.workspaceId) {
       return NextResponse.json({ error: 'Submission not found' }, { status: 404 });
     }
+    
+    // Enforce role-based permissions for review decisions
+    const canApproveRole = ['ADMIN', 'MANAGER', 'REVIEWER'].includes(ctx.role);
+    if (!canApproveRole) {
+      return NextResponse.json(
+        { error: 'Review decisions require Reviewer, Manager, or Admin role' },
+        { status: 403 }
+      );
+    }
+    
+    // Require comment for non-approval decisions
+    if (parsed.decision !== 'APPROVED' && (!parsed.comment || !parsed.comment.trim())) {
+      return NextResponse.json(
+        { error: 'Reviewer comment required for non-approval decisions' },
+        { status: 400 }
+      );
+    }
+    
     const previousStatus = submission.status;
     await storage.createReviewDecision({
       workspace_id: ctx.workspaceId,

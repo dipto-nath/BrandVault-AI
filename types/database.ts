@@ -1,4 +1,4 @@
-export type WorkspaceRole = 'ADMIN' | 'CREATOR' | 'REVIEWER';
+export type WorkspaceRole = 'ADMIN' | 'MANAGER' | 'REVIEWER' | 'CREATOR' | 'AGENCY';
 export type ContentStatus = 'DRAFT' | 'ANALYZING' | 'NEEDS_REVIEW' | 'CHANGES_REQUESTED' | 'APPROVED' | 'REJECTED' | 'FAILED';
 export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH';
 export type VerificationStatus = 'SUPPORTED' | 'CONTRADICTED' | 'UNVERIFIED';

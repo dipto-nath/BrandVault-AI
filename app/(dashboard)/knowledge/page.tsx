@@ -1,11 +1,13 @@
 import { storage } from '@/lib/db/adaptor';
 import { KnowledgeManager } from '@/components/knowledge/knowledge-manager';
+import { getRequestContext } from '@/lib/auth';
 
 export default async function KnowledgePage() {
-  const ws = await storage.getDemoWorkspace();
+  const ctx = await getRequestContext();
+  const workspaceId = ctx.workspaceId;
   const [facts, documents] = await Promise.all([
-    ws ? storage.listFacts(ws.id) : Promise.resolve([]),
-    ws ? storage.listDocuments(ws.id) : Promise.resolve([]),
+    workspaceId ? storage.listFacts(workspaceId, { active: true }) : Promise.resolve([]),
+    workspaceId ? storage.listDocuments(workspaceId) : Promise.resolve([]),
   ]);
 
   return <KnowledgeManager facts={facts} documents={documents} />;

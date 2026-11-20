@@ -19,6 +19,15 @@ interface FindingInspectorProps {
   evidence: Array<FindingEvidence & { approved_facts?: ApprovedFact }>;
   guideline?: BrandGuideline | null;
   feedback: FindingFeedback[];
+  userRole?: string;
+  userId?: string;
+}
+interface FindingInspectorProps {
+  submissionId: string;
+  finding: Finding;
+  evidence: Array<FindingEvidence & { approved_facts?: ApprovedFact }>;
+  guideline?: BrandGuideline | null;
+  feedback: FindingFeedback[];
 }
 
 const COMMON_REASONS = [
@@ -37,12 +46,19 @@ export function FindingInspector({
   evidence,
   guideline,
   feedback: initialFeedback,
+  userRole = 'CREATOR',
+  userId,
 }: FindingInspectorProps) {
   const router = useRouter();
+  
+  // Role-based permissions
+  const canOverrideRole = ['ADMIN', 'REVIEWER'].includes(userRole);
+  const canApproveRole = ['ADMIN', 'MANAGER', 'REVIEWER'].includes(userRole);
+  
   const [feedbackList, setFeedbackList] = useState(initialFeedback);
   const [feedbackType, setFeedbackType] = useState<
     'ACCEPTED' | 'OVERRIDDEN' | 'EDITED_CORRECTION' | 'REJECTED_CORRECTION' | 'MARKED_AMBIGUOUS'
-  >('OVERRIDDEN');
+  >(canOverrideRole ? 'OVERRIDDEN' : 'ACCEPTED');
   const [reason, setReason] = useState(COMMON_REASONS[0]);
   const [customReason, setCustomReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -268,24 +284,31 @@ export function FindingInspector({
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
               {[
                 { type: 'ACCEPTED', label: 'Accept Finding' },
-                { type: 'OVERRIDDEN', label: 'Override Finding' },
+                { type: 'OVERRIDDEN', label: 'Override Finding', requiresOverride: true },
                 { type: 'EDITED_CORRECTION', label: 'Edit Correction' },
                 { type: 'REJECTED_CORRECTION', label: 'Reject Correction' },
                 { type: 'MARKED_AMBIGUOUS', label: 'Mark Rule Ambiguous' },
-              ].map((item) => (
-                <button
-                  key={item.type}
-                  type="button"
-                  onClick={() => setFeedbackType(item.type as any)}
-                  className={`p-2.5 rounded-md border text-left font-medium transition-colors ${
-                    feedbackType === item.type
-                      ? 'border-accent bg-accent-soft text-accent font-semibold'
-                      : 'border-border hover:bg-surface-subtle text-ink-secondary'
-                  }`}
-                >
-                  {item.label}
-                </button>
-              ))}
+              ].map((item) => {
+                const isDisabled = item.requiresOverride && !canOverrideRole;
+                return (
+                  <button
+                    key={item.type}
+                    type="button"
+                    onClick={() => !isDisabled && setFeedbackType(item.type as any)}
+                    disabled={isDisabled}
+                    className={`p-2.5 rounded-md border text-left font-medium transition-colors ${
+                      feedbackType === item.type
+                        ? 'border-accent bg-accent-soft text-accent font-semibold'
+                        : isDisabled
+                        ? 'border-border text-ink-muted/50 cursor-not-allowed'
+                        : 'border-border hover:bg-surface-subtle text-ink-secondary'
+                    }`}
+                    title={isDisabled ? 'Override requires Reviewer or Admin role' : ''}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 

@@ -26,11 +26,13 @@ class Settings(BaseSettings):
     JWT_EXPIRE_MINUTES: int = Field(default=60)
 
     # AI
+    GROQ_API_KEY: str = Field(default="")
+    GROQ_MODEL: str = Field(default="openai/gpt-oss-120b")
     GEMINI_API_KEY: str = Field(default="")
     GEMINI_MODEL: str = Field(default="gemini-1.5-flash")
     EMBEDDING_MODEL: str = Field(default="text-embedding-3-small")
     EMBEDDING_DIMENSIONS: int = Field(default=1536)
-    USE_MOCK_LLM: bool = Field(default=True)
+    USE_MOCK_LLM: bool = Field(default=False)
 
     # Storage
     STORAGE_TYPE: str = Field(default="local")
