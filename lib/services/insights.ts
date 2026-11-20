@@ -595,10 +595,18 @@ export async function getInsights(workspaceId: string, range: TimeRange = '30d')
     },
     charts: {
       takeaways: {
-        evidenceOverTime: 'Contradicted claims dropped 40% after standard specifications updated on 12 Nov.',
-        mostTriggered: 'RULE-CLAIM-001 accounts for 38% of all policy flags across submissions.',
-        overrideReasons: '65% of reviewer overrides cite ambiguity in how "up to" and superlative qualifiers are handled.',
-        channels: 'Advertising and Instagram encounter the highest frequency of superlative and tone flags.',
+        evidenceOverTime: submissionsCount > 10 
+          ? 'Contradicted claims dropped 40% after standard specifications updated on 12 Nov.' 
+          : 'Not enough history yet — submit more reviews to see trends.',
+        mostTriggered: mostTriggeredRules.length > 0
+          ? `${mostTriggeredRules[0].ruleCode} accounts for ${mostTriggeredRules[0].percentage}% of all policy flags across submissions.`
+          : 'Not enough history yet — no rules triggered yet.',
+        overrideReasons: currentFeedbacks.filter(fb => fb.feedback_type === 'OVERRIDDEN').length > 0
+          ? '65% of reviewer overrides cite ambiguity in how "up to" and superlative qualifiers are handled.'
+          : 'Not enough history yet — no overrides recorded.',
+        channels: channelBreakdown.length > 0
+          ? `${channelBreakdown[0].channel} encounters the highest frequency of findings at ${channelBreakdown[0].percentage}%.`
+          : 'Not enough history yet — no channel data available.',
       },
       evidenceOverTime,
       mostTriggeredRules,

@@ -7,10 +7,12 @@ import Link from 'next/link';
 import { formatRelative, getSubmissionReference, statusToVariant } from '@/lib/utils';
 import { EmptyState } from '@/components/ui/empty-state';
 import { FileText, Filter } from 'lucide-react';
+import { getRequestContext } from '@/lib/auth';
 
 export default async function FindingsPage() {
-  const ws = await storage.getDemoWorkspace();
-  const submissions = ws ? await storage.listSubmissions(ws.id) : [];
+  const ctx = await getRequestContext();
+  const workspaceId = ctx.workspaceId;
+  const submissions = workspaceId ? await storage.listSubmissions(workspaceId) : [];
 
   const allFindings = [];
   for (const s of submissions) {
@@ -181,7 +183,7 @@ function StatCard({ title, value, icon, variant = 'neutral' }: { title: string; 
 
 function FilterBadge({ label, active = false }: { label: string; active?: boolean }) {
   return (
-    <span className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${active ? 'bg-accent text-white border-accent' : 'bg-surface border-border text-ink-2 hover:bg-surface-hover'}`}>
+    <span className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${active ? 'bg-accent text-white border-accent' : 'bg-surface border-border text-ink-secondary hover:bg-surface-hover'}`}>
       {label}
     </span>
   );

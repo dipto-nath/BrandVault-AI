@@ -58,6 +58,17 @@ class RegisterRequest(BaseModel):
     industry: Optional[str] = Field(None, max_length=100)
 
 
+class RegisterFormRequest(BaseModel):
+    """Schema for multipart/form-data registration with optional source documents."""
+    company_name: str = Field(..., min_length=2, max_length=200)
+    workspace_slug: Optional[str] = Field(None, max_length=100)
+    email: EmailStr
+    password: str = Field(..., min_length=8)
+    full_name: str = Field(..., min_length=2, max_length=200)
+    industry: Optional[str] = Field(None, max_length=100)
+    sourceDocuments: list = Field(default_factory=list)
+
+
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
 

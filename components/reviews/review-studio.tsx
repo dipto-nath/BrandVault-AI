@@ -31,6 +31,8 @@ interface ReviewStudioProps {
   versions: ContentVersion[];
   allGuidelines?: BrandGuideline[];
   allFacts?: ApprovedFact[];
+  userRole?: string;
+  userId?: string;
 }
 
 export function ReviewStudio({
@@ -42,6 +44,8 @@ export function ReviewStudio({
   versions: initialVersions,
   allGuidelines = [],
   allFacts = [],
+  userRole = 'CREATOR',
+  userId,
 }: ReviewStudioProps) {
   const router = useRouter();
   const [submission, setSubmission] = useState(initialSubmission);
@@ -105,7 +109,12 @@ export function ReviewStudio({
   const terminologyCount = findingModels.filter(f => f.category === 'terminology').length;
   const toneCount = findingModels.filter(f => f.category === 'tone').length;
 
-  const canApprove = criticalFindings.length === 0;
+  // Check if user has permission to approve (REVIEWER, MANAGER, ADMIN)
+  const canApproveRole = ['ADMIN', 'MANAGER', 'REVIEWER'].includes(userRole);
+  // Check if user has permission to override (REVIEWER, ADMIN)
+  const canOverrideRole = ['ADMIN', 'REVIEWER'].includes(userRole);
+  
+  const canApprove = canApproveRole && criticalFindings.length === 0;
 
   // Filtered & sorted findings
   const displayedFindings = useMemo(() => {
@@ -283,6 +292,17 @@ export function ReviewStudio({
 
   // Submit human review decision
   const executeReviewDecision = async (dec: 'APPROVED' | 'REJECTED' | 'CHANGES_REQUESTED') => {
+    // Client-side permission check for better UX
+    const canApproveRole = ['ADMIN', 'MANAGER', 'REVIEWER'].includes(userRole);
+    if (dec === 'APPROVED' && !canApproveRole) {
+      alert('Review decisions require Reviewer, Manager, or Admin role');
+      return;
+    }
+    if (dec !== 'APPROVED' && !decisionComment.trim()) {
+      alert('Reviewer comment required for non-approval decisions');
+      return;
+    }
+    
     setReviewSubmitting(true);
     try {
       const res = await fetch(`/api/submissions/${submission.id}/review`, {
@@ -860,6 +880,7 @@ export function ReviewStudio({
                     onCancelEdit={() => setEditingFindingId(null)}
                     onToggleOccurrence={(occId, accept) => handleToggleOccurrence(finding.id, occId, accept)}
                     onFixAllOccurrences={() => handleFixAllOccurrences(finding.id)}
+                    canOverrideRole={canOverrideRole}
                   />
                 ))}
               </div>
@@ -1173,9 +1194,10 @@ export function ReviewStudio({
               <Button
                 variant={decisionModalOpen === 'APPROVED' ? 'default' : 'outline'}
                 size="sm"
-                disabled={reviewSubmitting || (decisionModalOpen !== 'APPROVED' && !decisionComment.trim())}
+                disabled={reviewSubmitting || (decisionModalOpen !== 'APPROVED' && !decisionComment.trim()) || (decisionModalOpen === 'APPROVED' && !canApproveRole)}
                 onClick={() => executeReviewDecision(decisionModalOpen)}
                 className={decisionModalOpen === 'APPROVED' ? 'bg-evidence-supported text-white' : ''}
+                title={decisionModalOpen === 'APPROVED' && !canApproveRole ? 'Review decisions require Reviewer, Manager, or Admin role' : ''}
               >
                 {reviewSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Record Decision'}
               </Button>
@@ -1439,6 +1461,7 @@ function FindingCard({
   onCancelEdit,
   onToggleOccurrence,
   onFixAllOccurrences,
+  canOverrideRole = false,
 }: {
   finding: FindingViewModel;
   isActive: boolean;
@@ -1455,6 +1478,7 @@ function FindingCard({
   onCancelEdit: () => void;
   onToggleOccurrence: (occId: string, accept: boolean) => void;
   onFixAllOccurrences: () => void;
+  canOverrideRole?: boolean;
 }) {
   const isResolved = finding.state !== 'OPEN';
 
@@ -1762,7 +1786,13 @@ function FindingCard({
               variant="outline"
               size="sm"
               onClick={onOverride}
-              className="text-xs text-ink-secondary hover:text-accent-terracotta border-sand-dark/40 hover:bg-sand/40"
+              disabled={!canOverrideRole}
+              className={`text-xs border-sand-dark/40 hover:bg-sand/40 ${
+                canOverrideRole
+                  ? 'text-ink-secondary hover:text-accent-terracotta'
+                  : 'text-ink-muted/50 cursor-not-allowed'
+              }`}
+              title={canOverrideRole ? '' : 'Override requires Reviewer or Admin role'}
             >
               {finding.state === 'OVERRIDDEN' ? 'Edit override note' : 'Override with note'}
             </Button>

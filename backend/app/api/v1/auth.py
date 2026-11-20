@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import timedelta
 from uuid import UUID
+from typing import List, Optional
 
 from app.core.database import get_db
 from app.core.security import (
@@ -19,6 +20,7 @@ from app.schemas.auth import (
     TokenResponse,
     LoginRequest,
     RegisterRequest,
+    RegisterFormRequest,
     RefreshTokenRequest,
     ForgotPasswordRequest,
     DemoLoginRequest,
@@ -41,9 +43,40 @@ async def register(
     request: RegisterRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    """Register a new company and admin user."""
+    """Register a new company and admin user (JSON)."""
     auth_service = AuthService(db)
     return await auth_service.register_company(request)
+
+
+@router.post("/register", response_model=TokenResponse)
+async def register_multipart(
+    company_name: str = Form(..., min_length=2, max_length=200),
+    workspace_slug: Optional[str] = Form(None, max_length=100),
+    email: str = Form(...),
+    password: str = Form(..., min_length=8),
+    full_name: str = Form(..., min_length=2, max_length=200),
+    industry: Optional[str] = Form(None, max_length=100),
+    sourceDocuments: List[UploadFile] = File(default_factory=list),
+    db: AsyncSession = Depends(get_db),
+):
+    """Register a new company and admin user with optional source documents (multipart/form-data)."""
+    auth_service = AuthService(db)
+    
+    # Validate PDF files
+    pdf_files = [f for f in sourceDocuments if f.content_type == 'application/pdf']
+    
+    # Create register request from form data
+    register_data = RegisterFormRequest(
+        company_name=company_name,
+        workspace_slug=workspace_slug,
+        email=email,
+        password=password,
+        full_name=full_name,
+        industry=industry,
+        sourceDocuments=pdf_files,
+    )
+    
+    return await auth_service.register_company_with_documents(register_data, db)
 
 
 @router.post("/login", response_model=TokenResponse)

@@ -9,6 +9,7 @@ import type {
   FindingEvidence, ReviewDecisionRecord, FindingFeedback,
   GuidelineSuggestion, AuditLog, FactVerificationStatus,
   DocumentStatus, SuggestionStatus, FeedbackType,
+  Product,
 } from '@/types/database';
 
 const IS_VERCEL = Boolean(process.env.VERCEL);
@@ -31,12 +32,12 @@ interface Store {
   analysisRuns: AnalysisRun[]; claims: ExtractedClaim[]; findings: Finding[];
   findingEvidence: FindingEvidence[]; reviewDecisions: ReviewDecisionRecord[];
   findingFeedback: FindingFeedback[]; guidelineSuggestions: GuidelineSuggestion[];
-  auditLogs: AuditLog[];
+  auditLogs: AuditLog[]; products: Product[];
 }
 function emptyStore(): Store {
   return { workspaces: [], profiles: [], members: [], guidelines: [], facts: [], documents: [],
     submissions: [], versions: [], analysisRuns: [], claims: [], findings: [],
-    findingEvidence: [], reviewDecisions: [], findingFeedback: [], guidelineSuggestions: [], auditLogs: [], };
+    findingEvidence: [], reviewDecisions: [], findingFeedback: [], guidelineSuggestions: [], auditLogs: [], products: [] };
 }
 function loadStore(): Store {
   try {
@@ -102,6 +103,13 @@ function seed(store: Store): Store {
     { id: '00000000-0000-0000-0002-000000000005', workspace_id: DEMO_WORKSPACE_ID, fact_code: 'FACT-005', title: 'Launch date', fact_text: 'The NexaTech Nova launch is scheduled for 15 December 2026.', entity_name: 'NexaTech Nova', source_document_id: null, source_name: 'NexaTech Launch Plan', source_reference: 'NexaTech Launch Plan', source_excerpt: 'Launch scheduled for 15 December 2026.', verification_status: 'APPROVED', effective_from: null, expires_at: null, notes: null, created_by: DEMO_USER_ID, created_at: t, updated_at: t },
   ];
   store.facts.push(...facts);
+
+  // Seed demo products
+  const products: Product[] = [
+    { id: '00000000-0000-0000-0004-000000000001', workspace_id: DEMO_WORKSPACE_ID, name: 'NexaTech Nova', category: 'Smartphone', model_or_version: 'Nova', launch_date: '2026-12-15', status: 'ACTIVE', description: 'Flagship smartphone with recycled aluminium chassis', facts_count: 5, created_at: t, updated_at: t },
+    { id: '00000000-0000-0000-0004-000000000002', workspace_id: DEMO_WORKSPACE_ID, name: 'NexaBuds Ultra', category: 'Audio', model_or_version: 'Ultra', launch_date: '2026-11-01', status: 'ACTIVE', description: 'Premium wireless earbuds with 30h battery', facts_count: 3, created_at: t, updated_at: t },
+  ];
+  store.products.push(...products);
 
   // Seed demo submissions if empty
   if (store.submissions.length === 0) {
@@ -297,6 +305,21 @@ export class FileStorage implements Storage {
     store.guidelines[idx] = g; persist(store); return clone(g);
   }
   async deactivateGuideline(id: string): Promise<void> { await this.updateGuideline(id, { active: false }); }
+  
+  // ---------- Products ----------
+  async listProducts(workspaceId: string): Promise<Product[]> { return clone(filterByWorkspace(this.store().products, workspaceId)); }
+  async getProduct(id: string): Promise<Product | null> { return this.store().products.find((p) => p.id === id) ?? null; }
+  async createProduct(data: Omit<Product, 'id' | 'created_at' | 'updated_at'> & { created_by?: string | null }): Promise<Product> {
+    const store = this.store(); const p: Product = { id: uid(), workspace_id: data.workspace_id, name: data.name, category: data.category ?? null, model_or_version: data.model_or_version ?? null, launch_date: data.launch_date ?? null, status: data.status ?? 'ACTIVE', description: data.description ?? null, facts_count: 0, created_at: now(), updated_at: now() };
+    store.products.push(p); persist(store); return clone(p);
+  }
+  async updateProduct(id: string, data: Partial<Pick<Product, 'name' | 'category' | 'model_or_version' | 'launch_date' | 'status' | 'description'>>): Promise<Product> {
+    const store = this.store(); const idx = store.products.findIndex((p) => p.id === id);
+    if (idx === -1) throw new Error('Product not found');
+    const p = { ...store.products[idx], ...data, updated_at: now() };
+    store.products[idx] = p; persist(store); return clone(p);
+  }
+
   async listFacts(workspaceId: string, opts?: { active?: boolean } & ListOptions): Promise<ApprovedFact[]> {
     let arr = filterByWorkspace(this.store().facts, workspaceId);
     if (opts?.active !== undefined) arr = arr.filter((f) => f.verification_status === 'APPROVED');
@@ -379,7 +402,11 @@ export class FileStorage implements Storage {
     for (const f of findings) { const x: Finding = { id: uid(), workspace_id: f.workspace_id, submission_id: f.submission_id, analysis_run_id: f.analysis_run_id, claim_id: f.claim_id ?? null, finding_type: f.finding_type, severity: f.severity, rule_id: f.rule_id ?? null, title: f.title, excerpt: f.excerpt, explanation: f.explanation, suggested_correction: f.suggested_correction ?? null, confidence: f.confidence, status: f.status ?? 'OPEN', created_at: now() }; store.findings.push(x); out.push(clone(x)); }
     persist(store); return out;
   }
-  async listFindings(submissionId?: string): Promise<Finding[]> { if (!submissionId) return clone(this.store().findings); return clone(this.store().findings.filter((f) => f.submission_id === submissionId)); }
+  async listFindings(submissionId?: string, workspaceId?: string): Promise<Finding[]> { 
+    if (submissionId) return clone(this.store().findings.filter((f) => f.submission_id === submissionId));
+    if (workspaceId) return clone(filterByWorkspace(this.store().findings, workspaceId));
+    return clone(this.store().findings); 
+  }
   async getFinding(id: string): Promise<Finding | null> { return this.store().findings.find((f) => f.id === id) ?? null; }
   async createFindingEvidence(evidence: Array<Omit<FindingEvidence, 'id' | 'created_at'>>): Promise<FindingEvidence[]> {
     const store = this.store(); const out: FindingEvidence[] = [];

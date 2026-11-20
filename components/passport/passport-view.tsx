@@ -1,9 +1,10 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Printer, ArrowLeft, ShieldCheck, CheckCircle2, XCircle, AlertTriangle,
-  FileText, Clock, Database, UserCheck, Scale, History
+  FileText, Clock, Database, UserCheck, Scale, History, Download, Hash
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,15 @@ import type {
   ContentSubmission, ExtractedClaim, Finding, ReviewDecisionRecord,
   ContentVersion, AnalysisRun, AuditLog, FindingEvidence, ApprovedFact
 } from '@/types/database';
+
+// Compute SHA-256 hash of content
+async function computeContentHash(content: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(content);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
 interface PassportViewProps {
   submission: ContentSubmission;
@@ -39,6 +49,80 @@ export function PassportView({
   const passportId = submission.passport_reference || getPassportReference(submission);
   const latestRun = runs[0];
   const finalDecision = decisions[0] || null;
+  
+  const [contentHash, setContentHash] = useState<string>('');
+  const [isComputingHash, setIsComputingHash] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+
+  // Compute content hash on mount
+  useEffect(() => {
+    if (submission.current_content) {
+      setIsComputingHash(true);
+      computeContentHash(submission.current_content)
+        .then(hash => setContentHash(hash))
+        .finally(() => setIsComputingHash(false));
+    }
+  }, [submission.current_content]);
+
+  const handleJsonExport = async () => {
+    setIsExporting(true);
+    try {
+      const passportData = {
+        passportId,
+        contentTitle: submission.title,
+        channel: submission.channel,
+        product: (submission as any).product_id || null,
+        contentVersion: versions.length,
+        contentHash,
+        claims: claims.map(c => ({
+          claimText: c.claim_text,
+          claimType: c.claim_type,
+          verificationStatus: c.verification_status,
+          explanation: c.explanation,
+          confidence: c.confidence,
+          evidenceIds: (c as any).evidence_ids || [],
+        })),
+        findings: findings.map(f => ({
+          type: f.finding_type,
+          severity: f.severity,
+          title: f.title,
+          excerpt: f.excerpt,
+          explanation: f.explanation,
+          suggestedCorrection: f.suggested_correction,
+          confidence: f.confidence,
+          status: f.status,
+          overrideReason: (f as any).override_reason || null,
+        })),
+        decisions: decisions.map(d => ({
+          decision: d.decision,
+          comment: d.comment,
+          createdAt: d.created_at,
+        })),
+        model: latestRun?.model_name || 'Unknown',
+        provider: latestRun?.provider || 'Unknown',
+        promptVersion: latestRun?.prompt_version || 'v1',
+        auditTimeline: auditLogs.map(log => ({
+          action: log.action,
+          timestamp: log.created_at,
+          entityType: log.entity_type,
+          metadata: log.metadata,
+        })),
+        generatedAt: new Date().toISOString(),
+      };
+
+      const blob = new Blob([JSON.stringify(passportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${passportId}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -52,6 +136,26 @@ export function PassportView({
           <span>Back to Content Review</span>
         </Link>
         <div className="flex items-center gap-2">
+          {/* SHA-256 Content Hash Display */}
+          {(contentHash || isComputingHash) && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-subtle border border-border text-xs font-mono text-ink-secondary" title="SHA-256 content hash">
+              <Hash className="w-3.5 h-3.5 text-brand" />
+              <span className="truncate max-w-[200px]">
+                {isComputingHash ? 'Computing hash...' : contentHash}
+              </span>
+            </div>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleJsonExport}
+            disabled={isExporting || !contentHash}
+            className="flex items-center gap-1.5 text-xs font-medium"
+            title="Export passport as JSON"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Export JSON</span>
+          </Button>
           <Button
             variant="default"
             size="sm"
@@ -357,7 +461,7 @@ export function PassportView({
         <div className="pt-6 border-t-2 border-ink-dark flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-ink-secondary">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-accent" />
-            <span>Cryptographically Verified Brand Governance Passport</span>
+            <span>Content Hash Recorded • Brand Governance Passport</span>
           </div>
           <div className="font-mono">
             Generated by BrandVault AI Engine • Model: {latestRun?.model_name || 'Gemini 1.5'}

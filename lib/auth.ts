@@ -1,14 +1,12 @@
 import { cookies } from 'next/headers';
-import { createServerClient } from '@/lib/db/server';
-import { getStorage, hasSupabaseConfig } from '@/lib/db/adaptor';
+import { getStorage } from '@/lib/db/adaptor';
 import type { WorkspaceRole } from '@/types/database';
 
-const SESSION_COOKIE = 'bv_session';
-const DEMO_COOKIE = 'bv_demo';
-const DEMO_WS_COOKIE = 'bv_demo_ws';
-const WS_COOKIE = 'bv_ws';
-const DEMO_USER_ID = '22222222-2222-2222-2222-222222222222';
-const DEMO_ORG_ID = '11111111-1111-1111-1111-111111111111';
+export const SESSION_COOKIE = 'bv_session';
+export const REFRESH_COOKIE = 'bv_refresh';
+export const WS_COOKIE = 'bv_ws';
+export const DEMO_USER_ID = '22222222-2222-2222-2222-222222222222';
+export const DEMO_ORG_ID = '11111111-1111-1111-1111-111111111111';
 
 export interface RequestContext {
   userId: string;
@@ -22,14 +20,14 @@ export interface RequestContext {
   token?: string;
 }
 
-function parseJwtPayload(token: string): any {
+export function parseJwtPayload(token: string): any {
   try {
     const parts = token.split('.');
     if (parts.length === 3) {
       const decoded = Buffer.from(parts[1], 'base64url').toString('utf-8');
       return JSON.parse(decoded);
     }
-  } catch (e) {
+  } catch {
     try {
       const parts = token.split('.');
       if (parts.length === 3) {
@@ -43,79 +41,104 @@ function parseJwtPayload(token: string): any {
   return null;
 }
 
+/**
+ * Returns the authenticated request context, or throws an Error if unauthenticated.
+ */
 export async function getRequestContext(): Promise<RequestContext> {
   const cookieStore = await cookies();
   const sessionToken = cookieStore.get(SESSION_COOKIE)?.value;
-  const demo = cookieStore.get(DEMO_COOKIE)?.value === '1';
-  const demoWs = cookieStore.get(DEMO_WS_COOKIE)?.value;
   const wsSlug = cookieStore.get(WS_COOKIE)?.value;
 
-  // 1. Authenticated JWT Session
-  if (sessionToken) {
-    const payload = parseJwtPayload(sessionToken);
-    if (payload && payload.sub && payload.org_id) {
-      const isDemoOrg = payload.org_id === DEMO_ORG_ID || demo;
-      const role = (payload.role || 'CREATOR') as WorkspaceRole;
-      return {
-        userId: payload.sub,
-        userEmail: payload.email ?? null,
-        userName: payload.name || payload.full_name || (payload.email ? payload.email.split('@')[0] : 'User'),
-        workspaceId: payload.org_id,
-        workspaceSlug: wsSlug || (isDemoOrg ? 'nexatech' : 'workspace'),
-        role,
-        isDemo: isDemoOrg,
-        isAdmin: role === 'ADMIN',
-        token: sessionToken,
-      };
-    }
+  if (!sessionToken) {
+    throw new Error('Authentication required');
   }
 
-  // 2. Demo Session or Local Demo Mode
-  const storage = getStorage();
-  let workspace = demoWs ? await storage.getWorkspaceBySlug(demoWs) : null;
-  if (!workspace) {
-    workspace = await storage.getDemoWorkspace();
-  }
-  if (!workspace) {
-    workspace = {
-      id: DEMO_ORG_ID,
-      name: 'NexaTech',
-      slug: 'nexatech',
-      description: 'AI hardware and robotics company',
-      logo_url: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
+  const payload = parseJwtPayload(sessionToken);
+  if (!payload || !payload.sub || !payload.org_id) {
+    throw new Error('Invalid authentication session');
   }
 
-  try {
-    await storage.ensureMember(workspace.id, DEMO_USER_ID, 'ADMIN');
-  } catch {
-    // Ignore storage errors in ephemeral environments
+  // Check token expiration
+  const now = Math.floor(Date.now() / 1000);
+  if (payload.exp && payload.exp < now) {
+    throw new Error('Session has expired');
   }
 
-  const profile = await storage.getProfile(DEMO_USER_ID).catch(() => null);
+  const isDemoOrg = payload.org_id === DEMO_ORG_ID || Boolean(payload.is_demo);
+  const role = (payload.role || 'ADMIN') as WorkspaceRole;
 
   return {
-    userId: DEMO_USER_ID,
-    userEmail: profile?.email ?? 'demo@nexatech.example',
-    userName: profile?.full_name ?? 'Demo Reviewer',
-    workspaceId: workspace.id,
-    workspaceSlug: workspace.slug,
-    role: 'ADMIN',
-    isDemo: true,
-    isAdmin: true,
+    userId: payload.sub,
+    userEmail: payload.email ?? (isDemoOrg ? 'demo@nexatech.example' : null),
+    userName: payload.name || payload.full_name || (payload.email ? payload.email.split('@')[0] : 'Member'),
+    workspaceId: payload.org_id,
+    workspaceSlug: wsSlug || (isDemoOrg ? 'nexatech' : 'workspace'),
+    role,
+    isDemo: isDemoOrg,
+    isAdmin: role === 'ADMIN',
+    token: sessionToken,
   };
 }
 
-export async function requireAdmin(ctx: RequestContext): Promise<void> {
-  if (!ctx.isAdmin) throw new Error('Administrator role required');
+/**
+ * Safe helper returning the session context if valid, or null if not authenticated.
+ */
+export async function getSession(): Promise<RequestContext | null> {
+  try {
+    return await getRequestContext();
+  } catch {
+    return null;
+  }
 }
 
-export function setDemoCookies(
-  response: { cookies: { set: (name: string, value: string, opts?: Record<string, unknown>) => void } },
-  workspaceSlug: string
-): void {
-  response.cookies.set(DEMO_COOKIE, '1', { httpOnly: true, path: '/', sameSite: 'lax', maxAge: 60 * 60 * 24 * 30 });
-  response.cookies.set(DEMO_WS_COOKIE, workspaceSlug, { httpOnly: true, path: '/', sameSite: 'lax', maxAge: 60 * 60 * 24 * 30 });
+export async function requireAdmin(ctx: RequestContext): Promise<void> {
+  if (!ctx.isAdmin) {
+    throw new Error('Administrator role required');
+  }
+}
+
+export async function requireManagerOrAbove(ctx: RequestContext): Promise<void> {
+  if (!['ADMIN', 'MANAGER'].includes(ctx.role)) {
+    throw new Error('Manager role or above required');
+  }
+}
+
+export async function requireReviewerOrAbove(ctx: RequestContext): Promise<void> {
+  if (!['ADMIN', 'MANAGER', 'REVIEWER'].includes(ctx.role)) {
+    throw new Error('Reviewer role or above required');
+  }
+}
+
+export async function requireCreatorOrAbove(ctx: RequestContext): Promise<void> {
+  if (!['ADMIN', 'MANAGER', 'REVIEWER', 'CREATOR'].includes(ctx.role)) {
+    throw new Error('Creator role or above required');
+  }
+}
+
+export function canApprove(ctx: RequestContext): boolean {
+  return ['ADMIN', 'MANAGER', 'REVIEWER'].includes(ctx.role);
+}
+
+export function canOverride(ctx: RequestContext): boolean {
+  return ['ADMIN', 'REVIEWER'].includes(ctx.role);
+}
+
+export function canManageTeam(ctx: RequestContext): boolean {
+  return ctx.role === 'ADMIN';
+}
+
+export function canManageGuidelines(ctx: RequestContext): boolean {
+  return ['ADMIN'].includes(ctx.role);
+}
+
+export function canSubmitContent(ctx: RequestContext): boolean {
+  return ['ADMIN', 'MANAGER', 'REVIEWER', 'CREATOR', 'AGENCY'].includes(ctx.role);
+}
+
+export function canViewInsights(ctx: RequestContext): boolean {
+  return ['ADMIN', 'MANAGER', 'REVIEWER'].includes(ctx.role);
+}
+
+export function canApproveGuidelineChanges(ctx: RequestContext): boolean {
+  return ctx.role === 'ADMIN';
 }

@@ -3,11 +3,9 @@ import { getRequestContext } from '@/lib/auth';
 import { SettingsManager, MemberItem, InvitationItem } from '@/components/settings/settings-manager';
 
 export default async function SettingsPage() {
-  const ctx = await getRequestContext().catch(() => null);
-  const demoWs = await storage.getDemoWorkspace();
-
-  const workspaceId = ctx?.workspaceId || demoWs?.id || '11111111-1111-1111-1111-111111111111';
-  const isDemo = ctx?.isDemo ?? true;
+  const ctx = await getRequestContext();
+  const workspaceId = ctx.workspaceId;
+  const isDemo = ctx.isDemo;
   const configuredModel = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
 
   const rawMembers = await storage.listMembers(workspaceId);
@@ -30,13 +28,18 @@ export default async function SettingsPage() {
 
   const workspace = {
     id: workspaceId,
-    name: isDemo ? 'NexTech' : (ctx?.workspaceSlug ? ctx.workspaceSlug.toUpperCase() : 'Workspace'),
-    slug: ctx?.workspaceSlug || 'nexatech',
+    name: isDemo ? 'NexaTech' : (ctx.workspaceSlug ? ctx.workspaceSlug.toUpperCase() : 'Workspace'),
+    slug: ctx.workspaceSlug || 'nexatech',
     description: isDemo
       ? 'Fictional Indian consumer technology company — demo sandbox workspace for BrandVault AI.'
       : 'Brand governance desk and ground truth vault.',
     isDemo,
   };
+
+  // AI configuration from environment
+  const aiEnabled = !!process.env.GEMINI_API_KEY;
+  const aiProvider = 'Google Gemini';
+  const aiModel = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
 
   return (
     <SettingsManager
@@ -44,6 +47,9 @@ export default async function SettingsPage() {
       initialMembers={members}
       initialInvitations={[]}
       configuredModel={configuredModel}
+      aiEnabled={aiEnabled}
+      aiProvider={aiProvider}
+      aiModel={aiModel}
     />
   );
 }

@@ -1,49 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { backendFetch } from '@/lib/api/client';
-import { getStorage } from '@/lib/db/adaptor';
 
 export async function GET(req: NextRequest) {
-  const response = NextResponse.redirect(new URL('/overview', req.url));
-
-  // Try to obtain a demo token from backend if available
-  try {
-    const data = await backendFetch('/api/v1/auth/demo', {
-      method: 'POST',
-      body: JSON.stringify({ workspace_slug: 'nexatech' }),
-    });
-    if (data?.access_token) {
-      response.cookies.set('bv_session', data.access_token, {
-        httpOnly: true,
-        path: '/',
-        sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 30,
-      });
-    } else {
-      response.cookies.delete('bv_session');
-    }
-  } catch (err) {
-    // Backend may be offline, clear any previous session so demo works cleanly
-    response.cookies.delete('bv_session');
-  }
-
-  // Set demo cookies for local and frontend recognition
-  response.cookies.set('bv_demo', '1', {
-    httpOnly: true,
-    path: '/',
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 30,
-  });
-  response.cookies.set('bv_demo_ws', 'nexatech', {
-    httpOnly: true,
-    path: '/',
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 30,
-  });
-  response.cookies.set('bv_ws', 'nexatech', {
-    path: '/',
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 30,
-  });
-
-  return response;
+  // Rather than bypassing auth, redirect visitor to the login page with the judge preset
+  const loginUrl = new URL('/login', req.url);
+  loginUrl.searchParams.set('judge', 'true');
+  return NextResponse.redirect(loginUrl);
 }

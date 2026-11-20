@@ -14,8 +14,35 @@ function createLocalJwt(payload: { sub: string; org_id: string; role: string; em
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { company_name, workspace_slug, email, password, full_name, industry } = body;
+    const contentType = req.headers.get('content-type') || '';
+    let company_name = '';
+    let workspace_slug = '';
+    let email = '';
+    let password = '';
+    let full_name = '';
+    let industry = '';
+    let sourceDocuments: File[] = [];
+
+    if (contentType.includes('multipart/form-data')) {
+      const formData = await req.formData();
+      company_name = formData.get('company_name') as string;
+      workspace_slug = formData.get('workspace_slug') as string;
+      email = formData.get('email') as string;
+      password = formData.get('password') as string;
+      full_name = formData.get('full_name') as string;
+      industry = formData.get('industry') as string;
+
+      const files = formData.getAll('sourceDocuments') as File[];
+      sourceDocuments = files.filter(f => f.type === 'application/pdf');
+    } else {
+      const body = await req.json();
+      company_name = body.company_name;
+      workspace_slug = body.workspace_slug;
+      email = body.email;
+      password = body.password;
+      full_name = body.full_name;
+      industry = body.industry;
+    }
 
     if (!company_name || !email || !password || !full_name) {
       return NextResponse.json(
@@ -43,26 +70,39 @@ export async function POST(req: NextRequest) {
 
     let data: any = null;
 
-    // 1. Try FastAPI backend first
     try {
-      data = await backendFetch('/api/v1/auth/register', {
-        method: 'POST',
-        body: JSON.stringify({
-          company_name,
-          workspace_slug: slug,
-          email,
-          password,
-          full_name,
-          industry: industry || undefined,
-        }),
-      });
+      if (sourceDocuments.length > 0) {
+        const formData = new FormData();
+        formData.append('company_name', company_name);
+        formData.append('workspace_slug', slug);
+        formData.append('email', email);
+        formData.append('password', password);
+        formData.append('full_name', full_name);
+        if (industry) formData.append('industry', industry);
+        sourceDocuments.forEach(f => formData.append('sourceDocuments', f));
+
+        data = await backendFetch('/api/v1/auth/register', {
+          method: 'POST',
+          body: formData,
+        });
+      } else {
+        data = await backendFetch('/api/v1/auth/register', {
+          method: 'POST',
+          body: JSON.stringify({
+            company_name,
+            workspace_slug: slug,
+            email,
+            password,
+            full_name,
+            industry: industry || undefined,
+          }),
+        });
+      }
     } catch (backendErr: any) {
-      // If backend threw a deliberate validation error (e.g. 400 user/slug already exists), propagate it
       if (backendErr instanceof ApiError && backendErr.status === 400) {
         return NextResponse.json({ error: backendErr.message }, { status: 400 });
       }
 
-      // If backend is offline / unreachable (ECONNREFUSED / fetch failed), use storage fallback
       console.warn('Backend unavailable, creating workspace in storage engine:', backendErr.message);
 
       const userId = crypto.randomUUID();
@@ -83,7 +123,27 @@ export async function POST(req: NextRequest) {
 
       await storage.ensureMember(workspace.id, userId, 'ADMIN');
 
-      // Seed starter guidelines for the new company
+      if (sourceDocuments.length > 0) {
+        for (const file of sourceDocuments) {
+          const arrayBuffer = await file.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
+          const extractedText = buffer.toString('utf-8');
+
+          await storage.createDocument({
+            workspace_id: workspace.id,
+            filename: file.name,
+            storage_path: '',
+            mime_type: 'application/pdf',
+            file_size: file.size,
+            source_name: file.name,
+            document_status: 'APPROVED',
+            extracted_text: extractedText.slice(0, 50000),
+            extraction_error: null,
+            uploaded_by: userId,
+          });
+        }
+      }
+
       try {
         await storage.createGuideline({
           workspace_id: workspace.id,
@@ -110,7 +170,6 @@ export async function POST(req: NextRequest) {
           created_by: userId,
         });
       } catch {
-        // Starter rules are best-effort
       }
 
       const accessToken = createLocalJwt({

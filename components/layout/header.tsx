@@ -33,6 +33,7 @@ export function Header({
   const [user, setUser] = useState<UserInfo | null>(null);
   const [org, setOrg] = useState<OrgInfo | null>(null);
   const [isDemo, setIsDemo] = useState(false);
+  const [aiEnabled, setAiEnabled] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   // Fetch current user and org
@@ -63,6 +64,23 @@ export function Header({
       })
       .catch(() => {
         setIsDemo(true);
+      });
+  }, []);
+
+  // Fetch AI status
+  useEffect(() => {
+    fetch('/api/workspaces/current/ai')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.enabled !== undefined) {
+          setAiEnabled(data.enabled);
+        } else {
+          // Fallback to checking environment
+          setAiEnabled(!!process.env.GEMINI_API_KEY);
+        }
+      })
+      .catch(() => {
+        setAiEnabled(!!process.env.GEMINI_API_KEY);
       });
   }, []);
 
@@ -200,11 +218,13 @@ export function Header({
 
             {/* Live Engine Indicator */}
             <div
-              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-evidence-supported/10 border border-evidence-supported/20 text-[11px] font-medium text-evidence-supported transition-all"
-              title="Real-time multi-stage verification against approved specifications and brand guidelines"
+              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full transition-all"
+              title={aiEnabled ? "AI-assisted verification active" : "Deterministic-only mode — AI verification disabled"}
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-evidence-supported animate-pulse" />
-              <span>AI checks: on</span>
+              <span className={`w-1.5 h-1.5 rounded-full ${aiEnabled ? 'bg-evidence-supported animate-pulse' : 'bg-sand-dark animate-none'}`} />
+              <span className="text-[11px] font-medium">
+                {aiEnabled ? 'AI checks: on' : 'AI checks: limited'}
+              </span>
             </div>
 
             {/* Interactive Notifications Popover */}

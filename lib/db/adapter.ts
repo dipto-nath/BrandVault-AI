@@ -16,6 +16,7 @@ import type {
   FindingFeedback,
   GuidelineSuggestion,
   AuditLog,
+  Product,
 } from '@/types/database';
 
 export interface ListOptions {
@@ -93,7 +94,7 @@ export interface Storage {
 
   // ---------- Findings ----------
   createFindings(findings: Array<Omit<Finding, 'id' | 'created_at'> & { created_by?: string | null }>): Promise<Finding[]>;
-  listFindings(submissionId?: string): Promise<Finding[]>;
+  listFindings(submissionId?: string, workspaceId?: string): Promise<Finding[]>;
   getFinding(id: string): Promise<Finding | null>;
   createFindingEvidence(evidence: Array<Omit<FindingEvidence, 'id' | 'created_at'>>): Promise<FindingEvidence[]>;
   listFindingEvidence(findingId: string): Promise<FindingEvidence[]>;
@@ -116,6 +117,12 @@ export interface Storage {
   // ---------- Audit log ----------
   createAuditLog(data: Omit<AuditLog, 'id' | 'created_at'> & { created_by?: string | null }): Promise<void>;
   listAuditLogs(workspaceId: string, opts?: ListOptions): Promise<AuditLog[]>;
+
+  // ---------- Products ----------
+  listProducts(workspaceId: string): Promise<Product[]>;
+  getProduct(id: string): Promise<Product | null>;
+  createProduct(data: Omit<Product, 'id' | 'created_at' | 'updated_at'> & { created_by?: string | null }): Promise<Product>;
+  updateProduct(id: string, data: Partial<Pick<Product, 'name' | 'category' | 'model_or_version' | 'launch_date' | 'status' | 'description'>>): Promise<Product>;
 
   // ---------- Dashboard ----------
   dashboardStats(workspaceId: string): Promise<DashboardStats>;

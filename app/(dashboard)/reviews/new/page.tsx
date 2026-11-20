@@ -20,6 +20,13 @@ interface ChannelItem {
   charLimit?: number;
 }
 
+interface ProductItem {
+  id: string;
+  name: string;
+  category?: string;
+  model_or_version?: string;
+}
+
 const CHANNELS: ChannelItem[] = [
   {
     name: 'Website',
@@ -82,6 +89,8 @@ export default function ReviewStudioPage() {
   const [contentType, setContentType] = useState('Product description');
   const [channel, setChannel] = useState('Website');
   const [content, setContent] = useState('');
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [products, setProducts] = useState<ProductItem[]>([]);
 
   // Interaction State
   const [touched, setTouched] = useState<{ title?: boolean; content?: boolean }>({});
@@ -132,6 +141,22 @@ export default function ReviewStudioPage() {
     } catch {
       // Ignore localStorage errors
     }
+
+    // Fetch products
+    async function fetchProducts() {
+      try {
+        const res = await fetch('/api/products');
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            setProducts(data);
+          }
+        }
+      } catch {
+        // Silently fail, products are optional
+      }
+    }
+    fetchProducts();
 
     // Fetch rulebook stats
     async function fetchCounts() {
@@ -328,10 +353,11 @@ export default function ReviewStudioPage() {
   const activeChannelConfig = CHANNELS.find((c) => c.name === channel);
   const isNearLimit = activeChannelConfig?.charLimit ? charCount > activeChannelConfig.charLimit * 0.9 : false;
 
-  // Validation: can submit if there is content and a channel selected (title auto-fallbacks)
+  // Validation: can submit if there is content, a channel selected, and a product selected (title auto-fallbacks)
   const titleError = (touched.title || hasAttemptedSubmit) && !title.trim();
   const contentError = (touched.content || hasAttemptedSubmit) && !content.trim();
-  const canSubmit = Boolean(content.trim() && channel);
+  const productError = (hasAttemptedSubmit) && !selectedProductId;
+  const canSubmit = Boolean(content.trim() && channel && selectedProductId);
 
   // 4. Sample Selection with Animated Stream / Typing
   const loadSample = (sample: SampleBenchmark) => {
@@ -422,6 +448,13 @@ export default function ReviewStudioPage() {
       return;
     }
 
+    if (!selectedProductId) {
+      setHasAttemptedSubmit(true);
+      setError('Please select a product before submitting.');
+      document.getElementById('product-select')?.focus();
+      return;
+    }
+
     const submissionTitle = title.trim() || `${channel} Copy — ${content.slice(0, 32).trim()}…`;
 
     setError(null);
@@ -443,6 +476,7 @@ export default function ReviewStudioPage() {
           content_type: contentType,
           channel,
           original_content: content.trim(),
+          product_id: selectedProductId || undefined,
         }),
       });
 
@@ -752,7 +786,7 @@ export default function ReviewStudioPage() {
             )}
 
             <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-7">
-              {/* a. Details Row: Title & Content Type */}
+              {/* a. Details Row: Title, Product & Content Type */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
                 <div className="sm:col-span-2">
                   <label
@@ -789,6 +823,44 @@ export default function ReviewStudioPage() {
                   ) : (
                     <p id="title-hint" className="text-[11px] text-ink-3 mt-1">
                       Something your team will recognise later.
+                    </p>
+                  )}
+                </div>
+
+                {/* Product Selector (Required) */}
+                <div>
+                  <label htmlFor="product-select" className="block text-xs font-semibold text-ink mb-1.5">
+                    Product <span className="text-critical">*</span>
+                  </label>
+                  <select
+                    id="product-select"
+                    value={selectedProductId || ''}
+                    onChange={(e) => setSelectedProductId(e.target.value || null)}
+                    disabled={loading}
+                    required
+                    className="w-full px-3 py-2.5 rounded-[10px] text-xs font-medium text-ink bg-surface border border-line focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-all duration-200 cursor-pointer"
+                    aria-describedby="product-hint"
+                  >
+                    <option value="">Select a product…</option>
+                    {products.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}{p.model_or_version ? ` — ${p.model_or_version}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {products.length === 0 && (
+                    <p id="product-hint" className="text-[11px] text-warning mt-1">
+                      No products found. <Link href="/knowledge" className="underline hover:text-brand">Add a product first</Link>.
+                    </p>
+                  )}
+                  {products.length > 0 && !selectedProductId && (
+                    <p id="product-hint" className="text-[11px] text-warning mt-1">
+                      Please select a product for accurate fact verification.
+                    </p>
+                  )}
+                  {selectedProductId && (
+                    <p id="product-hint" className="text-[11px] text-supported mt-1">
+                      Verification will use approved facts for this product.
                     </p>
                   )}
                 </div>
