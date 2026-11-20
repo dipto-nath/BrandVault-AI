@@ -53,11 +53,10 @@ export async function getSubmissionWithDetails(submissionId: string, workspaceId
     storage.listFindingFeedback(''), // placeholder; finding-level feedback fetched per finding
   ]);
   const findingsWithEvidence = await Promise.all(findings.map(async (f) => {
-    const evidence = await storage.getFinding(f.id).then((g) => g);
-    // finding_evidence not directly exposed; fetch via finding details below
-    return f;
+    const evidence = await storage.listFindingEvidence(f.id);
+    return { ...f, finding_evidence: evidence };
   }));
-  return { submission, versions, runs, claims, findings, decisions };
+  return { submission, versions, runs, claims, findings: findingsWithEvidence, decisions };
 }
 
 export async function runAnalysis(submissionId: string, workspaceId: string, userId: string | null) {

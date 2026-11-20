@@ -320,12 +320,75 @@ export class SupabaseStorage implements Storage {
     return one(await db().from('guideline_suggestions').insert(data).select().single());
   }
   async approveGuidelineSuggestion(id: string, reviewerId: string): Promise<void> {
+    const { data: sugg, error: sErr } = await db().from('guideline_suggestions').select('*').eq('id', id).maybeSingle();
+    if (sErr || !sugg) throw new Error('Suggestion not found');
     const { error } = await db().from('guideline_suggestions').update({ status: 'APPROVED', reviewed_by: reviewerId, reviewed_at: new Date().toISOString() }).eq('id', id);
     if (error) throw error;
+
+    if (sugg.guideline_id) {
+      const { data: oldG } = await db().from('brand_guidelines').select('*').eq('id', sugg.guideline_id).maybeSingle();
+      if (oldG) {
+        const newVersion = (oldG.version || 1) + 1;
+        const newDesc = `${oldG.description} ${sugg.suggested_change}`;
+        await db().from('brand_guidelines').update({
+          version: newVersion,
+          description: newDesc,
+          updated_at: new Date().toISOString(),
+        }).eq('id', oldG.id);
+        await db().from('audit_logs').insert({
+          workspace_id: sugg.workspace_id,
+          user_id: reviewerId,
+          entity_type: 'brand_guideline',
+          entity_id: oldG.id,
+          action: 'GUIDELINE_VERSION_APPROVED',
+          old_value: { version: oldG.version, description: oldG.description },
+          new_value: { version: newVersion, description: newDesc, suggestion_id: id },
+          metadata: { rule_code: oldG.rule_code, title: oldG.title },
+          created_at: new Date().toISOString(),
+        });
+      }
+    }
   }
   async rejectGuidelineSuggestion(id: string, reviewerId: string, reason?: string): Promise<void> {
+    const { data: sugg, error: sErr } = await db().from('guideline_suggestions').select('*').eq('id', id).maybeSingle();
+    if (sErr || !sugg) throw new Error('Suggestion not found');
     const { error } = await db().from('guideline_suggestions').update({ status: 'REJECTED', reviewed_by: reviewerId, reviewed_at: new Date().toISOString() }).eq('id', id);
     if (error) throw error;
+    await db().from('audit_logs').insert({
+      workspace_id: sugg.workspace_id,
+      user_id: reviewerId,
+      entity_type: 'guideline_suggestion',
+      entity_id: id,
+      action: 'SUGGESTION_DISMISSED',
+      old_value: { status: sugg.status },
+      new_value: { status: 'REJECTED', reason: reason || 'Dismissed by reviewer' },
+      metadata: { suggestion_title: sugg.title },
+      created_at: new Date().toISOString(),
+    });
+  }
+  async undoGuidelineSuggestion(id: string, reviewerId: string): Promise<void> {
+    const { data: sugg, error } = await db().from('guideline_suggestions').select('*').eq('id', id).maybeSingle();
+    if (error || !sugg) throw new Error('Suggestion not found');
+    await db().from('guideline_suggestions').update({ status: 'PENDING', reviewed_by: null, reviewed_at: null }).eq('id', id);
+    if (sugg.guideline_id) {
+      const { data: g } = await db().from('brand_guidelines').select('*').eq('id', sugg.guideline_id).maybeSingle();
+      if (g) {
+        const prevVersion = Math.max(1, (g.version || 2) - 1);
+        const origDesc = (g.description || '').replace(` ${sugg.suggested_change}`, '');
+        await db().from('brand_guidelines').update({ version: prevVersion, description: origDesc, updated_at: new Date().toISOString() }).eq('id', g.id);
+        await db().from('audit_logs').insert({
+          workspace_id: sugg.workspace_id,
+          user_id: reviewerId,
+          entity_type: 'brand_guideline',
+          entity_id: g.id,
+          action: 'GUIDELINE_VERSION_REVERTED',
+          old_value: { version: g.version },
+          new_value: { version: prevVersion },
+          metadata: { rule_code: g.rule_code, suggestion_id: id },
+          created_at: new Date().toISOString(),
+        });
+      }
+    }
   }
   async createAuditLog(data: Omit<AuditLog, 'id' | 'created_at'> & { created_by?: string | null }): Promise<void> {
     const { error } = await db().from('audit_logs').insert(data);
@@ -339,9 +402,9 @@ export class SupabaseStorage implements Storage {
     return (data ?? []) as AuditLog[];
   }
   async dashboardStats(workspaceId: string): Promise<DashboardStats> {
-    const { data: subs, error } = await db().from('content_submissions').select('status, risk_level, created_at, updated_at').eq('workspace_id', workspaceId);
+    const { data: subs, error } = await db().from('content_submissions').select('*').eq('workspace_id', workspaceId);
     if (error) throw error;
-    const rows = subs ?? [];
+    const rows = (subs ?? []) as ContentSubmission[];
     const recent = [...rows].sort((a, b) => (b.updated_at || b.created_at).localeCompare(a.updated_at || a.created_at)).slice(0, 8);
     return {
       total: rows.length,
@@ -349,7 +412,7 @@ export class SupabaseStorage implements Storage {
       approved: rows.filter((s) => s.status === 'APPROVED').length,
       rejected: rows.filter((s) => s.status === 'REJECTED').length,
       highRisk: rows.filter((s) => s.risk_level === 'HIGH').length,
-      recent: recent as ContentSubmission[],
+      recent,
     };
   }
 }

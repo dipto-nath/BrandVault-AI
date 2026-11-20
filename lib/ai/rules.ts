@@ -96,9 +96,11 @@ function factKeywords(fact: ApprovedFact): string[] {
   return [...new Set(words)];
 }
 
-export function checkFactualClaimsAgainstFacts(content: string, facts: ApprovedFact[]): RuleMatch[] {
+export function checkFactualClaimsAgainstFacts(content: string, facts: ApprovedFact[], guidelines: BrandGuideline[] = []): RuleMatch[] {
   const matches: RuleMatch[] = [];
   const approved = facts.filter((f) => f.verification_status === 'APPROVED');
+  const ruleClaim001 = findGuideline(guidelines, 'RULE-CLAIM-001');
+  const ruleClaim002 = findGuideline(guidelines, 'RULE-CLAIM-002');
 
   // Break content into clauses or sentences for targeted matching
   const sentences = content
@@ -119,11 +121,11 @@ export function checkFactualClaimsAgainstFacts(content: string, facts: ApprovedF
 
           if (statedHours !== approvedHours) {
             matches.push({
-              ruleId: null,
+              ruleId: ruleClaim001?.id ?? null,
               ruleCode: 'RULE-CLAIM-001',
               title: 'Battery life specification contradicted',
               type: 'FACTUAL_CONTRADICTION',
-              severity: 'HIGH',
+              severity: ruleClaim001?.severity ?? 'HIGH',
               excerpt: matchNum[0],
               explanation: `The content states ${statedHours} hours of battery life, but the approved specification (${batteryFact.source_name}) states up to ${approvedHours} hours under specified test conditions.`,
               suggestedCorrection: `up to ${approvedHours} hours of battery life`,
@@ -149,11 +151,11 @@ export function checkFactualClaimsAgainstFacts(content: string, facts: ApprovedF
 
           if (statedWeight !== approvedWeight) {
             matches.push({
-              ruleId: null,
+              ruleId: ruleClaim001?.id ?? null,
               ruleCode: 'RULE-CLAIM-001',
               title: 'Device weight specification contradicted',
               type: 'FACTUAL_CONTRADICTION',
-              severity: 'HIGH',
+              severity: ruleClaim001?.severity ?? 'HIGH',
               excerpt: matchNum[0],
               explanation: `The content states ${statedWeight}g, but the approved specification (${weightFact.source_name}) states ${approvedWeight} grams.`,
               suggestedCorrection: `${approvedWeight} grams`,
@@ -174,11 +176,11 @@ export function checkFactualClaimsAgainstFacts(content: string, facts: ApprovedF
   if (wpMatch) {
     const wpFact = approved.find((f) => f.fact_code === 'FACT-004' || /waterproof/i.test(f.title));
     matches.push({
-      ruleId: null,
+      ruleId: ruleClaim002?.id ?? null,
       ruleCode: 'RULE-CLAIM-002',
       title: 'Waterproof claim without approved rating',
       type: 'UNVERIFIED_CLAIM',
-      severity: 'HIGH',
+      severity: ruleClaim002?.severity ?? 'HIGH',
       excerpt: wpMatch[0],
       explanation: `Content asserts "${wpMatch[0]}", but the Product Claims Register (FACT-004) states: "No approved waterproof rating is currently documented." Do not communicate waterproofing or water resistance without an approved rating.`,
       suggestedCorrection: 'splash-resistant (see specifications for details)',

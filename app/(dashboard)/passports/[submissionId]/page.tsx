@@ -122,7 +122,7 @@ export default async function PassportDetailPage({
       versions={versions}
       runs={runs}
       auditLogs={auditLogs}
-      workspaceName="NexTech"
+      workspaceName="NexaTech"
     />
   );
 }

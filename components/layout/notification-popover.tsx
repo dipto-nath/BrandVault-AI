@@ -24,7 +24,7 @@ const DEFAULT_NOTIFICATIONS: NotificationItem[] = [
     id: 'notif-1',
     type: 'critical',
     title: 'Critical finding requires review',
-    description: 'Battery specification in "NexTech Nova Launch Announcement" contradicts certified test specs.',
+    description: 'Battery specification in "NexaTech Nova Launch Announcement" contradicts certified test specs.',
     time: '15m ago',
     href: '/reviews',
     read: false,

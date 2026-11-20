@@ -307,7 +307,7 @@ export async function runAnalysisPipeline(input: PipelineInput): Promise<Pipelin
   const ruleMatches = [
     ...checkSuperlatives(input.content, input.guidelines),
     ...checkProhibitedTerms(input.content, input.guidelines),
-    ...checkFactualClaimsAgainstFacts(input.content, input.facts),
+    ...checkFactualClaimsAgainstFacts(input.content, input.facts, input.guidelines),
   ];
 
   // Stage 1: claim extraction
@@ -322,12 +322,35 @@ export async function runAnalysisPipeline(input: PipelineInput): Promise<Pipelin
   const toneFindings = partial ? deterministicTone(input.content, input.guidelines) : await aiTone(input.content, input.guidelines);
 
   // Build claim-based findings
+  const ruleClaim001 = input.guidelines.find((g) => g.rule_code === 'RULE-CLAIM-001');
+  const ruleClaim002 = input.guidelines.find((g) => g.rule_code === 'RULE-CLAIM-002');
   const claimFindings: FindingResult[] = [];
   for (const v of verified) {
     if (v.status === 'CONTRADICTED') {
-      claimFindings.push({ type: 'FACTUAL_CONTRADICTION', severity: 'HIGH', title: 'Factual claim contradicted', excerpt: v.claimText, explanation: v.explanation, ruleId: null, evidenceIds: v.evidenceIds, suggestedCorrection: null, confidence: v.confidence });
+      claimFindings.push({
+        type: 'FACTUAL_CONTRADICTION',
+        severity: ruleClaim001?.severity ?? 'HIGH',
+        title: 'Factual claim contradicted',
+        excerpt: v.claimText,
+        explanation: v.explanation,
+        ruleId: ruleClaim001?.id ?? null,
+        evidenceIds: v.evidenceIds,
+        suggestedCorrection: null,
+        confidence: v.confidence,
+      });
     } else if (v.status === 'UNVERIFIED') {
-      claimFindings.push({ type: 'UNVERIFIED_CLAIM', severity: 'MEDIUM', title: 'Unverified claim', excerpt: v.claimText, explanation: v.explanation, ruleId: null, evidenceIds: [], suggestedCorrection: null, confidence: v.confidence });
+      const isWaterproof = /waterproof/i.test(v.claimText);
+      claimFindings.push({
+        type: 'UNVERIFIED_CLAIM',
+        severity: isWaterproof ? (ruleClaim002?.severity ?? 'HIGH') : 'MEDIUM',
+        title: 'Unverified claim',
+        excerpt: v.claimText,
+        explanation: v.explanation,
+        ruleId: isWaterproof ? (ruleClaim002?.id ?? null) : null,
+        evidenceIds: [],
+        suggestedCorrection: null,
+        confidence: v.confidence,
+      });
     }
   }
 
@@ -352,7 +375,17 @@ export async function runAnalysisPipeline(input: PipelineInput): Promise<Pipelin
   const output: AnalysisOutput = {
     summary,
     riskLevel,
-    claims: verified.map((v) => ({ claimText: v.claimText, claimType: 'PRODUCT_SPECIFICATION', verificationStatus: v.status, explanation: v.explanation, evidenceIds: v.evidenceIds, confidence: v.confidence })),
+    claims: verified.map((v) => {
+      const matchedClaim = claims.find((c) => c.claimText === v.claimText);
+      return {
+        claimText: v.claimText,
+        claimType: matchedClaim?.claimType || 'PRODUCT_SPECIFICATION',
+        verificationStatus: v.status,
+        explanation: v.explanation,
+        evidenceIds: v.evidenceIds,
+        confidence: v.confidence,
+      };
+    }),
     findings: allFindings,
     suggestedContent,
     analysisNotes: partial ? 'AI provider unavailable; deterministic checks only.' : 'AI-assisted analysis.',

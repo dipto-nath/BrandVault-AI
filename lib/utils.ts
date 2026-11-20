@@ -32,7 +32,16 @@ export function formatRelative(dateString: string): string {
   const date = new Date(dateString);
   if (isNaN(date.getTime())) return dateString;
   const diff = now.getTime() - date.getTime();
-  if (diff < 0) return 'just now';
+  if (diff < 0) {
+    const futureMins = Math.floor(-diff / 60000);
+    if (futureMins < 1) return 'in a moment';
+    if (futureMins < 60) return `in ${futureMins}m`;
+    const futureHours = Math.floor(futureMins / 60);
+    if (futureHours < 24) return `in ${futureHours}h`;
+    const futureDays = Math.floor(futureHours / 24);
+    if (futureDays < 7) return `in ${futureDays}d`;
+    return formatDate(dateString);
+  }
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return 'just now';
   if (mins < 60) return `${mins}m ago`;
@@ -135,41 +144,64 @@ export function getSubmissionReference(
   submission: string | { id?: string; reference?: string } | null | undefined
 ): string {
   if (!submission) return 'REV-2026-0000';
-  if (typeof submission === 'string') {
-    const match = submission.match(/(\d+)$/);
-    if (match) {
-      const num = parseInt(match[1], 10);
-      return `REV-2026-${String(num).padStart(4, '0')}`;
-    }
-    return 'REV-2026-0001';
+  if (typeof submission !== 'string' && submission.reference) {
+    return submission.reference;
   }
-  if (submission.reference) return submission.reference;
-  const match = submission.id?.match(/(\d+)$/);
-  if (match) {
-    const num = parseInt(match[1], 10);
-    return `REV-2026-${String(num).padStart(4, '0')}`;
+  const idStr = typeof submission === 'string' ? submission : submission.id || '';
+  if (!idStr) return 'REV-2026-0001';
+
+  // 1. Check for explicit trailing digits (e.g. from seed IDs ending in digits)
+  const trailingDigits = idStr.match(/(\d+)$/);
+  if (trailingDigits) {
+    const num = parseInt(trailingDigits[1], 10);
+    return `REV-2026-${String(num % 10000 || 1).padStart(4, '0')}`;
   }
-  return 'REV-2026-0001';
+
+  // 2. Check for any digits in the ID
+  const anyDigits = idStr.replace(/\D/g, '');
+  if (anyDigits.length >= 4) {
+    const num = parseInt(anyDigits.slice(-4), 10);
+    return `REV-2026-${String(num || 1).padStart(4, '0')}`;
+  }
+
+  // 3. Fallback: derive consistent 4-digit number from ID hash
+  let hash = 0;
+  for (let i = 0; i < idStr.length; i++) {
+    hash = (hash << 5) - hash + idStr.charCodeAt(i);
+    hash |= 0;
+  }
+  const code = (Math.abs(hash) % 9000) + 1000;
+  return `REV-2026-${code}`;
 }
 
 export function getPassportReference(
   submission: string | { id?: string; passport_reference?: string; reference?: string } | null | undefined
 ): string {
   if (!submission) return 'BVP-2026-0000';
-  if (typeof submission === 'string') {
-    const match = submission.match(/(\d+)$/);
-    if (match) {
-      const num = parseInt(match[1], 10);
-      return `BVP-2026-${String(num).padStart(4, '0')}`;
-    }
-    return 'BVP-2026-0001';
+  if (typeof submission !== 'string') {
+    if (submission.passport_reference) return submission.passport_reference;
+    if (submission.reference) return submission.reference.replace('REV-', 'BVP-');
   }
-  if (submission.passport_reference) return submission.passport_reference;
-  if (submission.reference) return submission.reference.replace('REV-', 'BVP-');
-  const match = submission.id?.match(/(\d+)$/);
-  if (match) {
-    const num = parseInt(match[1], 10);
-    return `BVP-2026-${String(num).padStart(4, '0')}`;
+  const idStr = typeof submission === 'string' ? submission : submission.id || '';
+  if (!idStr) return 'BVP-2026-0001';
+
+  const trailingDigits = idStr.match(/(\d+)$/);
+  if (trailingDigits) {
+    const num = parseInt(trailingDigits[1], 10);
+    return `BVP-2026-${String(num % 10000 || 1).padStart(4, '0')}`;
   }
-  return 'BVP-2026-0001';
+
+  const anyDigits = idStr.replace(/\D/g, '');
+  if (anyDigits.length >= 4) {
+    const num = parseInt(anyDigits.slice(-4), 10);
+    return `BVP-2026-${String(num || 1).padStart(4, '0')}`;
+  }
+
+  let hash = 0;
+  for (let i = 0; i < idStr.length; i++) {
+    hash = (hash << 5) - hash + idStr.charCodeAt(i);
+    hash |= 0;
+  }
+  const code = (Math.abs(hash) % 9000) + 1000;
+  return `BVP-2026-${code}`;
 }

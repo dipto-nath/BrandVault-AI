@@ -1405,7 +1405,7 @@ export function InsightsManager({
 
       {/* Footer Disclaimer */}
       <div className="text-center text-xs text-ink-muted pt-2 border-t border-sand-dark/30">
-        Demo data: fictional NexTech workspace • Governed by BrandVault AI
+        Demo data: fictional NexaTech workspace • Governed by BrandVault AI
       </div>
 
       {/* Rule Detail Drawer (Section 5) */}
