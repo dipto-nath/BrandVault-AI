@@ -2,7 +2,7 @@
  * Client for communicating with the BrandVault FastAPI backend.
  */
 
-const BACKEND_URL = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+const BACKEND_URL = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'https://brandvault-ai-r8fr.onrender.com';
 
 export interface ApiClientOptions extends RequestInit {
   token?: string;
