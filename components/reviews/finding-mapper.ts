@@ -243,12 +243,89 @@ export function mapRawFindingsToViewModel(
       severity = f.severity === 'HIGH' ? 'CRITICAL' : 'MEDIUM';
       humanTitle = f.title ? f.title.replace(/_/g, ' ') : 'Terminology guideline violation';
       rule = ruleTerm001;
+    } else if (f.finding_type === 'ASSET_MISMATCH') {
+      category = 'contradicted';
+      categoryLabel = 'Contradicted';
+      severity = 'CRITICAL';
+      humanTitle = f.title || 'Outdated approved logo';
+      rule = {
+        rule_code: 'RULE-VISUAL-001',
+        title: 'Approved brand asset versioning and currency requirement',
+        category: 'VISUAL_BRANDING',
+        id: 'rule-visual-001',
+      };
+    } else if (f.finding_type === 'LOW_CONTRAST') {
+      category = 'tone';
+      categoryLabel = 'Tone';
+      severity = 'CRITICAL';
+      humanTitle = f.title || 'Banner text contrast is too low';
+      rule = {
+        rule_code: 'RULE-A11Y-002',
+        title: 'WCAG 2.2 AA §1.4.3 Text Contrast Minimum (4.5:1)',
+        category: 'ACCESSIBILITY',
+        id: 'rule-a11y-002',
+      };
+    } else if (f.finding_type === 'MISSING_ALT_TEXT') {
+      category = 'unverified';
+      categoryLabel = 'Unverified';
+      severity = 'HIGH';
+      humanTitle = f.title || 'Missing image alt text';
+      rule = {
+        rule_code: 'RULE-A11Y-001',
+        title: 'WCAG 2.2 AA §1.1.1 Non-text Content (Alt-text requirement)',
+        category: 'ACCESSIBILITY',
+        id: 'rule-a11y-001',
+      };
     }
 
     // Build Evidence Views with correct relations
     const evidenceViews: FindingEvidenceView[] = [];
 
-    if (f.finding_evidence && f.finding_evidence.length > 0) {
+    if (f.finding_type === 'ASSET_MISMATCH') {
+      let evObj: any = {};
+      try {
+        evObj = typeof (f as any).diff === 'string' ? JSON.parse((f as any).diff) : ((f as any).diff || {});
+      } catch {}
+      const matchedV = evObj.matchedVersion || 'v2';
+      const expectedV = evObj.expectedVersion || 'v4';
+      evidenceViews.push({
+        documentName: 'NexTech Approved Brand Asset Library',
+        versionSection: `Asset: ${evObj.assetId || 'nextech-logo-primary'} · Current: ${expectedV}`,
+        snippet: `Uploaded creative matched outdated brand mark version ${matchedV} (valid ${evObj.validityInterval || '2023-01-01 to 2025-12-31'}). Current approved standard is version ${expectedV} (effective 2026-01-01).`,
+        relation: 'Contradicts',
+        relationVariant: 'contradicted',
+        validity: 'Expired 31 Dec 2025',
+        factCode: 'ASSET-LOGO-001',
+        factTitle: `Brand Logo Version (${matchedV} vs ${expectedV})`,
+      });
+    } else if (f.finding_type === 'LOW_CONTRAST') {
+      let evObj: any = {};
+      try {
+        evObj = typeof (f as any).diff === 'string' ? JSON.parse((f as any).diff) : ((f as any).diff || {});
+      } catch {}
+      const ratio = evObj.ratio || 2.0;
+      evidenceViews.push({
+        documentName: 'W3C Web Content Accessibility Guidelines (WCAG) 2.2',
+        versionSection: 'Level AA · Success Criterion 1.4.3 Contrast (Minimum)',
+        snippet: `Measured relative luminance contrast ratio is ${ratio}:1 (Foreground ${evObj.foreground || '#AAB0BA'} on Background ${evObj.background || '#F3F4F6'}), failing the required 4.5:1 threshold for normal text.`,
+        relation: 'Contradicts',
+        relationVariant: 'contradicted',
+        validity: 'WCAG 2.2 AA Standard',
+        factCode: 'A11Y-CONTRAST',
+        factTitle: `Text Contrast (${ratio}:1 vs 4.5:1 required)`,
+      });
+    } else if (f.finding_type === 'MISSING_ALT_TEXT') {
+      evidenceViews.push({
+        documentName: 'W3C Web Content Accessibility Guidelines (WCAG) 2.2',
+        versionSection: 'Level AA · Success Criterion 1.1.1 Non-text Content',
+        snippet: 'Digital creative published on web or social channels must include descriptive alternative text (or be explicitly marked decorative) for screen readers.',
+        relation: 'No approved source found',
+        relationVariant: 'unverified',
+        validity: 'WCAG 2.2 AA Standard',
+        factCode: 'A11Y-ALT-TEXT',
+        factTitle: 'Alternative Text Presence',
+      });
+    } else if (f.finding_evidence && f.finding_evidence.length > 0) {
       for (const ev of f.finding_evidence) {
         const fact = ev.approved_facts;
         const isFactContradicted = category === 'contradicted';

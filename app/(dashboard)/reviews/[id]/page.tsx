@@ -95,6 +95,28 @@ export default async function ReviewPage({ params }: { params: Promise<{ id: str
 
   const factsMap = new Map(allFacts.map((f) => [f.id, f]));
 
+  // Check for attached visual asset
+  let initialVisualAsset: any = null;
+  try {
+    const fs = await import('fs');
+    const path = await import('path');
+    const uploadsDir = path.join(process.cwd(), '.brandvault', 'uploads');
+    if (fs.existsSync(uploadsDir)) {
+      const files = fs.readdirSync(uploadsDir);
+      const match = files.find((f) => f.startsWith(`${submission.id}_`));
+      if (match) {
+        const filePath = path.join(uploadsDir, match);
+        const stat = fs.statSync(filePath);
+        initialVisualAsset = {
+          filename: match.replace(`${submission.id}_`, ''),
+          storageKey: match,
+          url: `/api/uploads/${match}`,
+          byteSize: stat.size,
+        };
+      }
+    }
+  } catch {}
+
   // Populate finding evidence
   const findingsWithEvidence = await Promise.all(
     rawFindings.map(async (f) => {
@@ -122,6 +144,7 @@ export default async function ReviewPage({ params }: { params: Promise<{ id: str
       allFacts={allFacts}
       userRole={ctx.role}
       userId={ctx.userId}
+      initialVisualAsset={initialVisualAsset}
     />
   );
 }

@@ -8,7 +8,7 @@ import {
   Globe, Camera, Briefcase, Mail, Megaphone, MoreHorizontal,
   Info, RotateCw, Play, CheckCircle2, Lock, Award, FileText,
   FileCheck2, ChevronRight, X, ExternalLink, HelpCircle, Layers, BookOpen,
-  Plus, Box
+  Plus, Box, Image as LucideImage, Upload, Trash2, Eye, Palette
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -105,6 +105,47 @@ export default function ReviewStudioPage() {
   const [selectedSampleId, setSelectedSampleId] = useState<string | null>(null);
   const [sampleConfirm, setSampleConfirm] = useState<SampleBenchmark | null>(null);
   const [clearConfirm, setClearConfirm] = useState(false);
+
+  // Visual Creative State (Blueprint Section 7.1)
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageMeta, setImageMeta] = useState<{ width: number; height: number; size: number } | null>(null);
+  const [altText, setAltText] = useState('');
+  const [isDecorative, setIsDecorative] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageSelect = (file: File) => {
+    const allowed = ['image/png', 'image/jpeg', 'image/webp'];
+    if (!allowed.includes(file.type)) {
+      setError('Choose a PNG, JPEG, or WebP image.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError('Image exceeds 10MB upload limit.');
+      return;
+    }
+    setError(null);
+    setImageFile(file);
+    const objectUrl = URL.createObjectURL(file);
+    setImagePreview(objectUrl);
+
+    if (typeof window !== 'undefined') {
+      const img = new window.Image();
+      img.onload = () => {
+        setImageMeta({ width: img.width, height: img.height, size: file.size });
+      };
+      img.src = objectUrl;
+    }
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
+    setImagePreview(null);
+    setImageMeta(null);
+    setAltText('');
+    setIsDecorative(false);
+  };
 
   // Autosave State
   const [autosaveTime, setAutosaveTime] = useState<string | null>(null);
@@ -553,7 +594,24 @@ export default function ReviewStudioPage() {
         // ignore
       }
 
-      // Step 2: Trigger real analysis pipeline
+      // Step 2: Upload visual asset if attached
+      if (imageFile) {
+        setAnalysisStep(2);
+        try {
+          const form = new FormData();
+          form.append('file', imageFile);
+          if (altText.trim()) form.append('altText', altText.trim());
+          form.append('isDecorative', String(isDecorative));
+          await fetch(`/api/submissions/${submissionId}/visual-assets`, {
+            method: 'POST',
+            body: form,
+          });
+        } catch (imgErr) {
+          console.warn('Visual asset upload error:', imgErr);
+        }
+      }
+
+      // Step 3: Trigger real analysis pipeline
       try {
         await fetch(`/api/submissions/${submissionId}/analyze`, {
           method: 'POST',
@@ -1186,7 +1244,123 @@ export default function ReviewStudioPage() {
                 </div>
               </div>
 
-              {/* e. Sticky Action Bar */}
+              {/* e. Optional Product Post Image / Creative Upload (Blueprint Section 7.1) */}
+              <div className="pt-2">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-semibold text-ink flex items-center gap-1.5">
+                      <LucideImage className="w-3.5 h-3.5 text-brand" />
+                      <span>Product Creative / Ad Image</span>
+                    </label>
+                    <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-sand text-ink-3 border border-sand-dark/30">
+                      Optional
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-ink-3">OpenCV Logo & WCAG 2.2 Checks</span>
+                </div>
+
+                {!imageFile ? (
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const file = e.dataTransfer.files?.[0];
+                      if (file) handleImageSelect(file);
+                    }}
+                    className="p-5 text-center border-2 border-dashed border-sand-dark/70 rounded-xl hover:border-brand/60 bg-sand/15 hover:bg-sand/30 transition-all cursor-pointer space-y-2 group"
+                  >
+                    <div className="w-9 h-9 rounded-full bg-brand/10 text-brand flex items-center justify-center mx-auto group-hover:scale-105 transition-transform">
+                      <Upload className="w-4 h-4" />
+                    </div>
+                    <div className="text-xs font-semibold text-ink">
+                      Drag & drop product post image, or <span className="text-brand underline">browse</span>
+                    </div>
+                    <p className="text-[11px] text-ink-3 max-w-[340px] mx-auto">
+                      Supports PNG, JPEG, WebP (up to 10MB). Automatically checks brand logo currency, text contrast, and accessibility.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-xl border border-sand-dark/40 bg-surface space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        {imagePreview && (
+                          <div className="w-16 h-16 rounded-lg overflow-hidden border border-sand-dark/30 bg-sand/20 shrink-0">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={imagePreview}
+                              alt={altText || 'Preview'}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        )}
+                        <div className="space-y-0.5">
+                          <div className="text-xs font-bold text-ink truncate max-w-[280px]">
+                            {imageFile.name}
+                          </div>
+                          <div className="text-[11px] text-ink-3 font-mono flex items-center gap-2">
+                            <span>{(imageFile.size / 1024).toFixed(0)} KB</span>
+                            {imageMeta && <span>· {imageMeta.width} × {imageMeta.height} px</span>}
+                          </div>
+                          <span className="inline-flex items-center gap-1 text-[10px] text-supported font-medium">
+                            <CheckCircle2 className="w-3 h-3" />
+                            Image attached for visual verification
+                          </span>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={removeImage}
+                        className="p-1.5 rounded-lg text-ink-3 hover:text-evidence-contradicted hover:bg-sand/60 transition-colors"
+                        title="Remove attached image"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* Alt-Text & Decorative Configuration */}
+                    <div className="pt-2 border-t border-sand-dark/20 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-semibold text-ink">
+                          Intended Alt-Text for Web/Social
+                        </label>
+                        <span className="text-[10px] text-ink-3">WCAG 2.2 §1.1.1</span>
+                      </div>
+                      <input
+                        type="text"
+                        value={altText}
+                        onChange={(e) => setAltText(e.target.value)}
+                        disabled={isDecorative}
+                        placeholder={isDecorative ? 'Marked decorative (alt="")' : 'e.g., NexTech Nova laptop featuring space grey chassis and 15-inch screen'}
+                        className="w-full px-3 py-2 rounded-lg text-xs bg-sand/20 border border-sand-dark/30 focus:border-brand focus:outline-none"
+                      />
+                      <label className="flex items-center gap-2 text-[11px] text-ink-2 cursor-pointer pt-0.5">
+                        <input
+                          type="checkbox"
+                          checked={isDecorative}
+                          onChange={(e) => setIsDecorative(e.target.checked)}
+                          className="rounded border-sand-dark text-brand focus:ring-brand"
+                        />
+                        <span>This image is purely decorative (empty alt=&quot;&quot; permitted)</span>
+                      </label>
+                    </div>
+                  </div>
+                )}
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleImageSelect(file);
+                  }}
+                />
+              </div>
+
+              {/* f. Sticky Action Bar */}
               <div className="sticky bottom-0 -mx-6 sm:-mx-8 -mb-6 sm:-mb-8 p-4 sm:p-5 bg-surface/95 backdrop-blur-md border-t border-line rounded-b-[14px] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 z-20 shadow-sm">
                 {/* Left: Origin Preservation Note */}
                 <div className="flex items-center gap-2 text-xs text-ink-2">

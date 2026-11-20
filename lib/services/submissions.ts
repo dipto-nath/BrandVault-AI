@@ -93,6 +93,39 @@ export async function runAnalysis(submissionId: string, workspaceId: string, use
       guidelines,
       facts,
     });
+
+    // Merge visual check findings if an image asset exists for this submission
+    try {
+      const fs = await import('fs');
+      const path = await import('path');
+      const uploadsDir = path.join(process.cwd(), '.brandvault', 'uploads');
+      if (fs.existsSync(uploadsDir)) {
+        const files = fs.readdirSync(uploadsDir);
+        const match = files.find((f) => f.startsWith(`${submissionId}_`));
+        if (match) {
+          const { runVisualCheck } = await import('@/lib/ai/visual-checker');
+          const visualResult = await runVisualCheck({
+            imagePath: path.join(uploadsDir, match),
+            channel: submission.channel || 'WEBSITE',
+          });
+          const visualFindingResults = visualResult.findings.map((f) => ({
+            type: f.type,
+            severity: f.severity,
+            title: f.title,
+            excerpt: f.originalPhrase,
+            explanation: f.message,
+            ruleId: f.ruleId,
+            evidenceIds: [],
+            suggestedCorrection: f.suggestedCorrection,
+            confidence: f.confidence,
+            diff: f.evidence,
+          }));
+          result.findings = [...result.findings, ...visualFindingResults];
+        }
+      }
+    } catch (vErr) {
+      console.warn('Visual check during pipeline error:', vErr);
+    }
   } catch (err: any) {
     await storage.updateAnalysisRun(run.id, { status: 'FAILED', error_message: err?.message ?? String(err), completed_at: new Date().toISOString() });
     await storage.updateSubmission(submissionId, { status: 'FAILED' });
@@ -136,6 +169,7 @@ export async function runAnalysis(submissionId: string, workspaceId: string, use
     excerpt: f.excerpt,
     explanation: f.explanation,
     suggested_correction: f.suggestedCorrection ?? null,
+    diff: f.diff ?? null,
     confidence: f.confidence,
     status: 'OPEN',
   }));

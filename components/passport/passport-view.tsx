@@ -34,6 +34,7 @@ interface PassportViewProps {
   runs: AnalysisRun[];
   auditLogs: AuditLog[];
   workspaceName: string;
+  visualAsset?: any;
 }
 
 export function PassportView({
@@ -45,6 +46,7 @@ export function PassportView({
   runs,
   auditLogs,
   workspaceName,
+  visualAsset,
 }: PassportViewProps) {
   const passportId = submission.passport_reference || getPassportReference(submission);
   const latestRun = runs[0];
@@ -346,12 +348,83 @@ export function PassportView({
           </div>
         </div>
 
+        {/* 3. Visual & Accessibility Verification (Blueprint Section 6 & 11) */}
+        {visualAsset && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 border-b border-border pb-2">
+              <ShieldCheck className="w-4 h-4 text-accent" />
+              <h2 className="text-sm font-bold uppercase tracking-wider text-ink-dark">
+                3. Visual & Accessibility Audit (OpenCV + WCAG 2.2)
+              </h2>
+            </div>
+
+            <div className="p-4 rounded-xl border border-border bg-surface text-xs space-y-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-20 h-20 rounded-lg overflow-hidden border border-border bg-sand/20 shrink-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={visualAsset.url}
+                      alt={visualAsset.filename || 'Creative'}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <span className="font-bold text-ink-dark text-sm block">
+                      {visualAsset.filename}
+                    </span>
+                    <span className="text-[11px] font-mono text-ink-secondary block">
+                      {(visualAsset.byteSize / 1024).toFixed(0)} KB · Labelled Asset
+                    </span>
+                    <span className="text-[10px] uppercase font-semibold tracking-wider text-brand block">
+                      Audited by BrandVault Visual Pipeline
+                    </span>
+                  </div>
+                </div>
+
+                {/* Status Badges */}
+                <div className="flex flex-wrap gap-2">
+                  {findings.some((f) => f.finding_type === 'ASSET_MISMATCH') ? (
+                    <Badge variant="destructive" className="text-[11px] py-1 px-2.5">
+                      🔴 Outdated Logo (v2 vs v4)
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-[11px] py-1 px-2.5 bg-evidence-supported/10 text-evidence-supported border-evidence-supported/30">
+                      🟢 Approved Logo (v4)
+                    </Badge>
+                  )}
+
+                  {findings.some((f) => f.finding_type === 'LOW_CONTRAST') ? (
+                    <Badge variant="destructive" className="text-[11px] py-1 px-2.5">
+                      🔴 Contrast Below 4.5:1
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-[11px] py-1 px-2.5 bg-evidence-supported/10 text-evidence-supported border-evidence-supported/30">
+                      🟢 WCAG 2.2 AA Contrast Pass
+                    </Badge>
+                  )}
+
+                  {findings.some((f) => f.finding_type === 'MISSING_ALT_TEXT') ? (
+                    <Badge variant="secondary" className="text-[11px] py-1 px-2.5 bg-amber-500/10 text-amber-700 border-amber-500/30">
+                      🟡 Missing Alt Text
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-[11px] py-1 px-2.5 bg-evidence-supported/10 text-evidence-supported border-evidence-supported/30">
+                      🟢 Alt-Text Compliant
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 4. Detected Brand Findings & Evidence Records */}
         <div className="space-y-4">
           <div className="flex items-center gap-2 border-b border-border pb-2">
             <ShieldCheck className="w-4 h-4 text-accent" />
             <h2 className="text-sm font-bold uppercase tracking-wider text-ink-dark">
-              3. Policy Violations & Source Ground Truth ({findings.length})
+              4. Policy Violations & Source Ground Truth ({findings.length})
             </h2>
           </div>
 

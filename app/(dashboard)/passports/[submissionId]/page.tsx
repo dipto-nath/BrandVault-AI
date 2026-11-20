@@ -99,6 +99,28 @@ export default async function PassportDetailPage({
   ]);
 
   const factsMap = new Map(allFacts.map((f) => [f.id, f]));
+
+  // Check for attached visual asset
+  let visualAsset: any = null;
+  try {
+    const fs = await import('fs');
+    const path = await import('path');
+    const uploadsDir = path.join(process.cwd(), '.brandvault', 'uploads');
+    if (fs.existsSync(uploadsDir)) {
+      const files = fs.readdirSync(uploadsDir);
+      const match = files.find((f) => f.startsWith(`${submission.id}_`));
+      if (match) {
+        const filePath = path.join(uploadsDir, match);
+        const stat = fs.statSync(filePath);
+        visualAsset = {
+          filename: match.replace(`${submission.id}_`, ''),
+          url: `/api/uploads/${match}`,
+          byteSize: stat.size,
+        };
+      }
+    }
+  } catch {}
+
   const findings = await Promise.all(
     rawFindings.map(async (f) => {
       const rawEvidence = await storage.listFindingEvidence(f.id);
@@ -123,6 +145,7 @@ export default async function PassportDetailPage({
       runs={runs}
       auditLogs={auditLogs}
       workspaceName="NexaTech"
+      visualAsset={visualAsset}
     />
   );
 }

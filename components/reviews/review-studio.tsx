@@ -9,7 +9,7 @@ import {
   ExternalLink, ChevronRight, MessageSquare, Info, ChevronLeft, Loader2,
   Copy, CheckCheck, Eye, SlidersHorizontal, BookOpen, AlertCircle,
   HelpCircle, ThumbsUp, ThumbsDown, CornerDownRight, Split, RefreshCw, X,
-  CheckCircle, ArrowUpRight, Flame, ShieldX
+  CheckCircle, ArrowUpRight, Flame, ShieldX, Image as LucideImage, Upload, Palette
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,7 @@ interface ReviewStudioProps {
   allFacts?: ApprovedFact[];
   userRole?: string;
   userId?: string;
+  initialVisualAsset?: any;
 }
 
 export function ReviewStudio({
@@ -46,12 +47,58 @@ export function ReviewStudio({
   allFacts = [],
   userRole = 'CREATOR',
   userId,
+  initialVisualAsset = null,
 }: ReviewStudioProps) {
   const router = useRouter();
   const [submission, setSubmission] = useState(initialSubmission);
   const [claims, setClaims] = useState(initialClaims);
   const [decisions, setDecisions] = useState(initialDecisions);
   const [versions, setVersions] = useState(initialVersions);
+
+  // Visual asset state
+  const [visualAsset, setVisualAsset] = useState<any>(initialVisualAsset || null);
+  const [leftTab, setLeftTab] = useState<'copy' | 'visual'>(initialVisualAsset ? 'visual' : 'copy');
+  const [uploadingVisual, setUploadingVisual] = useState(false);
+  const [visualError, setVisualError] = useState<string | null>(null);
+  const [altTextInput, setAltTextInput] = useState('');
+  const [isDecorativeInput, setIsDecorativeInput] = useState(false);
+  const visualFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Upload handler for visual creative
+  const handleVisualUpload = async (file: File) => {
+    setUploadingVisual(true);
+    setVisualError(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      if (altTextInput) formData.append('altText', altTextInput);
+      formData.append('isDecorative', String(isDecorativeInput));
+
+      const res = await fetch(`/api/submissions/${submission.id}/visual-assets`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to upload and analyze image');
+      }
+
+      const data = await res.json();
+      setVisualAsset({
+        filename: file.name,
+        url: data.imageUrl,
+        byteSize: file.size,
+        analysis: data.visualReview,
+      });
+      setLeftTab('visual');
+      router.refresh();
+    } catch (err: any) {
+      setVisualError(err?.message || 'Visual analysis failed');
+    } finally {
+      setUploadingVisual(false);
+    }
+  };
 
   // Active view tab: 'findings' | 'claims' | 'diff' | 'approval' | 'activity'
   const [activeTab, setActiveTab] = useState<'findings' | 'claims' | 'diff' | 'approval' | 'activity'>('findings');
@@ -696,107 +743,336 @@ export function ReviewStudio({
       {/* TAB 1: FINDINGS & SPLIT-PANE DESK */}
       {activeTab === 'findings' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Left Column: Submitted Copy (5/12) */}
+          {/* Left Column: Submitted Copy & Visual Creative (5/12) */}
           <div className="lg:col-span-5 lg:sticky lg:top-20 space-y-4 self-start">
-            <Card className="border-sand-dark/40 bg-surface shadow-xs">
-              <CardHeader className="py-3 px-4 border-b border-sand-dark/30 flex flex-row items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-ink-muted" />
-                  <CardTitle className="text-sm font-bold text-ink-dark">Submitted Copy</CardTitle>
-                </div>
-                {/* Original / Revised toggle */}
-                <div className="flex items-center rounded-lg bg-sand/60 p-0.5 border border-sand-dark/30 text-xs font-semibold">
-                  <button
-                    onClick={() => setCopyMode('original')}
-                    className={`px-2.5 py-1 rounded-md transition-all ${
-                      copyMode === 'original'
-                        ? 'bg-surface text-ink-dark shadow-xs'
-                        : 'text-ink-muted hover:text-ink-dark'
-                    }`}
-                  >
-                    Original
-                  </button>
-                  <button
-                    onClick={() => setCopyMode('revised')}
-                    className={`px-2.5 py-1 rounded-md transition-all ${
-                      copyMode === 'revised'
-                        ? 'bg-surface text-ink-dark shadow-xs'
-                        : 'text-ink-muted hover:text-ink-dark'
-                    }`}
-                  >
-                    Revised
-                    {findingModels.some(f => f.state === 'ACCEPTED') && (
-                      <span className="ml-1 w-1.5 h-1.5 rounded-full bg-evidence-supported inline-block" />
-                    )}
-                  </button>
-                </div>
-              </CardHeader>
-              <CardContent className="p-4 sm:p-5">
-                <div className="font-serif text-base sm:text-lg leading-relaxed text-ink-dark/95 whitespace-pre-wrap select-text">
-                  {copyMode === 'original' ? (
-                    // Highlighted original copy
-                    <RenderHighlightedCopy
-                      text={submission.current_content}
-                      findings={findingModels}
-                      activeFindingId={activeFindingId}
-                      onHighlightClick={scrollToFinding}
-                    />
-                  ) : (
-                    // Revised copy with changes applied
-                    <div className="space-y-4 font-sans">
-                      <div className="p-3 bg-supported-soft/60 rounded-xl border border-supported/30 text-xs flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 text-ink-dark font-medium">
-                          <Sparkles className="w-3.5 h-3.5 text-supported" />
-                          <span>
-                            {findingModels.filter(f => f.state === 'ACCEPTED').length > 0
-                              ? `${findingModels.filter(f => f.state === 'ACCEPTED').length} accepted correction(s) applied live.`
-                              : 'No corrections accepted yet. Accept suggestions on the right to see live updates.'}
-                          </span>
+            {/* View Switcher: Copy Desk vs Visual Creative */}
+            <div className="flex items-center gap-1.5 p-1 bg-sand/60 rounded-xl border border-sand-dark/30">
+              <button
+                type="button"
+                onClick={() => setLeftTab('copy')}
+                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                  leftTab === 'copy'
+                    ? 'bg-surface text-ink-dark shadow-xs'
+                    : 'text-ink-muted hover:text-ink-dark'
+                }`}
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>Submitted Copy</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setLeftTab('visual')}
+                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                  leftTab === 'visual'
+                    ? 'bg-surface text-ink-dark shadow-xs'
+                    : 'text-ink-muted hover:text-ink-dark'
+                }`}
+              >
+                <LucideImage className="w-3.5 h-3.5" />
+                <span>Product Creative</span>
+                {visualAsset ? (
+                  <span className="w-2 h-2 rounded-full bg-evidence-supported" />
+                ) : (
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-sand text-ink-secondary">Visual Check</span>
+                )}
+              </button>
+            </div>
+
+            {leftTab === 'copy' ? (
+              <Card className="border-sand-dark/40 bg-surface shadow-xs">
+                <CardHeader className="py-3 px-4 border-b border-sand-dark/30 flex flex-row items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-ink-muted" />
+                    <CardTitle className="text-sm font-bold text-ink-dark">Submitted Copy</CardTitle>
+                  </div>
+                  {/* Original / Revised toggle */}
+                  <div className="flex items-center rounded-lg bg-sand/60 p-0.5 border border-sand-dark/30 text-xs font-semibold">
+                    <button
+                      onClick={() => setCopyMode('original')}
+                      className={`px-2.5 py-1 rounded-md transition-all ${
+                        copyMode === 'original'
+                          ? 'bg-surface text-ink-dark shadow-xs'
+                          : 'text-ink-muted hover:text-ink-dark'
+                      }`}
+                    >
+                      Original
+                    </button>
+                    <button
+                      onClick={() => setCopyMode('revised')}
+                      className={`px-2.5 py-1 rounded-md transition-all ${
+                        copyMode === 'revised'
+                          ? 'bg-surface text-ink-dark shadow-xs'
+                          : 'text-ink-muted hover:text-ink-dark'
+                      }`}
+                    >
+                      Revised
+                      {findingModels.some(f => f.state === 'ACCEPTED') && (
+                        <span className="ml-1 w-1.5 h-1.5 rounded-full bg-evidence-supported inline-block" />
+                      )}
+                    </button>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-4 sm:p-5">
+                  <div className="font-serif text-base sm:text-lg leading-relaxed text-ink-dark/95 whitespace-pre-wrap select-text">
+                    {copyMode === 'original' ? (
+                      // Highlighted original copy
+                      <RenderHighlightedCopy
+                        text={submission.current_content}
+                        findings={findingModels}
+                        activeFindingId={activeFindingId}
+                        onHighlightClick={scrollToFinding}
+                      />
+                    ) : (
+                      // Revised copy with changes applied
+                      <div className="space-y-4 font-sans">
+                        <div className="p-3 bg-supported-soft/60 rounded-xl border border-supported/30 text-xs flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 text-ink-dark font-medium">
+                            <Sparkles className="w-3.5 h-3.5 text-supported" />
+                            <span>
+                              {findingModels.filter(f => f.state === 'ACCEPTED').length > 0
+                                ? `${findingModels.filter(f => f.state === 'ACCEPTED').length} accepted correction(s) applied live.`
+                                : 'No corrections accepted yet. Accept suggestions on the right to see live updates.'}
+                            </span>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={copyRevisedDraft}
+                            className="h-7 text-xs bg-surface border-sand-dark/40 hover:bg-sand/40 font-medium"
+                          >
+                            {copiedRevised ? (
+                              <>
+                                <Check className="w-3.5 h-3.5 text-supported mr-1 stroke-[2.5]" />
+                                Copied!
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3.5 h-3.5 text-ink-muted mr-1" />
+                                Copy revised draft
+                              </>
+                            )}
+                          </Button>
                         </div>
+                        <div className="p-4 bg-sand/20 rounded-xl border border-sand-dark/30 font-serif text-base sm:text-lg leading-relaxed text-ink-dark/95 whitespace-pre-wrap select-text">
+                          {revisedContent}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Legend */}
+                  <div className="mt-6 pt-4 border-t border-sand-dark/30 text-[11px] text-ink-muted flex flex-wrap items-center gap-3">
+                    <span className="font-semibold uppercase tracking-wider text-[10px]">Highlights:</span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-2.5 h-2.5 rounded-xs bg-evidence-contradicted/25 border-b-2 border-evidence-contradicted" />
+                      Contradicted
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-2.5 h-2.5 rounded-xs bg-evidence-unverified/25 border-b-2 border-evidence-unverified" />
+                      Unverified
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-2.5 h-2.5 rounded-xs bg-accent-terracotta/25 border-b-2 border-accent-terracotta" />
+                      Tone / Terminology
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              /* Visual Creative Card */
+              <Card className="border-sand-dark/40 bg-surface shadow-xs">
+                <CardHeader className="py-3 px-4 border-b border-sand-dark/30 flex flex-row items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <LucideImage className="w-4 h-4 text-brand" />
+                    <CardTitle className="text-sm font-bold text-ink-dark">Product Creative Inspection</CardTitle>
+                  </div>
+                  {visualAsset && (
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-sand/60 text-ink-secondary border border-sand-dark/30">
+                      {(visualAsset.byteSize / 1024).toFixed(0)} KB
+                    </span>
+                  )}
+                </CardHeader>
+                <CardContent className="p-4 sm:p-5 space-y-4">
+                  {visualAsset ? (
+                    <div className="space-y-4">
+                      {/* Image Viewer */}
+                      <div className="relative rounded-xl overflow-hidden border border-sand-dark/40 bg-sand/20 group">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={visualAsset.url}
+                          alt={visualAsset.filename || 'Product creative'}
+                          className="w-full h-auto max-h-[320px] object-contain mx-auto"
+                        />
+                      </div>
+
+                      {/* Visual & Accessibility Checks Summary */}
+                      <div className="p-3.5 bg-sand/30 rounded-xl border border-sand-dark/30 space-y-2.5 text-xs">
+                        <div className="font-semibold text-ink-dark flex items-center justify-between">
+                          <span className="flex items-center gap-1.5">
+                            <Palette className="w-3.5 h-3.5 text-brand" />
+                            Visual & Accessibility Verdict
+                          </span>
+                          <span className="text-[10px] text-ink-muted">OpenCV + WCAG 2.2</span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                          {/* Asset check */}
+                          <div className="p-2 rounded-lg bg-surface border border-sand-dark/30">
+                            <div className="text-[10px] text-ink-muted font-bold uppercase tracking-wider mb-1">
+                              Brand Asset
+                            </div>
+                            {findingModels.some(f => f.category === 'contradicted' && f.title.toLowerCase().includes('logo')) ? (
+                              <div className="text-evidence-contradicted font-semibold flex items-center gap-1 text-[11px]">
+                                <XCircle className="w-3 h-3 shrink-0" />
+                                <span>Outdated (v2)</span>
+                              </div>
+                            ) : (
+                              <div className="text-evidence-supported font-semibold flex items-center gap-1 text-[11px]">
+                                <CheckCircle2 className="w-3 h-3 shrink-0" />
+                                <span>v4 Approved</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Contrast check */}
+                          <div className="p-2 rounded-lg bg-surface border border-sand-dark/30">
+                            <div className="text-[10px] text-ink-muted font-bold uppercase tracking-wider mb-1">
+                              WCAG Contrast
+                            </div>
+                            {findingModels.some(f => f.title.toLowerCase().includes('contrast')) ? (
+                              <div className="text-evidence-contradicted font-semibold flex items-center gap-1 text-[11px]">
+                                <AlertTriangle className="w-3 h-3 shrink-0" />
+                                <span>&lt; 4.5:1 (Fail)</span>
+                              </div>
+                            ) : (
+                              <div className="text-evidence-supported font-semibold flex items-center gap-1 text-[11px]">
+                                <CheckCircle2 className="w-3 h-3 shrink-0" />
+                                <span>&ge; 4.5:1 (Pass)</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Alt-Text check */}
+                          <div className="p-2 rounded-lg bg-surface border border-sand-dark/30">
+                            <div className="text-[10px] text-ink-muted font-bold uppercase tracking-wider mb-1">
+                              Alt-Text
+                            </div>
+                            {findingModels.some(f => f.title.toLowerCase().includes('alt text')) ? (
+                              <div className="text-evidence-unverified font-semibold flex items-center gap-1 text-[11px]">
+                                <AlertCircle className="w-3 h-3 shrink-0" />
+                                <span>Missing</span>
+                              </div>
+                            ) : (
+                              <div className="text-evidence-supported font-semibold flex items-center gap-1 text-[11px]">
+                                <CheckCircle2 className="w-3 h-3 shrink-0" />
+                                <span>Compliant</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Replace image action */}
+                      <div className="flex items-center justify-between pt-1">
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={copyRevisedDraft}
-                          className="h-7 text-xs bg-surface border-sand-dark/40 hover:bg-sand/40 font-medium"
+                          onClick={() => visualFileInputRef.current?.click()}
+                          disabled={uploadingVisual}
+                          className="text-xs h-8 border-sand-dark/40 hover:bg-sand/40"
                         >
-                          {copiedRevised ? (
-                            <>
-                              <Check className="w-3.5 h-3.5 text-supported mr-1 stroke-[2.5]" />
-                              Copied!
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="w-3.5 h-3.5 text-ink-muted mr-1" />
-                              Copy revised draft
-                            </>
-                          )}
+                          <Upload className="w-3 h-3 mr-1.5" />
+                          Replace Image
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setLeftTab('copy')}
+                          className="text-xs h-8 text-brand hover:underline"
+                        >
+                          View Copy Highlights &rarr;
                         </Button>
                       </div>
-                      <div className="p-4 bg-sand/20 rounded-xl border border-sand-dark/30 font-serif text-base sm:text-lg leading-relaxed text-ink-dark/95 whitespace-pre-wrap select-text">
-                        {revisedContent}
+                    </div>
+                  ) : (
+                    /* Upload panel when no image is attached */
+                    <div className="space-y-4">
+                      <div
+                        onClick={() => visualFileInputRef.current?.click()}
+                        className="p-6 text-center border-2 border-dashed border-sand-dark/60 rounded-xl hover:border-brand/60 bg-sand/10 hover:bg-sand/30 transition-all cursor-pointer space-y-2 group"
+                      >
+                        <div className="w-10 h-10 rounded-full bg-brand/10 text-brand flex items-center justify-center mx-auto group-hover:scale-105 transition-transform">
+                          <Upload className="w-5 h-5" />
+                        </div>
+                        <h4 className="font-semibold text-xs text-ink-dark">Upload Product Post Image</h4>
+                        <p className="text-[11px] text-ink-muted max-w-[260px] mx-auto leading-relaxed">
+                          Drag and drop or click to upload your creative (PNG, JPEG, WebP up to 10MB).
+                        </p>
                       </div>
+
+                      <div className="space-y-2">
+                        <label className="text-[11px] font-semibold text-ink-dark block">
+                          Intended Alt-Text (Optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={altTextInput}
+                          onChange={(e) => setAltTextInput(e.target.value)}
+                          placeholder="e.g., NexTech Nova laptop showing 15-inch display in space grey"
+                          className="w-full px-3 py-2 rounded-lg text-xs bg-surface border border-sand-dark/40 focus:border-brand focus:outline-none"
+                        />
+                        <label className="flex items-center gap-2 text-[11px] text-ink-muted cursor-pointer pt-1">
+                          <input
+                            type="checkbox"
+                            checked={isDecorativeInput}
+                            onChange={(e) => setIsDecorativeInput(e.target.checked)}
+                            className="rounded border-sand-dark text-brand focus:ring-brand"
+                          />
+                          <span>This is a decorative image (empty alt=&quot;&quot; permitted by WCAG)</span>
+                        </label>
+                      </div>
+
+                      {visualError && (
+                        <div className="p-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-evidence-contradicted">
+                          {visualError}
+                        </div>
+                      )}
+
+                      <Button
+                        type="button"
+                        onClick={() => visualFileInputRef.current?.click()}
+                        disabled={uploadingVisual}
+                        className="w-full h-8 text-xs bg-brand text-white hover:bg-brand/90 font-medium"
+                      >
+                        {uploadingVisual ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                            Analyzing with OpenCV & WCAG…
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="w-3.5 h-3.5 mr-1.5" />
+                            Select & Run Visual Checks
+                          </>
+                        )}
+                      </Button>
                     </div>
                   )}
-                </div>
 
-                {/* Legend */}
-                <div className="mt-6 pt-4 border-t border-sand-dark/30 text-[11px] text-ink-muted flex flex-wrap items-center gap-3">
-                  <span className="font-semibold uppercase tracking-wider text-[10px]">Highlights:</span>
-                  <span className="flex items-center gap-1">
-                    <span className="w-2.5 h-2.5 rounded-xs bg-evidence-contradicted/25 border-b-2 border-evidence-contradicted" />
-                    Contradicted
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <span className="w-2.5 h-2.5 rounded-xs bg-evidence-unverified/25 border-b-2 border-evidence-unverified" />
-                    Unverified
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <span className="w-2.5 h-2.5 rounded-xs bg-accent-terracotta/25 border-b-2 border-accent-terracotta" />
-                    Tone / Terminology
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
+                  {/* Hidden file input */}
+                  <input
+                    ref={visualFileInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleVisualUpload(file);
+                    }}
+                  />
+                </CardContent>
+              </Card>
+            )}
 
             {/* Quick Context Card */}
             <div className="p-4 rounded-xl border border-sand-dark/40 bg-sand/30 text-xs text-ink-secondary space-y-2">
