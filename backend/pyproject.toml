@@ -3,6 +3,9 @@ name = "brandvault-backend"
 version = "1.0.0"
 description = "BrandVault AI Backend - Brand Governance Platform"
 requires-python = ">=3.11"
+
+[tool.poetry]
+package-mode = false
 dependencies = [
     "fastapi==0.111.0",
     "uvicorn[standard]==0.30.1",
