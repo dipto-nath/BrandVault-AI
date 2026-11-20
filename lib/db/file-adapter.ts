@@ -276,6 +276,14 @@ export class FileStorage implements Storage {
   }
   async getCurrentUser(): Promise<{ id: string; email: string | null; full_name: string | null } | null> { return { id: DEMO_USER_ID, email: 'demo@nexatech.example', full_name: 'Demo Reviewer' }; }
   async getProfile(userId: string): Promise<Profile | null> { return this.store().profiles.find((p) => p.id === userId) ?? null; }
+  async getProfileByEmail(email: string): Promise<Profile | null> { return this.store().profiles.find((p) => p.email?.toLowerCase() === email.trim().toLowerCase()) ?? null; }
+  async getWorkspaceForUserByEmail(email: string): Promise<Workspace | null> {
+    const p = await this.getProfileByEmail(email);
+    if (!p) return null;
+    const member = this.store().members.find((m) => m.user_id === p.id);
+    if (!member) return null;
+    return this.getWorkspace(member.workspace_id);
+  }
   async createProfile(data: { id: string; email: string | null; full_name: string | null }): Promise<Profile> {
     const store = this.store(); const p: Profile = { id: data.id, email: data.email ?? '', full_name: data.full_name, created_at: now() };
     store.profiles.push(p); persist(store); return clone(p);

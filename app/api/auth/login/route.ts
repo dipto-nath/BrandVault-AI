@@ -109,17 +109,35 @@ export async function POST(req: NextRequest) {
           },
         };
       } else {
-        // For non-demo accounts when backend is offline, verify profile presence
+        // For non-demo accounts, look up the user's REAL workspace!
         try {
-          // Attempt to find existing workspace & user
-          const demoWs = await storage.getDemoWorkspace();
-          const ws = demoWs || {
-            id: '11111111-1111-1111-1111-111111111111',
-            name: 'Workspace',
-            slug: 'workspace',
-          };
+          const userWs = await storage.getWorkspaceForUserByEmail(normalizedEmail);
+          let ws: any = userWs;
+          let userId: string = crypto.randomUUID();
 
-          const userId = crypto.randomUUID();
+          if (userWs) {
+            const existingProfile = await storage.getProfileByEmail(normalizedEmail);
+            if (existingProfile) {
+              userId = existingProfile.id;
+            }
+          } else {
+            // New user logging in without pre-created workspace: create their dedicated workspace
+            const namePart = normalizedEmail.split('@')[0];
+            const cleanSlug = namePart.replace(/[^\w-]/g, '').slice(0, 20) || 'workspace';
+            const finalSlug = `${cleanSlug}-${crypto.randomUUID().substring(0, 4)}`;
+            ws = await storage.createWorkspace({
+              name: `${namePart.charAt(0).toUpperCase() + namePart.slice(1)} Workspace`,
+              slug: finalSlug,
+              description: 'Company brand governance workspace.',
+            });
+            await storage.createProfile({
+              id: userId,
+              email: normalizedEmail,
+              full_name: namePart,
+            });
+            await storage.ensureMember(ws.id, userId, 'ADMIN');
+          }
+
           const accessToken = createLocalJwt({
             sub: userId,
             org_id: ws.id,
@@ -147,7 +165,8 @@ export async function POST(req: NextRequest) {
               created_at: new Date().toISOString(),
             },
           };
-        } catch {
+        } catch (err: any) {
+          console.error('Non-demo login resolution error:', err);
           return NextResponse.json({ error: 'Email or password is incorrect.' }, { status: 401 });
         }
       }

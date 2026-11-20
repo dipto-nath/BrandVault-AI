@@ -78,6 +78,53 @@ export class SupabaseStorage implements Storage {
       return null;
     }
   }
+  async getProfileByEmail(email: string): Promise<Profile | null> {
+    try {
+      const { data, error } = await db()
+        .from('profiles')
+        .select('*')
+        .ilike('email', email.trim())
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error || !data) return null;
+      return data as Profile;
+    } catch {
+      return null;
+    }
+  }
+  async getWorkspaceForUserByEmail(email: string): Promise<Workspace | null> {
+    try {
+      const profile = await this.getProfileByEmail(email);
+      if (!profile) return null;
+      const { data: members } = await db()
+        .from('workspace_members')
+        .select('workspace_id')
+        .eq('user_id', profile.id)
+        .order('created_at', { ascending: false });
+      if (members && members.length > 0) {
+        for (const m of members) {
+          const { data: ws } = await db()
+            .from('workspaces')
+            .select('*')
+            .eq('id', m.workspace_id)
+            .maybeSingle();
+          if (ws && ws.id !== '11111111-1111-1111-1111-111111111111') {
+            return ws as Workspace;
+          }
+        }
+        const { data: ws } = await db()
+          .from('workspaces')
+          .select('*')
+          .eq('id', members[0].workspace_id)
+          .maybeSingle();
+        if (ws) return ws as Workspace;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
   async createProfile(data: { id: string; email: string | null; full_name: string | null }): Promise<Profile> {
     return one(await db().from('profiles').insert({ id: data.id, email: data.email, full_name: data.full_name }).select().single());
   }

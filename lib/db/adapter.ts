@@ -45,6 +45,8 @@ export interface Storage {
   // ---------- Auth / profile ----------
   getCurrentUser(): Promise<{ id: string; email: string | null; full_name: string | null } | null>;
   getProfile(userId: string): Promise<Profile | null>;
+  getProfileByEmail(email: string): Promise<Profile | null>;
+  getWorkspaceForUserByEmail(email: string): Promise<Workspace | null>;
   createProfile(data: { id: string; email: string | null; full_name: string | null }): Promise<Profile>;
 
   // ---------- Workspace members ----------
