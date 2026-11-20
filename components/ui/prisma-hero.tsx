@@ -35,6 +35,16 @@ export const WordsPullUp = ({
     >
       {words.map((word, i) => {
         const isLast = i === words.length - 1;
+        const renderedWord =
+          word === "BrandVault" ? (
+            <span className="inline-block">
+              <span>Brand</span>
+              <span className="inline-block pl-[0.06em]">Vault</span>
+            </span>
+          ) : (
+            word
+          );
+
         return (
           <motion.span
             key={i}
@@ -44,7 +54,7 @@ export const WordsPullUp = ({
             className={`inline-block relative ${stacked ? "leading-[0.84]" : ""}`}
             style={{ marginRight: stacked || isLast ? 0 : "0.25em" }}
           >
-            {word}
+            {renderedWord}
             {showAsterisk && isLast && (
               <span
                 className="absolute top-[0.1em] -right-[0.38em] text-[0.42em] leading-none select-none font-normal"
@@ -207,7 +217,9 @@ export function PrismaHero({
               href="/"
               className="text-[14px] sm:text-[15px] md:text-[16px] font-semibold tracking-tight text-[#EFECE1] hover:text-white transition-colors duration-200 flex items-center gap-1.5 whitespace-nowrap"
             >
-              <span className="font-rounded font-bold text-[19px] tracking-tight text-white">BrandVault</span>
+              <span className="font-rounded font-bold text-[19px] tracking-normal text-white">
+                Brand<span className="inline-block pl-[0.04em]">Vault</span>
+              </span>
               <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-[#2F4FB3]/40 border border-[#2F4FB3]/50 text-[#8EA8F5]">
                 AI
               </span>
@@ -268,7 +280,7 @@ export function PrismaHero({
                 </span>
               </div>
               <h1
-                className="font-rounded font-bold leading-[0.88] tracking-[-0.01em] select-none text-[#EFECE1]"
+                className="font-rounded font-bold leading-[0.88] tracking-[0.01em] select-none text-[#EFECE1]"
                 style={{
                   fontSize: "clamp(2.8rem, 8.2vw, 9.6rem)",
                 }}
