@@ -144,7 +144,8 @@ export class SupabaseStorage implements Storage {
     }
   }
   async createProduct(data: Omit<Product, 'id' | 'created_at' | 'updated_at'> & { created_by?: string | null }): Promise<Product> {
-    return one(await db().from('products').insert({ ...data, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }).select().single());
+    const { created_by, ...rest } = data;
+    return one(await db().from('products').insert({ ...rest, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }).select().single());
   }
   async updateProduct(id: string, data: Partial<Pick<Product, 'name' | 'category' | 'model_or_version' | 'launch_date' | 'status' | 'description'>>): Promise<Product> {
     return one(await db().from('products').update({ ...data, updated_at: new Date().toISOString() }).eq('id', id).select().single());

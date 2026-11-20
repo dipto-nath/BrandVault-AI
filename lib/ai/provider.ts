@@ -45,7 +45,7 @@ async function generateWithGroq(options: GenerateJsonOptions): Promise<string> {
         },
       ],
       temperature: options.temperature ?? 0.2,
-      max_tokens: options.maxTokens ?? 2000,
+      max_tokens: options.maxTokens ?? 4000,
     }),
   });
 

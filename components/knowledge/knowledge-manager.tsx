@@ -78,7 +78,6 @@ export function KnowledgeManager({
 
   // Document Upload State
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [uploadProductId, setUploadProductId] = useState<string>('');
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
@@ -230,30 +229,34 @@ export function KnowledgeManager({
 
     const formData = new FormData();
     formData.append('file', selectedFile);
-    if (uploadProductId) formData.append('product_id', uploadProductId);
 
     try {
-      const res = await fetch('/api/knowledge/documents', {
+      const res = await fetch('/api/knowledge/extract-product', {
         method: 'POST',
         body: formData,
       });
 
       const json = await res.json();
       if (!res.ok || json.error) {
-        throw new Error(json.error?.message || json.error || 'Failed to upload document');
+        throw new Error(json.error?.message || json.error || 'Failed to process document');
       }
 
-      setUploadSuccess(`Document "${selectedFile.name}" processed. Extracted candidates have been added to the Review Queue.`);
+      const { product, facts } = json.data;
+      setUploadSuccess(`Successfully created product "${product.name}" with ${facts.length} verified facts from "${selectedFile.name}".`);
       setSelectedFile(null);
 
-      // Refresh documents & candidates
+      // Refresh products, documents & facts
+      const productsRes = await fetch('/api/products');
+      const productsJson = await productsRes.json();
+      if (productsJson.data) setProducts(productsJson.data);
+
       const docsRes = await fetch('/api/knowledge/documents');
       const docsJson = await docsRes.json();
       if (docsJson.data) setDocuments(docsJson.data);
 
-      const candsRes = await fetch('/api/knowledge/candidates');
-      const candsJson = await candsRes.json();
-      if (Array.isArray(candsJson)) setCandidates(candsJson);
+      const factsRes = await fetch('/api/knowledge/facts');
+      const factsJson = await factsRes.json();
+      if (factsJson.data) setFacts(factsJson.data);
 
       router.refresh();
     } catch (err: any) {
@@ -597,26 +600,10 @@ export function KnowledgeManager({
 
             <form onSubmit={handleFileUpload} className="space-y-4">
               <div>
-                <label className="label">Target Product (Optional)</label>
-                <select
-                  value={uploadProductId}
-                  onChange={(e) => setUploadProductId(e.target.value)}
-                  className="input text-xs w-full"
-                >
-                  <option value="">General Company Document</option>
-                  {products.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="label">Select Specification File</label>
+                <label className="label">Select Specification File (PDF)</label>
                 <input
                   type="file"
-                  accept=".pdf,.docx,.txt"
+                  accept=".pdf"
                   onChange={(e) => {
                     const file = e.target.files?.[0] || null;
                     if (file && file.size > 10 * 1024 * 1024) {
@@ -629,6 +616,9 @@ export function KnowledgeManager({
                   }}
                   className="input text-xs w-full file:mr-3 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-surface-subtle file:text-ink-dark hover:file:bg-border"
                 />
+                <p className="text-xs text-ink-secondary mt-1">
+                  Upload a product specification PDF. The system will automatically extract the product details and create verified facts.
+                </p>
               </div>
 
               <Button
