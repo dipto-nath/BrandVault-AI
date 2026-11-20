@@ -15,6 +15,7 @@ export const CreateSubmissionSchema = z.object({
   content_type: ContentTypeSchema,
   channel: ChannelSchema,
   original_content: z.string().min(1, 'Content is required').max(50000),
+  product_id: z.string().optional().nullable(),
 });
 
 export const UpdateSubmissionSchema = z.object({

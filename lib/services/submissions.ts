@@ -21,7 +21,7 @@ export async function createSubmission(input: SubmissionCreateInput): Promise<Co
     original_content: input.originalContent,
     current_content: input.originalContent,
     status: 'DRAFT',
-    risk_level: null,
+    risk_level: 'LOW',
     reviewer_id: null,
     created_by: input.createdBy,
   });

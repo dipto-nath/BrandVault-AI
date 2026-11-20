@@ -1,85 +1,35 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { backendFetch, ApiError } from '@/lib/api/client';
-import { getRequestContext } from '@/lib/auth';
+import { NextRequest } from 'next/server';
+import { withAuth, ok, fail } from '@/lib/api/handler';
+import { storage } from '@/lib/db/adaptor';
 
-const DEMO_PRODUCTS = [
-  {
-    id: 'prod-001-nova-phone',
-    org_id: '11111111-1111-1111-1111-111111111111',
-    name: 'NexaTech Nova Phone',
-    category: 'Smartphones',
-    model_or_version: 'Nova Pro v2',
-    status: 'ACTIVE',
-    description: 'Flagship AI smartphone with 48h active battery, titanium-glass chassis, and spatial audio.',
-    facts_count: 5,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: 'prod-002-nova-buds',
-    org_id: '11111111-1111-1111-1111-111111111111',
-    name: 'NexaBuds Ultra',
-    category: 'Audio & Wearables',
-    model_or_version: 'Gen 2',
-    status: 'ACTIVE',
-    description: 'Lossless spatial wireless earbuds with hybrid adaptive noise cancelling.',
-    facts_count: 3,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: 'prod-003-aerovision',
-    org_id: '11111111-1111-1111-1111-111111111111',
-    name: 'AeroVision Glasses',
-    category: 'Spatial Computing',
-    model_or_version: 'Developer Edition',
-    status: 'ACTIVE',
-    description: 'Lightweight AR eyewear with real-time neural coprocessor display.',
-    facts_count: 2,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-];
-
-export async function GET(req: NextRequest) {
-  const ctx = await getRequestContext();
-  const { searchParams } = new URL(req.url);
-  const statusFilter = searchParams.get('status') || undefined;
-
+export const GET = withAuth(async (ctx, req) => {
   try {
-    const products = await backendFetch('/api/v1/products', {
-      token: ctx.token,
-      params: { status: statusFilter },
-    });
-    return NextResponse.json(products);
-  } catch (err) {
-    if (ctx.isDemo) {
-      return NextResponse.json(DEMO_PRODUCTS);
-    }
-    const status = err instanceof ApiError ? err.status : 500;
-    return NextResponse.json({ error: (err as Error).message }, { status });
+    const products = await storage.listProducts(ctx.workspaceId);
+    return ok(products);
+  } catch (err: any) {
+    return fail('DATABASE_ERROR', err?.message ?? 'Failed to list products', 500);
   }
-}
+});
 
-export async function POST(req: NextRequest) {
-  const ctx = await getRequestContext();
-  if (ctx.isDemo) {
-    return NextResponse.json(
-      { error: 'The demo workspace is read-only. Please create your own workspace to register products.' },
-      { status: 403 }
-    );
-  }
-
+export const POST = withAuth(async (ctx, req) => {
   try {
     const body = await req.json();
-    const product = await backendFetch('/api/v1/products', {
-      method: 'POST',
-      token: ctx.token,
-      body: JSON.stringify(body),
+    if (!body.name || !body.name.trim()) {
+      return fail('VALIDATION_ERROR', 'Product name is required', 400);
+    }
+
+    const product = await storage.createProduct({
+      workspace_id: ctx.workspaceId,
+      name: body.name.trim(),
+      category: body.category?.trim() || null,
+      model_or_version: body.model_or_version?.trim() || null,
+      launch_date: body.launch_date?.trim() || null,
+      status: body.status || 'ACTIVE',
+      description: body.description?.trim() || null,
     });
-    return NextResponse.json(product, { status: 201 });
+
+    return ok(product);
   } catch (err: any) {
-    const status = err instanceof ApiError ? err.status : 500;
-    return NextResponse.json({ error: err.message }, { status });
+    return fail('DATABASE_ERROR', err?.message ?? 'Failed to create product', 500);
   }
-}
+});

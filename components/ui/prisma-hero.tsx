@@ -376,11 +376,6 @@ export function PrismaHero({
             </div>
           </div>
         </div>
-
-        {/* Scroll Cue */}
-        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-center pointer-events-none opacity-40 hover:opacity-80 transition-opacity">
-          <span className="text-[10px] uppercase font-mono tracking-widest text-[#EDEAE2]">Scroll to explore</span>
-        </div>
       </section>
 
       {/* How It Works 4-Step Strip */}

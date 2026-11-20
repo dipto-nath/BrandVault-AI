@@ -7,7 +7,8 @@ import {
   ArrowLeft, Pencil, Check, Sparkles, AlertTriangle, ShieldCheck,
   Globe, Camera, Briefcase, Mail, Megaphone, MoreHorizontal,
   Info, RotateCw, Play, CheckCircle2, Lock, Award, FileText,
-  FileCheck2, ChevronRight, X, ExternalLink, HelpCircle, Layers, BookOpen
+  FileCheck2, ChevronRight, X, ExternalLink, HelpCircle, Layers, BookOpen,
+  Plus, Box
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -91,6 +92,12 @@ export default function ReviewStudioPage() {
   const [content, setContent] = useState('');
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [products, setProducts] = useState<ProductItem[]>([]);
+  const [quickProductModalOpen, setQuickProductModalOpen] = useState(false);
+  const [newProdName, setNewProdName] = useState('');
+  const [newProdCategory, setNewProdCategory] = useState('');
+  const [newProdVersion, setNewProdVersion] = useState('');
+  const [creatingProduct, setCreatingProduct] = useState(false);
+  const [productModalError, setProductModalError] = useState<string | null>(null);
 
   // Interaction State
   const [touched, setTouched] = useState<{ title?: boolean; content?: boolean }>({});
@@ -147,9 +154,23 @@ export default function ReviewStudioPage() {
       try {
         const res = await fetch('/api/products');
         if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data)) {
-            setProducts(data);
+          const json = await res.json();
+          const items: ProductItem[] = Array.isArray(json)
+            ? json
+            : (json?.data && Array.isArray(json.data) ? json.data : []);
+          setProducts(items);
+
+          // Auto-select:
+          // 1. From URL param ?productId=... or ?product=...
+          // 2. Or if products exist and no product is currently selected, select the first/recent product
+          if (typeof window !== 'undefined') {
+            const urlParams = new URLSearchParams(window.location.search);
+            const targetId = urlParams.get('product') || urlParams.get('productId');
+            if (targetId && items.some((p) => p.id === targetId)) {
+              setSelectedProductId(targetId);
+            } else if (items.length > 0) {
+              setSelectedProductId((prev) => prev || items[0].id);
+            }
           }
         }
       } catch {
@@ -437,6 +458,44 @@ export default function ReviewStudioPage() {
       localStorage.removeItem(DRAFT_STORAGE_KEY);
     } catch {
       // ignore
+    }
+  };
+
+  const handleQuickCreateProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newProdName.trim()) return;
+
+    setCreatingProduct(true);
+    setProductModalError(null);
+
+    try {
+      const res = await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newProdName.trim(),
+          category: newProdCategory.trim() || undefined,
+          model_or_version: newProdVersion.trim() || undefined,
+          status: 'ACTIVE',
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok || json.error) {
+        throw new Error(json.error?.message || json.error || 'Failed to create product');
+      }
+
+      const created = json.data || json;
+      setProducts((prev) => [created, ...prev]);
+      setSelectedProductId(created.id);
+      setQuickProductModalOpen(false);
+      setNewProdName('');
+      setNewProdCategory('');
+      setNewProdVersion('');
+    } catch (err: any) {
+      setProductModalError(err.message || 'Failed to create product');
+    } finally {
+      setCreatingProduct(false);
     }
   };
 
@@ -829,9 +888,19 @@ export default function ReviewStudioPage() {
 
                 {/* Product Selector (Required) */}
                 <div>
-                  <label htmlFor="product-select" className="block text-xs font-semibold text-ink mb-1.5">
-                    Product <span className="text-critical">*</span>
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label htmlFor="product-select" className="block text-xs font-semibold text-ink">
+                      Product <span className="text-critical">*</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setQuickProductModalOpen(true)}
+                      className="text-xs text-brand hover:underline font-medium flex items-center gap-1"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>New Product</span>
+                    </button>
+                  </div>
                   <select
                     id="product-select"
                     value={selectedProductId || ''}
@@ -849,9 +918,16 @@ export default function ReviewStudioPage() {
                     ))}
                   </select>
                   {products.length === 0 && (
-                    <p id="product-hint" className="text-[11px] text-warning mt-1">
-                      No products found. <Link href="/knowledge" className="underline hover:text-brand">Add a product first</Link>.
-                    </p>
+                    <div id="product-hint" className="flex items-center justify-between text-[11px] text-amber-700 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2 mt-1.5">
+                      <span>No products found in this workspace.</span>
+                      <button
+                        type="button"
+                        onClick={() => setQuickProductModalOpen(true)}
+                        className="underline font-semibold hover:text-brand"
+                      >
+                        + Create product now
+                      </button>
+                    </div>
                   )}
                   {products.length > 0 && !selectedProductId && (
                     <p id="product-hint" className="text-[11px] text-warning mt-1">
@@ -859,8 +935,9 @@ export default function ReviewStudioPage() {
                     </p>
                   )}
                   {selectedProductId && (
-                    <p id="product-hint" className="text-[11px] text-supported mt-1">
-                      Verification will use approved facts for this product.
+                    <p id="product-hint" className="text-[11px] text-supported mt-1 flex items-center gap-1 font-medium">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-supported shrink-0" />
+                      <span>Verifying against facts for <strong>{products.find((p) => p.id === selectedProductId)?.name || 'selected product'}</strong></span>
                     </p>
                   )}
                 </div>
@@ -1376,6 +1453,99 @@ export default function ReviewStudioPage() {
                 </Link>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+      {/* Quick Add Product Modal */}
+      {quickProductModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/40 backdrop-blur-xs">
+          <div className="w-full max-w-md bg-surface border border-line rounded-2xl shadow-xl p-6">
+            <div className="flex items-center justify-between pb-3 border-b border-line">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-brand/10 flex items-center justify-center text-brand">
+                  <Box className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-jakarta font-bold text-base text-ink">Add Product</h3>
+                  <p className="text-xs text-ink-3">Register a product for claim governance</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setQuickProductModalOpen(false)}
+                className="p-1 rounded-lg text-ink-3 hover:text-ink hover:bg-surface-2 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {productModalError && (
+              <div className="my-3 p-3 rounded-lg bg-critical-soft text-critical text-xs">
+                {productModalError}
+              </div>
+            )}
+
+            <form onSubmit={handleQuickCreateProduct} className="space-y-3.5 pt-3">
+              <div>
+                <label className="block text-xs font-semibold text-ink mb-1">
+                  Product Name *
+                </label>
+                <input
+                  required
+                  autoFocus
+                  type="text"
+                  value={newProdName}
+                  onChange={(e) => setNewProdName(e.target.value)}
+                  placeholder="e.g. Acme Phone X"
+                  className="w-full px-3 py-2 rounded-lg text-xs border border-line bg-surface text-ink outline-none focus:border-brand"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-ink mb-1">
+                  Category
+                </label>
+                <input
+                  type="text"
+                  value={newProdCategory}
+                  onChange={(e) => setNewProdCategory(e.target.value)}
+                  placeholder="e.g. Consumer Electronics"
+                  className="w-full px-3 py-2 rounded-lg text-xs border border-line bg-surface text-ink outline-none focus:border-brand"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-ink mb-1">
+                  Model / Version
+                </label>
+                <input
+                  type="text"
+                  value={newProdVersion}
+                  onChange={(e) => setNewProdVersion(e.target.value)}
+                  placeholder="e.g. Generation 2 / Pro"
+                  className="w-full px-3 py-2 rounded-lg text-xs border border-line bg-surface text-ink outline-none focus:border-brand"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-line">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setQuickProductModalOpen(false)}
+                  className="text-xs"
+                  disabled={creatingProduct}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={creatingProduct || !newProdName.trim()}
+                  className="btn-primary text-xs"
+                >
+                  {creatingProduct ? 'Saving…' : 'Add & Select Product'}
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       )}
