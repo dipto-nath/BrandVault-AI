@@ -183,7 +183,7 @@ function StatCard({ title, value, icon, variant = 'neutral' }: { title: string; 
 
 function FilterBadge({ label, active = false }: { label: string; active?: boolean }) {
   return (
-    <span className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${active ? 'bg-accent text-white border-accent' : 'bg-surface border-border text-ink-2 hover:bg-surface-hover'}`}>
+    <span className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${active ? 'bg-accent text-white border-accent' : 'bg-surface border-border text-ink-secondary hover:bg-surface-hover'}`}>
       {label}
     </span>
   );

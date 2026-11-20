@@ -27,6 +27,7 @@ from app.models.guideline_template import GuidelineTemplate
 from app.models.guideline import BrandGuideline
 from app.schemas.auth import (
     RegisterRequest,
+    RegisterFormRequest,
     TokenResponse,
     UserResponse,
     OrganizationResponse,
@@ -165,6 +166,52 @@ class AuthService:
             user=user_resp,
             organization=OrganizationResponse.model_validate(org),
         )
+
+    async def register_company_with_documents(self, req: RegisterFormRequest, db) -> TokenResponse:
+        """Register a company with optional source documents (PDFs)."""
+        # First register the company normally
+        result = await self.register_company(RegisterRequest(
+            company_name=req.company_name,
+            workspace_slug=req.workspace_slug,
+            email=req.email,
+            password=req.password,
+            full_name=req.full_name,
+            industry=req.industry,
+        ))
+        
+        # If there are source documents, create them in the database
+        if req.sourceDocuments:
+            # Get the org from the result
+            org_id = result.organization.id
+            user_id = result.user.id
+            
+            # Import source model
+            from app.models.source import Source, SourceStatus
+            
+            for file in req.sourceDocuments:
+                content = await file.read()
+                # For PDF files, we'll store the raw content
+                # In production, you'd use a proper PDF parser
+                extracted_text = content.decode('utf-8', errors='ignore')[:50000]
+                
+                source = Source(
+                    org_id=org_id,
+                    filename=file.filename,
+                    storage_path=f"uploads/{file.filename}",
+                    mime_type='application/pdf',
+                    file_size=len(content),
+                    source_name=file.filename,
+                    document_status=SourceStatus.APPROVED,
+                    extracted_text=extracted_text,
+                    extraction_error=None,
+                    uploaded_by=user_id,
+                )
+                db.add(source)
+            
+            await db.commit()
+        
+        return result
+
 
     async def login(self, email: str, password: str) -> TokenResponse:
         result = await self.db.execute(

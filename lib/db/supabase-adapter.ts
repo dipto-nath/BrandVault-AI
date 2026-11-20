@@ -6,6 +6,7 @@ import type {
   ContentVersion, AnalysisRun, AnalysisStatus, ExtractedClaim, Finding,
   FindingEvidence, ReviewDecisionRecord, FindingFeedback,
   GuidelineSuggestion, AuditLog,
+  Product,
 } from '@/types/database';
 
 const DEMO_WORKSPACE_SLUG = 'nextech';
@@ -126,6 +127,29 @@ export class SupabaseStorage implements Storage {
     const { error } = await db().from('brand_guidelines').update({ active: false, updated_at: new Date().toISOString() }).eq('id', id);
     if (error) throw error;
   }
+
+  // ---------- Products ----------
+  async listProducts(workspaceId: string): Promise<Product[]> {
+    const { data, error } = await db().from('products').select('*').eq('workspace_id', workspaceId).order('name', { ascending: true });
+    if (error) throw error;
+    return (data ?? []) as Product[];
+  }
+  async getProduct(id: string): Promise<Product | null> {
+    try {
+      const { data, error } = await db().from('products').select('*').eq('id', id).maybeSingle();
+      if (error || !data) return null;
+      return data as Product;
+    } catch {
+      return null;
+    }
+  }
+  async createProduct(data: Omit<Product, 'id' | 'created_at' | 'updated_at'> & { created_by?: string | null }): Promise<Product> {
+    return one(await db().from('products').insert({ ...data, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }).select().single());
+  }
+  async updateProduct(id: string, data: Partial<Pick<Product, 'name' | 'category' | 'model_or_version' | 'launch_date' | 'status' | 'description'>>): Promise<Product> {
+    return one(await db().from('products').update({ ...data, updated_at: new Date().toISOString() }).eq('id', id).select().single());
+  }
+
   async listFacts(workspaceId: string, opts?: { active?: boolean } & ListOptions): Promise<ApprovedFact[]> {
     let q = db().from('approved_facts').select('*').eq('workspace_id', workspaceId);
     if (opts?.active !== undefined) q = q.eq('verification_status', 'APPROVED');

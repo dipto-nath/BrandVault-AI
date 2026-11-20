@@ -7,10 +7,12 @@ import { Table, Tbody, Td, Th, Thead, Tr } from '@/components/ui/table';
 import { formatDateTime, getPassportReference, statusToVariant } from '@/lib/utils';
 import { Shield, ArrowRight } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
+import { getRequestContext } from '@/lib/auth';
 
 export default async function PassportsPage() {
-  const ws = await storage.getDemoWorkspace();
-  const submissions = ws ? await storage.listSubmissions(ws.id) : [];
+  const ctx = await getRequestContext();
+  const workspaceId = ctx.workspaceId;
+  const submissions = workspaceId ? await storage.listSubmissions(workspaceId) : [];
 
   const total = submissions.length;
   const certified = submissions.filter(s => s.status === 'APPROVED').length;
@@ -43,16 +45,16 @@ export default async function PassportsPage() {
           <div className="text-2xl font-bold font-jakarta text-ink-dark tnums mt-1">{total}</div>
         </div>
         <div className="card p-3.5 bg-surface border border-border rounded-xl shadow-sm">
-          <div className="text-[11px] font-bold text-success uppercase tracking-wider">Certified Compliant</div>
+          <div className="text-[11px] font-bold text-success uppercase tracking-wider">Approved Reviews</div>
           <div className="text-2xl font-bold font-jakarta text-success tnums mt-1">{certified}</div>
         </div>
         <div className="card p-3.5 bg-surface border border-border rounded-xl shadow-sm">
-          <div className="text-[11px] font-bold text-warning uppercase tracking-wider">Pending Audit</div>
+          <div className="text-[11px] font-bold text-warning uppercase tracking-wider">Pending Review</div>
           <div className="text-2xl font-bold font-jakarta text-warning tnums mt-1">{underReview}</div>
         </div>
         <div className="card p-3.5 bg-surface border border-border rounded-xl shadow-sm">
-          <div className="text-[11px] font-bold text-accent uppercase tracking-wider">Tamper Protection</div>
-          <div className="text-2xl font-bold font-jakarta text-accent tnums mt-1">100% SHA-256</div>
+          <div className="text-[11px] font-bold text-accent uppercase tracking-wider">Content Hash Recorded</div>
+          <div className="text-2xl font-bold font-jakarta text-accent tnums mt-1">SHA-256</div>
         </div>
       </div>
 
