@@ -22,6 +22,115 @@ import type {
 } from '@/types/database';
 import { mapRawFindingsToViewModel, FindingViewModel, FindingOccurrence } from './finding-mapper';
 
+// Helper components for visual analysis display
+function VisualAssetCheck({ visualAsset }: { visualAsset: any }) {
+  const analysis = visualAsset?.analysis;
+  const assetCheck = analysis?.metrics?.assetCheck;
+  const assetFinding = analysis?.findings?.find((f: any) => f.type === 'ASSET_MISMATCH');
+  
+  if (assetCheck === 'mismatch' && assetFinding) {
+    return (
+      <div className="p-2 rounded-lg bg-surface border border-sand-dark/30">
+        <div className="text-[10px] text-ink-muted font-bold uppercase tracking-wider mb-1">
+          Brand Asset
+        </div>
+        <div className="text-evidence-contradicted font-semibold flex items-center gap-1 text-[11px]">
+          <XCircle className="w-3 h-3 shrink-0" />
+          <span>Outdated ({assetFinding.evidence?.matchedVersion || 'v2'})</span>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="p-2 rounded-lg bg-surface border border-sand-dark/30">
+      <div className="text-[10px] text-ink-muted font-bold uppercase tracking-wider mb-1">
+        Brand Asset
+      </div>
+      <div className="text-evidence-supported font-semibold flex items-center gap-1 text-[11px]">
+        <CheckCircle2 className="w-3 h-3 shrink-0" />
+        <span>Approved</span>
+      </div>
+    </div>
+  );
+}
+
+function VisualContrastCheck({ visualAsset }: { visualAsset: any }) {
+  const analysis = visualAsset?.analysis;
+  const contrastCheck = analysis?.metrics?.contrastCheck;
+  const contrastData = analysis?.image?.contrast;
+  const contrastFinding = analysis?.findings?.find((f: any) => f.type === 'LOW_CONTRAST');
+  
+  if (contrastCheck === 'fail' && contrastFinding) {
+    return (
+      <div className="p-2 rounded-lg bg-surface border border-sand-dark/30">
+        <div className="text-[10px] text-ink-muted font-bold uppercase tracking-wider mb-1">
+          WCAG Contrast
+        </div>
+        <div className="text-evidence-contradicted font-semibold flex items-center gap-1 text-[11px]">
+          <AlertTriangle className="w-3 h-3 shrink-0" />
+          <span>{contrastData?.ratio?.toFixed(1) || contrastFinding.evidence?.ratio || '<'}4.5:1 (Fail)</span>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="p-2 rounded-lg bg-surface border border-sand-dark/30">
+      <div className="text-[10px] text-ink-muted font-bold uppercase tracking-wider mb-1">
+        WCAG Contrast
+      </div>
+      <div className="text-evidence-supported font-semibold flex items-center gap-1 text-[11px]">
+        <CheckCircle2 className="w-3 h-3 shrink-0" />
+        <span>&ge; 4.5:1 (Pass)</span>
+      </div>
+    </div>
+  );
+}
+
+function VisualAltTextCheck({ visualAsset }: { visualAsset: any }) {
+  const analysis = visualAsset?.analysis;
+  const altTextCheck = analysis?.metrics?.altTextCheck;
+  const altTextData = analysis?.image?.altText;
+  const altTextFinding = analysis?.findings?.find((f: any) => f.type === 'MISSING_ALT_TEXT');
+  
+  if (altTextCheck === 'fail' && altTextFinding) {
+    return (
+      <div className="p-2 rounded-lg bg-surface border border-sand-dark/30">
+        <div className="text-[10px] text-ink-muted font-bold uppercase tracking-wider mb-1">
+          Alt-Text
+        </div>
+        <div className="text-evidence-unverified font-semibold flex items-center gap-1 text-[11px]">
+          <AlertCircle className="w-3 h-3 shrink-0" />
+          <span>Missing</span>
+        </div>
+      </div>
+    );
+  }
+  if (altTextData?.isDecorative) {
+    return (
+      <div className="p-2 rounded-lg bg-surface border border-sand-dark/30">
+        <div className="text-[10px] text-ink-muted font-bold uppercase tracking-wider mb-1">
+          Alt-Text
+        </div>
+        <div className="text-evidence-supported font-semibold flex items-center gap-1 text-[11px]">
+          <CheckCircle2 className="w-3 h-3 shrink-0" />
+          <span>Decorative (alt="")</span>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="p-2 rounded-lg bg-surface border border-sand-dark/30">
+      <div className="text-[10px] text-ink-muted font-bold uppercase tracking-wider mb-1">
+        Alt-Text
+      </div>
+      <div className="text-evidence-supported font-semibold flex items-center gap-1 text-[11px]">
+        <CheckCircle2 className="w-3 h-3 shrink-0" />
+        <span>Compliant</span>
+      </div>
+    </div>
+  );
+}
+
 interface ReviewStudioProps {
   submission: ContentSubmission;
   claims: ExtractedClaim[];
@@ -917,58 +1026,11 @@ export function ReviewStudio({
 
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
                           {/* Asset check */}
-                          <div className="p-2 rounded-lg bg-surface border border-sand-dark/30">
-                            <div className="text-[10px] text-ink-muted font-bold uppercase tracking-wider mb-1">
-                              Brand Asset
-                            </div>
-                            {findingModels.some(f => f.category === 'contradicted' && f.title.toLowerCase().includes('logo')) ? (
-                              <div className="text-evidence-contradicted font-semibold flex items-center gap-1 text-[11px]">
-                                <XCircle className="w-3 h-3 shrink-0" />
-                                <span>Outdated (v2)</span>
-                              </div>
-                            ) : (
-                              <div className="text-evidence-supported font-semibold flex items-center gap-1 text-[11px]">
-                                <CheckCircle2 className="w-3 h-3 shrink-0" />
-                                <span>v4 Approved</span>
-                              </div>
-                            )}
-                          </div>
-
+                          <VisualAssetCheck visualAsset={visualAsset} />
                           {/* Contrast check */}
-                          <div className="p-2 rounded-lg bg-surface border border-sand-dark/30">
-                            <div className="text-[10px] text-ink-muted font-bold uppercase tracking-wider mb-1">
-                              WCAG Contrast
-                            </div>
-                            {findingModels.some(f => f.title.toLowerCase().includes('contrast')) ? (
-                              <div className="text-evidence-contradicted font-semibold flex items-center gap-1 text-[11px]">
-                                <AlertTriangle className="w-3 h-3 shrink-0" />
-                                <span>&lt; 4.5:1 (Fail)</span>
-                              </div>
-                            ) : (
-                              <div className="text-evidence-supported font-semibold flex items-center gap-1 text-[11px]">
-                                <CheckCircle2 className="w-3 h-3 shrink-0" />
-                                <span>&ge; 4.5:1 (Pass)</span>
-                              </div>
-                            )}
-                          </div>
-
+                          <VisualContrastCheck visualAsset={visualAsset} />
                           {/* Alt-Text check */}
-                          <div className="p-2 rounded-lg bg-surface border border-sand-dark/30">
-                            <div className="text-[10px] text-ink-muted font-bold uppercase tracking-wider mb-1">
-                              Alt-Text
-                            </div>
-                            {findingModels.some(f => f.title.toLowerCase().includes('alt text')) ? (
-                              <div className="text-evidence-unverified font-semibold flex items-center gap-1 text-[11px]">
-                                <AlertCircle className="w-3 h-3 shrink-0" />
-                                <span>Missing</span>
-                              </div>
-                            ) : (
-                              <div className="text-evidence-supported font-semibold flex items-center gap-1 text-[11px]">
-                                <CheckCircle2 className="w-3 h-3 shrink-0" />
-                                <span>Compliant</span>
-                              </div>
-                            )}
-                          </div>
+                          <VisualAltTextCheck visualAsset={visualAsset} />
                         </div>
                       </div>
 

@@ -117,6 +117,25 @@ export default async function ReviewPage({ params }: { params: Promise<{ id: str
     }
   } catch {}
 
+  // Fetch visual analysis results from analysis runs (already loaded)
+  if (initialVisualAsset) {
+    try {
+      // Find the visual analysis run (provider: 'OpenCV + WCAG 2.2 Engine')
+      const visualRun = runs.find((run: any) => run.provider === 'OpenCV + WCAG 2.2 Engine');
+      if (visualRun && visualRun.result) {
+        const analysis = visualRun.result;
+        // Merge the visual analysis data
+        initialVisualAsset = {
+          ...initialVisualAsset,
+          analysis: analysis,
+          visualFindings: analysis.findings || [],
+        };
+      }
+    } catch (e) {
+      console.warn('Could not extract visual analysis from runs:', e);
+    }
+  }
+
   // Populate finding evidence
   const findingsWithEvidence = await Promise.all(
     rawFindings.map(async (f) => {
