@@ -184,7 +184,7 @@ export async function runAnalysis(submissionId: string, workspaceId: string, use
         source_document_id: null,
         evidence_excerpt: '',
         relevance_explanation: 'Linked approved evidence',
-        evidence_relation: (f.type === 'FACTUAL_CONTRADICTION' ? 'CONTRADICTS' : 'SUPPORTS') as const,
+        evidence_relation: (f.type === 'FACTUAL_CONTRADICTION' ? 'CONTRADICTS' : 'SUPPORTS') as 'CONTRADICTS' | 'SUPPORTS',
       }));
       await storage.createFindingEvidence(evidenceRows);
     }

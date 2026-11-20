@@ -120,6 +120,7 @@ export async function POST(
     const run = await storage.createAnalysisRun({
       workspace_id: submission.workspace_id,
       submission_id: id,
+      content_version_id: null,
       provider: 'OpenCV + WCAG 2.2 Engine',
       model_name: 'opencv-orb-wcag22',
       prompt_version: 'v1-visual',
@@ -157,13 +158,12 @@ export async function POST(
       await storage.createFindingEvidence([
         {
           finding_id: createdFindings[i].id,
-          fact_id: null,
           approved_fact_id: null,
-          evidence_relation: 'CONTRADICTS',
-          source_quote: JSON.stringify(f.evidence),
+          source_document_id: null,
           evidence_excerpt: JSON.stringify(f.evidence),
-          relevance_score: f.confidence,
-        },
+          relevance_explanation: f.message,
+          evidence_relation: 'CONTRADICTS',
+        } as any,
       ]);
     }
 

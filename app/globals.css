@@ -8,6 +8,12 @@
 
 @layer base {
   :root {
+    --font-inter: 'Inter', system-ui, -apple-system, sans-serif;
+    --font-fraunces: 'Fraunces', Georgia, serif;
+    --font-jakarta: 'Plus Jakarta Sans', system-ui, sans-serif;
+    --font-caveat: 'Caveat', cursive;
+    --font-jetbrains-mono: 'JetBrains Mono', monospace;
+
     --paper: #FBF7EF;
     --surface: #FFFDF9;
     --surface-2: #F4EEE1;

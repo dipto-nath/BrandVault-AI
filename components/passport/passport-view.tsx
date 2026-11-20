@@ -385,7 +385,7 @@ export function PassportView({
                 {/* Status Badges */}
                 <div className="flex flex-wrap gap-2">
                   {findings.some((f) => f.finding_type === 'ASSET_MISMATCH') ? (
-                    <Badge variant="destructive" className="text-[11px] py-1 px-2.5">
+                    <Badge variant="danger" className="text-[11px] py-1 px-2.5">
                       🔴 Outdated Logo (v2 vs v4)
                     </Badge>
                   ) : (
@@ -395,7 +395,7 @@ export function PassportView({
                   )}
 
                   {findings.some((f) => f.finding_type === 'LOW_CONTRAST') ? (
-                    <Badge variant="destructive" className="text-[11px] py-1 px-2.5">
+                    <Badge variant="danger" className="text-[11px] py-1 px-2.5">
                       🔴 Contrast Below 4.5:1
                     </Badge>
                   ) : (
@@ -405,7 +405,7 @@ export function PassportView({
                   )}
 
                   {findings.some((f) => f.finding_type === 'MISSING_ALT_TEXT') ? (
-                    <Badge variant="secondary" className="text-[11px] py-1 px-2.5 bg-amber-500/10 text-amber-700 border-amber-500/30">
+                    <Badge variant="warning" className="text-[11px] py-1 px-2.5 bg-amber-500/10 text-amber-700 border-amber-500/30">
                       🟡 Missing Alt Text
                     </Badge>
                   ) : (

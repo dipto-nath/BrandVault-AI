@@ -73,7 +73,7 @@ export interface VisualCheckOptions {
 }
 
 export async function runVisualCheck(options: VisualCheckOptions): Promise<VisualAnalysisResult> {
-  const pythonPath = '/Library/Frameworks/Python.framework/Versions/3.14/bin/python3';
+  const pythonPath = process.env.PYTHON_PATH || 'python3';
   const scriptPath = path.join(process.cwd(), 'lib', 'ai', 'visual-checker.py');
   const approvedDir = path.join(process.cwd(), '.brandvault', 'approved_assets');
 
