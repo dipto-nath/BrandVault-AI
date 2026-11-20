@@ -9,6 +9,7 @@
 @layer base {
   :root {
     --font-inter: 'Inter', system-ui, -apple-system, sans-serif;
+    --font-outfit: 'Outfit', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     --font-fraunces: 'Fraunces', Georgia, serif;
     --font-jakarta: 'Plus Jakarta Sans', system-ui, sans-serif;
     --font-caveat: 'Caveat', cursive;

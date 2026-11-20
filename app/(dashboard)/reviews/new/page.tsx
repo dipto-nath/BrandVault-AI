@@ -602,10 +602,17 @@ export default function ReviewStudioPage() {
           form.append('file', imageFile);
           if (altText.trim()) form.append('altText', altText.trim());
           form.append('isDecorative', String(isDecorative));
-          await fetch(`/api/submissions/${submissionId}/visual-assets`, {
+          const visualRes = await fetch(`/api/submissions/${submissionId}/visual-assets`, {
             method: 'POST',
             body: form,
           });
+          const visualData = await visualRes.json();
+          if (!visualRes.ok) {
+            console.warn('Visual asset upload failed:', visualData.error);
+            // Don't throw - continue to review page so user can retry
+          } else {
+            console.log('Visual asset uploaded and analyzed:', visualData);
+          }
         } catch (imgErr) {
           console.warn('Visual asset upload error:', imgErr);
         }

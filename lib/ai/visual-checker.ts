@@ -73,7 +73,9 @@ export interface VisualCheckOptions {
 }
 
 export async function runVisualCheck(options: VisualCheckOptions): Promise<VisualAnalysisResult> {
-  const pythonPath = process.env.PYTHON_PATH || 'python3';
+  // Use the Python interpreter that has opencv-python installed (fallback to python3)
+  const macPython = '/Library/Frameworks/Python.framework/Versions/3.14/bin/python3';
+  const pythonPath = process.env.PYTHON_PATH || (fs.existsSync(macPython) ? macPython : 'python3');
   const scriptPath = path.join(process.cwd(), 'lib', 'ai', 'visual-checker.py');
   const approvedDir = path.join(process.cwd(), '.brandvault', 'approved_assets');
 

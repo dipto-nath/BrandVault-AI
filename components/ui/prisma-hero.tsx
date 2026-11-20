@@ -220,7 +220,7 @@ export function PrismaHero({
               href="/"
               className="text-[14px] sm:text-[15px] md:text-[16px] font-semibold tracking-tight text-[#EFECE1] hover:text-white transition-colors duration-200 flex items-center gap-1.5 whitespace-nowrap"
             >
-              <span className="font-serif text-[17px] tracking-tight text-white">BrandVault</span>
+              <span className="font-outfit font-bold text-[18px] tracking-tight text-white">BrandVault</span>
               <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-[#2F4FB3]/40 border border-[#2F4FB3]/50 text-[#8EA8F5]">
                 AI
               </span>
@@ -295,12 +295,12 @@ export function PrismaHero({
             {/* Wordmark Column */}
             <div className="col-span-12 lg:col-span-7 min-w-0">
               <div className="mb-2">
-                <span className="inline-block text-[11px] sm:text-xs font-mono uppercase tracking-[0.2em] text-[#EDEAE2]/70">
+                <span className="font-outfit inline-block text-[11.5px] sm:text-[12.5px] font-semibold uppercase tracking-[0.16em] text-[#8EA8F5]">
                   Evidence-First Brand Governance
                 </span>
               </div>
               <h1
-                className="font-serif font-bold leading-[0.85] tracking-[-0.04em] select-none text-[#EFECE1]"
+                className="font-outfit font-extrabold leading-[0.88] tracking-[-0.03em] select-none text-[#EFECE1]"
                 style={{
                   fontSize: "clamp(2.8rem, 8.2vw, 9.6rem)",
                 }}
@@ -313,7 +313,7 @@ export function PrismaHero({
             <div className="col-span-12 lg:col-span-5 flex flex-col gap-4 sm:gap-5 pb-1 lg:pb-3 max-w-xl lg:ml-auto">
               {/* Product value prop understood in five seconds */}
               <div className="p-3 rounded-xl bg-white/5 border border-white/10 backdrop-blur-xs">
-                <p className="text-xs sm:text-[13px] font-medium text-[#EDEAE1] flex items-center gap-2">
+                <p className="font-outfit text-xs sm:text-[13.5px] font-medium text-[#EDEAE1] flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-[#8EA8F5] shrink-0" />
                   <span>Every claim checked against approved sources before it goes live.</span>
                 </p>
@@ -323,7 +323,7 @@ export function PrismaHero({
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ duration: 0.8, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                className="text-[14.5px] sm:text-[16px] font-normal leading-[1.56] tracking-[-0.01em] text-[#EDEAE2]/85"
+                className="font-outfit text-[15px] sm:text-[16.5px] font-normal leading-[1.6] tracking-normal text-[#EDEAE2]/90"
               >
                 BrandVault AI is a pre-publication review gate for brand content. It verifies claims against approved knowledge, explains every finding with traceable citations, and keeps every decision accountable.
               </motion.p>
@@ -339,7 +339,7 @@ export function PrismaHero({
                   <button
                     type="button"
                     onClick={handleExploreClick}
-                    className="group inline-flex items-center gap-3.5 self-start rounded-full py-2 pl-6 pr-2 font-sans text-[14.5px] sm:text-[15.5px] font-medium tracking-tight transition-all duration-200 hover:gap-4 shadow-sm"
+                    className="group inline-flex items-center gap-3.5 self-start rounded-full py-2 pl-6 pr-2 font-outfit text-[14.5px] sm:text-[15.5px] font-medium tracking-tight transition-all duration-200 hover:gap-4 shadow-sm"
                     style={{ background: "#EDEAE1", color: "#0F141A" }}
                   >
                     <span>Explore Platform</span>
@@ -351,7 +351,7 @@ export function PrismaHero({
                   {/* Secondary Glass Pill: Login */}
                   <Link
                     href="/login"
-                    className="inline-flex items-center justify-center px-6 py-2.5 rounded-full font-sans text-[14px] sm:text-[15px] font-medium tracking-tight transition-all duration-200"
+                    className="inline-flex items-center justify-center px-6 py-2.5 rounded-full font-outfit text-[14px] sm:text-[15px] font-medium tracking-tight transition-all duration-200"
                     style={{
                       background: "rgba(237, 234, 225, 0.12)",
                       color: "#EDEAE1",
@@ -366,78 +366,13 @@ export function PrismaHero({
                 </div>
 
                 {/* Sublink: New here? Create workspace */}
-                <p className="text-xs text-[#EDEAE2]/60 pt-1">
+                <p className="font-outfit text-xs text-[#EDEAE2]/60 pt-1">
                   New here?{" "}
                   <Link href="/signup" className="text-[#EDEAE2] font-medium underline underline-offset-4 hover:text-white transition-colors">
                     Create workspace
                   </Link>
                 </p>
               </motion.div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works 4-Step Strip */}
-      <section className="relative w-full bg-[#1A1816] border-t border-[#EDEAE1]/10 py-16 px-6 sm:px-10 lg:px-16">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <span className="text-xs font-mono uppercase tracking-[0.2em] text-[#8EA8F5]">Workflow</span>
-            <h2 className="font-serif text-2xl sm:text-3xl font-bold text-[#EFECE1] mt-1.5">
-              How BrandVault Verifies Content
-            </h2>
-            <p className="text-sm text-[#EDEAE2]/70 max-w-xl mx-auto mt-2">
-              A transparent four-stage pipeline connecting claims to approved ground truth.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* Step 1 */}
-            <div className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-[#2F4FB3]/40 transition-colors">
-              <div className="flex items-center justify-between mb-4">
-                <span className="font-mono text-xs px-2 py-0.5 rounded bg-white/10 text-[#EDEAE2]/80">01</span>
-                <FileCheck className="w-5 h-5 text-[#8EA8F5]" />
-              </div>
-              <h3 className="font-serif text-lg font-semibold text-white mb-2">Submit</h3>
-              <p className="text-xs leading-relaxed text-[#EDEAE2]/70">
-                Paste campaign drafts, ad copy, or upload product spec sheets into the Review Studio.
-              </p>
-            </div>
-
-            {/* Step 2 */}
-            <div className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-[#2F4FB3]/40 transition-colors">
-              <div className="flex items-center justify-between mb-4">
-                <span className="font-mono text-xs px-2 py-0.5 rounded bg-white/10 text-[#EDEAE2]/80">02</span>
-                <SearchCheck className="w-5 h-5 text-[#E6A23C]" />
-              </div>
-              <h3 className="font-serif text-lg font-semibold text-white mb-2">Verify Sources</h3>
-              <p className="text-xs leading-relaxed text-[#EDEAE2]/70">
-                AI extracts claims, runs exact-match tests against approved facts, and retrieves citation chunks.
-              </p>
-            </div>
-
-            {/* Step 3 */}
-            <div className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-[#2F4FB3]/40 transition-colors">
-              <div className="flex items-center justify-between mb-4">
-                <span className="font-mono text-xs px-2 py-0.5 rounded bg-white/10 text-[#EDEAE2]/80">03</span>
-                <CheckCircle2 className="w-5 h-5 text-[#4BB543]" />
-              </div>
-              <h3 className="font-serif text-lg font-semibold text-white mb-2">Review & Correct</h3>
-              <p className="text-xs leading-relaxed text-[#EDEAE2]/70">
-                A human reviewer accepts, edits, or overrides findings with written rationale. AI never publishes.
-              </p>
-            </div>
-
-            {/* Step 4 */}
-            <div className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-[#2F4FB3]/40 transition-colors">
-              <div className="flex items-center justify-between mb-4">
-                <span className="font-mono text-xs px-2 py-0.5 rounded bg-white/10 text-[#EDEAE2]/80">04</span>
-                <ShieldCheck className="w-5 h-5 text-[#2F4FB3]" />
-              </div>
-              <h3 className="font-serif text-lg font-semibold text-white mb-2">Evidence Passport</h3>
-              <p className="text-xs leading-relaxed text-[#EDEAE2]/70">
-                Generate a tamper-evident audit passport with a cryptographic hash and exportable decision trail.
-              </p>
             </div>
           </div>
         </div>
