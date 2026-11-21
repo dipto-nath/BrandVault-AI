@@ -161,6 +161,117 @@ export interface ExtractedClaim {
   explanation: string;
   confidence: number;
   created_at: string;
+  // Multilingual fields
+  language?: string;
+  original_text?: string;
+  back_translation?: string;
+  localized_claim?: string;
+  normalized_value?: { value: number; unit: string };
+  approved_value?: { value: number; unit: string };
+}
+
+// Consistency Check Types
+export type ConsistencyCheckLanguage = 'hi' | 'bn' | 'en';
+
+export interface ConsistencyCheckSubmission {
+  id: string;
+  workspace_id: string;
+  user_id: string;
+  language: ConsistencyCheckLanguage;
+  raw_text: string;
+  normalized_text: string;
+  fact_set_id: string;
+  status: 'QUEUED' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  created_at: string;
+  completed_at?: string;
+}
+
+export interface ConsistencyCheckJob {
+  id: string;
+  submission_id: string;
+  status: 'QUEUED' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  findings: ConsistencyFinding[];
+  created_at: string;
+  completed_at?: string;
+}
+
+export interface ConsistencyFinding {
+  id: string;
+  job_id: string;
+  claim_id: string;
+  finding_type: ConsistencyFindingType;
+  severity: Severity;
+  title: string;
+  localized_claim: string;
+  back_translation: string;
+  approved_fact: string;
+  approved_fact_id: string;
+  evidence: ConsistencyEvidence;
+  confidence: number;
+  status: 'OPEN' | 'CONFIRMED' | 'FALSE_POSITIVE' | 'NEEDS_CONTEXT' | 'RESOLVED';
+  created_at: string;
+}
+
+export type ConsistencyFindingType = 
+  | 'NUMERIC_MISMATCH'
+  | 'UNIT_MISMATCH'
+  | 'DATE_MISMATCH'
+  | 'PRODUCT_NAME_MISMATCH'
+  | 'VERSION_MISMATCH'
+  | 'TERMINOLOGY_MISMATCH'
+  | 'UNSUPPORTED_CLAIM'
+  | 'UNVERIFIED_CLAIM';
+
+export interface ConsistencyEvidence {
+  localized_claim: string;
+  back_translation: string;
+  approved_fact_text: string;
+  approved_fact_id: string;
+  source_document: string;
+  source_locator: string;
+  fact_set_version: string;
+  values?: {
+    localized: { value: number; unit: string };
+    approved: { value: number; unit: string };
+  };
+}
+
+// Glossary Term
+export interface GlossaryTerm {
+  id: string;
+  workspace_id: string;
+  term_en: string;
+  term_hi: string;
+  term_bn: string;
+  category: string;
+  protected: boolean;
+  valid_from: string;
+  valid_to: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// Approved Fact Set
+export interface ApprovedFactSet {
+  id: string;
+  workspace_id: string;
+  brand_id?: string;
+  product_id?: string;
+  version: string;
+  status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Evaluation Case
+export interface EvaluationCase {
+  id: string;
+  language: ConsistencyCheckLanguage;
+  input_text: string;
+  expected_labels: ConsistencyFindingType[];
+  dataset_version: string;
+  created_at: string;
 }
 
 export interface Finding {

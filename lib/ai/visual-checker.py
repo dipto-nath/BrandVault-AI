@@ -422,46 +422,61 @@ def extract_text_from_image(image_path: str) -> Tuple[str, Dict[str, Any]]:
 
 # 6. Deterministic Claim Extraction
 def extract_claims_from_text(text: str) -> List[Dict[str, Any]]:
-    """Extract atomic factual claims from text content."""
-    if not text or len(text) < 4:
+    """Extract atomic factual claims from text content (works on prose, headlines, and posters)."""
+    if not text or len(text.strip()) < 4:
         return []
     
+    clean_text = text.strip()
+    
+    claim_patterns = [
+        # Battery life
+        (r'(?i)\b(?:\d+[-\s]*(?:hours?|hrs?|h)[-\s]*(?:of\s+)?battery(?:\s+life)?|all[-\s]*day\s+battery(?:\s+life)?|up\s+to\s+\d+[-\s]*(?:hours?|hrs?)\s+battery)\b', 'PRODUCT_SPECIFICATION', 'BATTERY'),
+        # Waterproof
+        (r'(?i)\b(?:completely\s+waterproof|100%\s+waterproof|waterproof|water[-\s]*resistant|ip6[78]\s*(?:waterproof|rating)?)\b', 'PRODUCT_SPECIFICATION', 'WATERPROOF'),
+        # Weight
+        (r'(?i)\b(?:weighs?\s+(?:just\s+)?\d+(?:\.\d+)?\s*(?:grams?|g|kg)|\b\d+(?:\.\d+)?\s*(?:grams?|g)\b)', 'PRODUCT_SPECIFICATION', 'WEIGHT'),
+        # Superlative promotional claim
+        (r'(?i)\b(?:(?:the\s+)?world\'?s\s+(?:best|fastest|most\s+\w+)|(?:the\s+)?#1\s+smartphone|flawless\s+performance|revolutionary\s+design|ultimate\s+smartphone)(?:\s+(?:smartphone|phone|device|laptop))?(?:\s+for\s+[a-z]+)?\b', 'PROMOTIONAL_CLAIM', 'SUPERLATIVE'),
+        # Screen / Display
+        (r'(?i)\b\d+(?:\.\d+)?[-\s]*(?:inch|\")\s*(?:display|screen|oled|amoled|retina)?\b', 'PRODUCT_SPECIFICATION', 'SCREEN'),
+        # AI Assistant / Robot
+        (r'(?i)\b(?:built[-\s]*in\s+)?(?:ai\s+robot(?:\s+buddy)?|smart\s+assistant|ai\s+assistant)\b', 'PRODUCT_SPECIFICATION', 'AI'),
+    ]
+    
     claims = []
+    seen_texts = set()
     
-    # Split by newlines, punctuation, or conjunctions
-    clauses = re.split(r'[\r\n]+|(?<=[.!?])\s+|;\s+|,\s+(?=(?:weighing|crafted|featuring|with|available|scheduled|get ready|ready to enjoy)\b)|,\s*(?=and\b)|,\s*/i', text)
-    clauses = [c.strip() for c in clauses if len(c.strip()) > 3]
+    # 1. Extract atomic claims via pattern matching
+    for pat, ctype, tag in claim_patterns:
+        for m in re.finditer(pat, clean_text):
+            val = m.group(0).strip(' ,;.')
+            val_norm = val.lower()
+            if val_norm not in seen_texts:
+                seen_texts.add(val_norm)
+                claims.append({
+                    "claimText": val,
+                    "claimType": ctype,
+                    "tag": tag
+                })
     
+    # 2. Also check sentence/clause boundaries for any additional prose claims
+    clauses = re.split(r'[\r\n]+|(?<=[.!?])\s+|;\s+|,\s+(?=(?:weighing|crafted|featuring|with|available|scheduled|get ready|ready to enjoy)\b)|,\s*(?=and\b)', clean_text)
     for clause in clauses:
-        lower = clause.lower()
-        claim_type = None
-        
-        if re.search(r'\b(battery|hours?\s+of\s+battery|battery\s+backup|mixed.use|48-hour|24-hour)\b', lower):
-            claim_type = 'PRODUCT_SPECIFICATION'
-        elif re.search(r'\b(screen|display|inch|"|retina|resolution)\b', lower):
-            claim_type = 'PRODUCT_SPECIFICATION'
-        elif re.search(r'\b(weigh|weight|185\s*g|gram)\b', lower):
-            claim_type = 'PRODUCT_SPECIFICATION'
-        elif re.search(r'\b(waterproof|water.resist|IP68|water.resistant)\b', lower):
-            claim_type = 'PRODUCT_SPECIFICATION'
-        elif re.search(r'\b(aluminium|aluminum|chassis|materials?|recycled)\b', lower):
-            claim_type = 'PRODUCT_SPECIFICATION'
-        elif re.search(r'\b(launch|december\s+2026|available|release)\b', lower):
-            claim_type = 'PRODUCT_SPECIFICATION'
-        elif re.search(r"\b(world'?s\s+best|best|fastest|unmatched|#1|revolutionary|ultimate|flawless|miraculous)\b", lower):
-            claim_type = 'PROMOTIONAL_CLAIM'
-        elif re.search(r'\b(get ready|ready to enjoy|enjoy)\b', lower):
-            claim_type = 'PROMOTIONAL_CLAIM'
-        elif re.search(r'\b(robot\s+buddy|smart\s+assistant|AI\s+robot)\b', lower):
-            claim_type = 'PRODUCT_SPECIFICATION'
-        elif re.search(r'\d', clause) and any(kw in lower for kw in ['hour', 'battery', 'weight', 'screen', 'inch', 'gram', 'launch', 'waterproof', 'material']):
-            claim_type = 'PRODUCT_SPECIFICATION'
-        
-        if claim_type:
-            claims.append({
-                "claimText": clause,
-                "claimType": claim_type,
-            })
+        c = clause.strip(' ,;.')
+        if len(c) > 6 and not any(c.lower() in cl['claimText'].lower() or cl['claimText'].lower() in c.lower() for cl in claims):
+            lower = c.lower()
+            claim_type = None
+            if any(kw in lower for kw in ['battery', 'waterproof', 'weight', 'display', 'screen', 'launch', 'recycled', 'aluminium']):
+                claim_type = 'PRODUCT_SPECIFICATION'
+            elif any(kw in lower for kw in ['best', 'fastest', 'unmatched', '#1', 'revolutionary', 'ultimate']):
+                claim_type = 'PROMOTIONAL_CLAIM'
+            
+            if claim_type:
+                claims.append({
+                    "claimText": c,
+                    "claimType": claim_type,
+                    "tag": "CLAUSE"
+                })
     
     return claims
 
@@ -526,34 +541,68 @@ def retrieve_evidence_for_claim(claim_text: str) -> List[Dict[str, Any]]:
     claim_lower = claim_text.lower()
     
     # Extract keywords from claim
-    claim_keywords = set(re.findall(r'\b\w{4,}\b', claim_lower))
+    claim_keywords = set(re.findall(r'\b[a-z0-9]{2,}\b', claim_lower))
     
     for fact in APPROVED_FACTS:
         fact_lower = fact["text"].lower()
-        fact_keywords = set(re.findall(r'\b\w{4,}\b', fact_lower))
+        fact_keywords = set(re.findall(r'\b[a-z0-9]{2,}\b', fact_lower))
         
+        # Direct domain-specific fact mapping
+        if ("battery" in claim_lower or "hour" in claim_lower) and "battery" in fact_lower:
+            evidence.append(fact)
+            continue
+        if ("waterproof" in claim_lower or "ip68" in claim_lower) and "waterproof" in fact_lower:
+            evidence.append(fact)
+            continue
+        if ("weigh" in claim_lower or "weight" in claim_lower or "gram" in claim_lower or "185" in claim_lower) and ("weigh" in fact_lower or "weight" in fact_lower or "185" in fact_lower):
+            evidence.append(fact)
+            continue
+        if ("screen" in claim_lower or "display" in claim_lower or "inch" in claim_lower) and ("display" in fact_lower or "screen" in fact_lower or "inch" in fact_lower):
+            evidence.append(fact)
+            continue
+        if ("ai" in claim_lower or "robot" in claim_lower or "assistant" in claim_lower) and ("ai" in fact_lower or "assistant" in fact_lower):
+            evidence.append(fact)
+            continue
+        if ("aluminium" in claim_lower or "aluminum" in claim_lower or "chassis" in claim_lower) and "aluminium" in fact_lower:
+            evidence.append(fact)
+            continue
+        if ("launch" in claim_lower or "release" in claim_lower) and "launch" in fact_lower:
+            evidence.append(fact)
+            continue
+
         overlap = claim_keywords & fact_keywords
-        # Require at least 2 overlapping keywords (to avoid matching just brand names)
-        # But don't filter out domain-specific words like battery, life, hours, etc.
-        generic_brand_words = {'nextech', 'nova', 'the', 'and', 'has', 'with', 'for', 'all', 'day', 'delivers', 'up', 'to', 'features', 'includes', 'uses', 'weighs', 'scheduled', 'launch'}
+        generic_brand_words = {'nextech', 'nova', 'the', 'and', 'has', 'with', 'for', 'all', 'day', 'delivers', 'up', 'to', 'features', 'includes', 'uses', 'weighs', 'scheduled', 'launch', 'an', 'in', 'at', 'on', 'by', 'is', 'everyone', 'your', 'today', 'get', 'smart'}
         meaningful_overlap = overlap - generic_brand_words
         if len(meaningful_overlap) >= 1 or len(overlap) >= 2:
             evidence.append(fact)
     
-    return evidence
+    # Deduplicate while preserving order
+    seen_ids = set()
+    deduped = []
+    for f in evidence:
+        if f["id"] not in seen_ids:
+            seen_ids.add(f["id"])
+            deduped.append(f)
+    return deduped
 
 def verify_claim_deterministic(claim_text: str, evidence: List[Dict[str, Any]]) -> Dict[str, Any]:
-
     """Deterministically verify a claim against approved evidence."""
-
     claim_lower = claim_text.lower()
 
-
+    # Brand tone: superlatives are prohibited without verified third-party audit
+    is_superlative = bool(re.search(r"\b(best|fastest|world'?s\s+(?:best|first|fastest)|unmatched|#1|number\s+one|incredible|revolutionary|ultimate|flawless|miraculous)\b", claim_lower))
+    if is_superlative:
+        return {
+            "status": "CONTRADICTED",
+            "explanation": "Brand guidelines prohibit unsubstantiated superlatives ('World\'s best', 'ultimate') without verified third-party audit.",
+            "evidenceIds": [],
+            "confidence": 0.95,
+            "findingType": "TONE_VIOLATION",
+            "severity": "MEDIUM",
+        }
 
     if not evidence:
         is_waterproof = bool(re.search(r'\b(waterproof|water.resist|ip68)\b', claim_lower))
-        is_superlative = bool(re.search(r"\b(best|fastest|world'?s\s+(?:best|first|fastest)|unmatched|#1|number\s+one|incredible|revolutionary|ultimate|flawless|miraculous)\b", claim_lower))
-
         if is_waterproof:
             return {
                 "status": "CONTRADICTED",
@@ -562,16 +611,6 @@ def verify_claim_deterministic(claim_text: str, evidence: List[Dict[str, Any]]) 
                 "confidence": 0.98,
                 "findingType": "FACTUAL_CONTRADICTION",
                 "severity": "HIGH",
-            }
-
-        if is_superlative:
-            return {
-                "status": "CONTRADICTED",
-                "explanation": "Brand guidelines prohibit unsubstantiated superlatives ('World\'s best', 'ultimate') without verified third-party audit.",
-                "evidenceIds": [],
-                "confidence": 0.95,
-                "findingType": "TONE_VIOLATION",
-                "severity": "MEDIUM",
             }
 
         return {
@@ -750,22 +789,26 @@ def verify_claim_deterministic(claim_text: str, evidence: List[Dict[str, Any]]) 
             if "launch" in fact_text and "december" in fact_text:
 
                 if "15 december 2026" not in claim_lower:
-
                     contradictions.append({
-
                         "status": "CONTRADICTED",
-
                         "explanation": f"Approved launch plan states {fact['text']}",
-
                         "evidenceIds": [fact["id"]],
-
                         "confidence": 0.95,
-
                         "findingType": "FACTUAL_CONTRADICTION",
-
                         "severity": "HIGH",
-
                     })
+
+        # Check for AI assistant vs robot buddy
+        if "robot" in claim_lower or "buddy" in claim_lower:
+            if "assistant" in fact_text or "ai" in fact_text:
+                contradictions.append({
+                    "status": "CONTRADICTED",
+                    "explanation": f"Approved spec states: {fact['text']}. 'Robot buddy' is not an approved feature description.",
+                    "evidenceIds": [fact["id"]],
+                    "confidence": 0.92,
+                    "findingType": "FACTUAL_CONTRADICTION",
+                    "severity": "MEDIUM",
+                })
 
 
 
@@ -798,7 +841,7 @@ def verify_claim_deterministic(claim_text: str, evidence: List[Dict[str, Any]]) 
 
 def verify_claims_in_text(text: str) -> List[Dict[str, Any]]:
     """Extract claims from text and verify each against approved facts."""
-    if not text or len(text) < 10:
+    if not text or len(text.strip()) < 4:
         return []
     
     claims = extract_claims_from_text(text)
@@ -815,9 +858,13 @@ def verify_claims_in_text(text: str) -> List[Dict[str, Any]]:
             if "battery" in lower_c or "hour" in lower_c:
                 correction = "Update battery claim to: 'Up to 24 hours of battery life under standard test conditions'."
             elif "waterproof" in lower_c or "ip68" in lower_c:
-                correction = "Remove waterproof claim or state: 'No approved waterproof rating'."
+                correction = "Remove waterproof claim or state: 'No approved waterproof rating exists for NexTech Nova'."
             elif "best" in lower_c or "fastest" in lower_c:
-                correction = "Remove superlative claim or cite independent verification."
+                correction = "Remove superlative claim or cite independent third-party verification."
+            elif "robot" in lower_c or "buddy" in lower_c:
+                correction = "Replace with approved description: 'Built-in AI smart assistant'."
+            elif "screen" in lower_c or "display" in lower_c or "inch" in lower_c:
+                correction = "Update display specification to: '6.7-inch display'."
             elif verification["status"] != "CONTRADICTED":
                 correction = "Add supporting evidence or remove unverified claim."
 
@@ -826,10 +873,11 @@ def verify_claims_in_text(text: str) -> List[Dict[str, Any]]:
                 "severity": verification.get("severity", "MEDIUM"),
                 "ruleId": "RULE-CLAIM-001" if verification["status"] == "CONTRADICTED" else "RULE-CLAIM-002",
                 "title": (
-                    "Battery life claim contradicts approved specification" if "battery" in lower_c else
-                    ("Waterproof claim contradicts approved specification" if "waterproof" in lower_c else
-                    ("Superlative violates brand tone guidelines" if "best" in lower_c else
-                    ("Factual claim contradicted" if verification["status"] == "CONTRADICTED" else "Unverified claim")))
+                    "Battery life claim contradicts approved specification" if ("battery" in lower_c or "hour" in lower_c) else
+                    ("Waterproof claim contradicts approved specification" if ("waterproof" in lower_c or "ip68" in lower_c) else
+                    ("Superlative violates brand tone guidelines" if ("best" in lower_c or "fastest" in lower_c) else
+                    ("AI feature terminology unapproved" if ("robot" in lower_c or "buddy" in lower_c) else
+                    ("Factual claim contradicted" if verification["status"] == "CONTRADICTED" else "Unverified claim"))))
                 ),
                 "message": verification["explanation"],
                 "originalPhrase": claim_text,

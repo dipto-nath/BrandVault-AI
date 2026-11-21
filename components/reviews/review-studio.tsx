@@ -1108,6 +1108,12 @@ export function ReviewStudio({
                     <div className="space-y-4">
                       <div
                         onClick={() => visualFileInputRef.current?.click()}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          const file = e.dataTransfer.files?.[0];
+                          if (file) handleVisualUpload(file);
+                        }}
                         className="p-6 text-center border-2 border-dashed border-sand-dark/60 rounded-xl hover:border-brand/60 bg-sand/10 hover:bg-sand/30 transition-all cursor-pointer space-y-2 group"
                       >
                         <div className="w-10 h-10 rounded-full bg-brand/10 text-brand flex items-center justify-center mx-auto group-hover:scale-105 transition-transform">
@@ -1172,6 +1178,7 @@ export function ReviewStudio({
                   <input
                     ref={visualFileInputRef}
                     type="file"
+                    accept="image/*"
                     className="hidden"
                     onClick={(e) => {
                       (e.target as HTMLInputElement).value = '';

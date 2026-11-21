@@ -1276,17 +1276,32 @@ export default function ReviewStudioPage() {
                       const file = e.dataTransfer.files?.[0];
                       if (file) handleImageSelect(file);
                     }}
-                    className="p-5 text-center border-2 border-dashed border-sand-dark/70 rounded-xl hover:border-brand/60 bg-sand/15 hover:bg-sand/30 transition-all cursor-pointer space-y-2 group"
+                    className="p-6 text-center border-2 border-dashed border-sand-dark/70 rounded-xl hover:border-brand/60 bg-sand/15 hover:bg-sand/30 transition-all cursor-pointer space-y-3 group"
                   >
-                    <div className="w-9 h-9 rounded-full bg-brand/10 text-brand flex items-center justify-center mx-auto group-hover:scale-105 transition-transform">
-                      <Upload className="w-4 h-4" />
+                    <div className="w-10 h-10 rounded-full bg-brand/10 text-brand flex items-center justify-center mx-auto group-hover:scale-105 transition-transform">
+                      <Upload className="w-5 h-5" />
                     </div>
-                    <div className="text-xs font-semibold text-ink">
-                      Drag & drop product post image, or <span className="text-brand underline">browse</span>
+                    <div className="space-y-1">
+                      <div className="text-xs font-semibold text-ink">
+                        Drag & drop product post image, or browse from device
+                      </div>
+                      <p className="text-[11px] text-ink-3 max-w-[340px] mx-auto">
+                        Supports PNG, JPEG, WebP (up to 10MB). Automatically checks brand logo currency, text contrast, and accessibility.
+                      </p>
                     </div>
-                    <p className="text-[11px] text-ink-3 max-w-[340px] mx-auto">
-                      Supports PNG, JPEG, WebP (up to 10MB). Automatically checks brand logo currency, text contrast, and accessibility.
-                    </p>
+                    <div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          fileInputRef.current?.click();
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium rounded-lg bg-brand text-white hover:bg-brand/90 transition-colors shadow-xs"
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>Choose Image / Browse</span>
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <div className="p-4 rounded-xl border border-sand-dark/40 bg-surface space-y-3">
@@ -1359,6 +1374,7 @@ export default function ReviewStudioPage() {
                 <input
                   ref={fileInputRef}
                   type="file"
+                  accept="image/*"
                   className="hidden"
                   onClick={(e) => {
                     (e.target as HTMLInputElement).value = '';
