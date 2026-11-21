@@ -3,10 +3,8 @@ import { withAuth, withAdmin, ok, fail } from '@/lib/api/handler';
 import { storage } from '@/lib/db/adaptor';
 import { generateJson, extractJsonBlock } from '@/lib/ai/provider';
 import { extractDocumentText, sanitizeExtractedText } from '@/lib/ai/documents';
-import { writeFileSync, mkdirSync, existsSync, unlinkSync } from 'fs';
-import { join } from 'path';
-
-const UPLOAD_DIR = join(process.cwd(), '.brandvault', 'uploads');
+import { safeWriteUpload } from '@/lib/fs-utils';
+import { unlinkSync } from 'fs';
 
 interface ExtractedProduct {
   name: string;
@@ -256,13 +254,10 @@ export const POST = withAdmin(async (ctx, req) => {
     if (!file.type.includes('pdf') && !file.name.toLowerCase().endsWith('.pdf')) return fail('VALIDATION_ERROR', 'Please upload a PDF file', 400);
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    if (!existsSync(UPLOAD_DIR)) mkdirSync(UPLOAD_DIR, { recursive: true });
-    const sanitizedFilename = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const storagePath = join(UPLOAD_DIR, `knowledge-${Date.now()}-${sanitizedFilename}`);
-    writeFileSync(storagePath, buffer);
-    
+    const storagePath = safeWriteUpload(file.name, buffer);
+
     try {
-      const extraction = await extractDocumentText(storagePath, 'application/pdf');
+      const extraction = await extractDocumentText(buffer, 'application/pdf');
       const text = sanitizeExtractedText(extraction.text);
       
       const extractionResult = await extractProductFromPDF(text || file.name, file.name);

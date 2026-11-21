@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { storage } from '@/lib/db/adaptor';
 import { getRequestContext } from '@/lib/auth';
 import { runVisualCheck } from '@/lib/ai/visual-checker';
+import { getUploadDir } from '@/lib/fs-utils';
 import fs from 'fs';
 import path from 'path';
 
@@ -18,7 +19,7 @@ export async function GET(
     }
 
     // Check if visual asset exists for this submission in uploads
-    const uploadsDir = path.join(process.cwd(), '.brandvault', 'uploads');
+    const uploadsDir = getUploadDir();
     let visualAsset: any = null;
 
     if (fs.existsSync(uploadsDir)) {
@@ -93,9 +94,8 @@ export async function POST(
       );
     }
 
-    // Save image to .brandvault/uploads
-    const uploadsDir = path.join(process.cwd(), '.brandvault', 'uploads');
-    fs.mkdirSync(uploadsDir, { recursive: true });
+    // Save image to uploads dir
+    const uploadsDir = getUploadDir();
 
     // Sanitize filename
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
+import { getUploadDir } from '@/lib/fs-utils';
 
 export async function GET(
   req: NextRequest,
@@ -13,6 +14,7 @@ export async function GET(
   
   // Search in uploads, approved_assets, and test_assets
   const searchDirs = [
+    getUploadDir(),
     path.join(process.cwd(), '.brandvault', 'uploads'),
     path.join(process.cwd(), '.brandvault', 'approved_assets'),
     path.join(process.cwd(), '.brandvault', 'test_assets'),

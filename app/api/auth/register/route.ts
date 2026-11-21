@@ -5,6 +5,7 @@ import { extractDocumentText, sanitizeExtractedText } from '@/lib/ai/documents';
 import { writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import crypto from 'crypto';
+import { safeWriteUpload } from '@/lib/fs-utils';
 
 function createLocalJwt(payload: { sub: string; org_id: string; role: string; email: string; name?: string; is_demo?: boolean }): string {
   const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
@@ -127,19 +128,14 @@ export async function POST(req: NextRequest) {
       await storage.ensureMember(workspace.id, userId, 'ADMIN');
 
       if (sourceDocuments.length > 0) {
-        const uploadDir = join(process.cwd(), '.brandvault', 'uploads');
-        if (!existsSync(uploadDir)) mkdirSync(uploadDir, { recursive: true });
-
         for (const file of sourceDocuments) {
           const arrayBuffer = await file.arrayBuffer();
           const buffer = Buffer.from(arrayBuffer);
-          const sanitizedFilename = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-          const storagePath = join(uploadDir, `${Date.now()}-${sanitizedFilename}`);
-          writeFileSync(storagePath, buffer);
+          const storagePath = safeWriteUpload(file.name, buffer);
 
           let extractedText = '';
           try {
-            const extraction = await extractDocumentText(storagePath, 'application/pdf');
+            const extraction = await extractDocumentText(buffer, 'application/pdf');
             extractedText = sanitizeExtractedText(extraction.text);
           } catch {
             extractedText = '';

@@ -105,7 +105,8 @@ export default async function PassportDetailPage({
   try {
     const fs = await import('fs');
     const path = await import('path');
-    const uploadsDir = path.join(process.cwd(), '.brandvault', 'uploads');
+    const { getUploadDir } = await import('@/lib/fs-utils');
+    const uploadsDir = getUploadDir();
     if (fs.existsSync(uploadsDir)) {
       const files = fs.readdirSync(uploadsDir);
       const match = files.find((f) => f.startsWith(`${submission.id}_`));

@@ -2,10 +2,7 @@ import { storage } from '@/lib/db/adaptor';
 import { audit } from './audit';
 import { extractDocumentText, sanitizeExtractedText } from '@/lib/ai/documents';
 import { handleFactChange } from './reverification';
-import { writeFileSync, mkdirSync, existsSync } from 'fs';
-import { join } from 'path';
-
-const UPLOAD_DIR = join(process.cwd(), '.brandvault', 'uploads');
+import { safeWriteUpload } from '@/lib/fs-utils';
 
 export async function listFacts(workspaceId: string) {
   return storage.listFacts(workspaceId, { active: true });
@@ -86,10 +83,7 @@ export async function uploadDocument(workspaceId: string, userId: string | null,
     throw new Error('Unsupported file type. Please upload a PDF, DOCX, or TXT file.');
   }
 
-  if (!existsSync(UPLOAD_DIR)) mkdirSync(UPLOAD_DIR, { recursive: true });
-  const sanitizedFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
-  const storagePath = join(UPLOAD_DIR, `${Date.now()}-${sanitizedFilename}`);
-  writeFileSync(storagePath, fileBuffer);
+  const storagePath = safeWriteUpload(filename, fileBuffer);
   const doc = await storage.createDocument({
     workspace_id: workspaceId,
     filename,
@@ -102,7 +96,7 @@ export async function uploadDocument(workspaceId: string, userId: string | null,
     extraction_error: null,
     uploaded_by: userId,
   });
-  const extraction = await extractDocumentText(storagePath, mimeType);
+  const extraction = await extractDocumentText(fileBuffer, mimeType);
   const text = sanitizeExtractedText(extraction.text);
   await storage.updateDocument(doc.id, {
     document_status: extraction.success ? 'PENDING_REVIEW' : 'FAILED',

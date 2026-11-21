@@ -12,11 +12,13 @@ async function loadPdfParse() {
   return mod;
 }
 
-export async function extractDocumentText(filePath: string, mimeType: string): Promise<ExtractionResult> {
+export async function extractDocumentText(filePathOrBuffer: string | Buffer, mimeType: string): Promise<ExtractionResult> {
   try {
-    const buffer = readFileSync(filePath);
+    const isBuf = Buffer.isBuffer(filePathOrBuffer);
+    const buffer = isBuf ? filePathOrBuffer : readFileSync(filePathOrBuffer);
+    const filenameHint = isBuf ? '' : (filePathOrBuffer as string).toLowerCase();
 
-    if (mimeType === 'application/pdf' || filePath.toLowerCase().endsWith('.pdf')) {
+    if (mimeType === 'application/pdf' || filenameHint.endsWith('.pdf')) {
       const mod: any = await loadPdfParse();
 
       // 1. Check for pdf-parse v2 (class PDFParse)
@@ -52,14 +54,14 @@ export async function extractDocumentText(filePath: string, mimeType: string): P
     if (
       mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
       mimeType === 'application/msword' ||
-      filePath.toLowerCase().endsWith('.docx') ||
-      filePath.toLowerCase().endsWith('.doc')
+      filenameHint.endsWith('.docx') ||
+      filenameHint.endsWith('.doc')
     ) {
       const data = await mammoth.extractRawText({ buffer });
       return { text: data.value ?? '', success: true };
     }
 
-    if (mimeType === 'text/plain' || filePath.toLowerCase().endsWith('.txt')) {
+    if (mimeType === 'text/plain' || filenameHint.endsWith('.txt')) {
       return { text: buffer.toString('utf8'), success: true };
     }
 
