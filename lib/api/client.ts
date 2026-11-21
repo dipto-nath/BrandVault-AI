@@ -50,8 +50,13 @@ export async function backendFetch<T = any>(
     reqHeaders['Authorization'] = `Bearer ${token}`;
   }
 
+  // Abort after 3.5s timeout by default to avoid hanging on cold-start or sleeping backends
+  const timeoutSignal = AbortSignal.timeout(3500);
+  const fetchSignal = rest.signal || timeoutSignal;
+
   const response = await fetch(url, {
     ...rest,
+    signal: fetchSignal,
     headers: reqHeaders,
   });
 

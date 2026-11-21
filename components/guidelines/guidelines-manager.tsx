@@ -41,6 +41,7 @@ export function GuidelinesManager({ guidelines: initialGuidelines }: GuidelinesM
   const router = useRouter();
   const [guidelines, setGuidelines] = useState(initialGuidelines);
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
+  const [selectedSeverity, setSelectedSeverity] = useState<string>('ALL');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Template Library State
@@ -72,6 +73,7 @@ export function GuidelinesManager({ guidelines: initialGuidelines }: GuidelinesM
 
   const filteredGuidelines = guidelines.filter((g) => {
     if (selectedCategory !== 'ALL' && g.category !== selectedCategory) return false;
+    if (selectedSeverity !== 'ALL' && g.severity !== selectedSeverity) return false;
     return true;
   });
 
@@ -192,34 +194,65 @@ export function GuidelinesManager({ guidelines: initialGuidelines }: GuidelinesM
         </div>
       </div>
 
-      {/* Filter Tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
-        <button
-          onClick={() => setSelectedCategory('ALL')}
-          className={`px-3 py-1.5 rounded-lg font-semibold transition-all duration-150 ${
-            selectedCategory === 'ALL'
-              ? 'bg-accent text-white shadow-sm shadow-accent/20'
-              : 'bg-surface border border-border text-ink-secondary hover:text-ink-dark hover:bg-surface-hover'
-          }`}
-        >
-          All Policies ({guidelines.length})
-        </button>
-        {CATEGORIES.filter((cat) => guidelines.some((g) => g.category === cat)).map((cat) => {
-          const count = guidelines.filter((g) => g.category === cat).length;
-          return (
+      {/* Filter Tabs: Category & Risk Level */}
+      <div className="space-y-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {/* Category Pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
             <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-all duration-150 ${
-                selectedCategory === cat
-                  ? 'bg-accent text-white font-semibold shadow-sm shadow-accent/20'
-                  : 'bg-surface border border-border text-ink-secondary hover:text-ink-dark hover:bg-surface-hover'
+              type="button"
+              onClick={() => setSelectedCategory('ALL')}
+              className={`px-3 py-1.5 rounded-lg font-semibold transition-all duration-150 ${
+                selectedCategory === 'ALL'
+                  ? 'bg-ink text-white shadow-xs'
+                  : 'bg-surface border border-line text-ink-2 hover:text-ink hover:bg-surface-hover'
               }`}
             >
-              {cat} ({count})
+              All Policies ({guidelines.length})
             </button>
-          );
-        })}
+            {CATEGORIES.filter((cat) => guidelines.some((g) => g.category === cat)).map((cat) => {
+              const count = guidelines.filter((g) => g.category === cat).length;
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-all duration-150 ${
+                    selectedCategory === cat
+                      ? 'bg-ink text-white font-semibold shadow-xs'
+                      : 'bg-surface border border-line text-ink-2 hover:text-ink hover:bg-surface-hover'
+                  }`}
+                >
+                  {cat} ({count})
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Risk Level / Severity Segmented Filter */}
+          <div className="flex items-center gap-1 bg-surface-subtle p-1 rounded-lg border border-line text-xs shrink-0">
+            <span className="text-[11px] font-semibold text-ink-3 px-2">Risk:</span>
+            {[
+              { id: 'ALL', label: 'All Risks', count: guidelines.length },
+              { id: 'HIGH', label: 'High', count: guidelines.filter((g) => g.severity === 'HIGH').length },
+              { id: 'MEDIUM', label: 'Medium', count: guidelines.filter((g) => g.severity === 'MEDIUM').length },
+              { id: 'LOW', label: 'Low', count: guidelines.filter((g) => g.severity === 'LOW').length },
+            ].map((sev) => (
+              <button
+                key={sev.id}
+                type="button"
+                onClick={() => setSelectedSeverity(sev.id)}
+                className={`px-2.5 py-1 rounded-md font-medium transition-all ${
+                  selectedSeverity === sev.id
+                    ? 'bg-sheet text-ink font-bold shadow-2xs border border-line/80'
+                    : 'text-ink-3 hover:text-ink'
+                }`}
+              >
+                {sev.label} ({sev.count})
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Guidelines Table Card */}
@@ -501,20 +534,26 @@ export function GuidelinesManager({ guidelines: initialGuidelines }: GuidelinesM
               </div>
 
               <div>
-                <label className="label">Severity</label>
+                <label className="label">Risk Level / Severity</label>
                 <div className="grid grid-cols-3 gap-2">
-                  {(['LOW', 'MEDIUM', 'HIGH'] as Severity[]).map((s) => (
+                  {[
+                    { id: 'LOW' as Severity, label: 'Low', activeClass: 'bg-emerald-50 border-emerald-600 text-emerald-800 ring-2 ring-emerald-500/20 font-bold shadow-xs', dot: 'bg-emerald-500' },
+                    { id: 'MEDIUM' as Severity, label: 'Medium', activeClass: 'bg-amber-50 border-amber-600 text-amber-900 ring-2 ring-amber-500/20 font-bold shadow-xs', dot: 'bg-amber-500' },
+                    { id: 'HIGH' as Severity, label: 'High', activeClass: 'bg-red-50 border-proof-red text-proof-red ring-2 ring-proof-red/20 font-bold shadow-xs', dot: 'bg-proof-red' },
+                  ].map((s) => (
                     <button
-                      key={s}
+                      key={s.id}
                       type="button"
-                      onClick={() => setSeverity(s)}
-                      className={`py-2 text-xs font-semibold rounded-md border text-center transition-all ${
-                        severity === s
-                          ? 'border-accent bg-accent-soft text-accent'
-                          : 'border-border text-ink-secondary hover:bg-surface-subtle'
+                      onClick={() => setSeverity(s.id)}
+                      className={`py-2 px-3 text-xs rounded-lg border text-center transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                        severity === s.id
+                          ? s.activeClass
+                          : 'border-line text-ink-2 hover:text-ink hover:bg-surface-hover bg-sheet'
                       }`}
                     >
-                      {s}
+                      <span className={`w-2 h-2 rounded-full ${s.dot}`} />
+                      <span>{s.label}</span>
+                      {severity === s.id && <Check className="w-3.5 h-3.5 ml-0.5" />}
                     </button>
                   ))}
                 </div>

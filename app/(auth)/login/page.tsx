@@ -95,7 +95,9 @@ function LoginContent() {
       }
 
       setIsSuccess(true);
-      setTimeout(() => router.push(nextParam), 800);
+      setTimeout(() => {
+        window.location.href = nextParam;
+      }, 500);
     } catch (err: any) {
       setError(err.message);
       setShakeCard(true);

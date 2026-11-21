@@ -855,7 +855,7 @@ export function KnowledgeManagerClient({
                     <input
                       type="file"
                       id="spec-file-input"
-                      accept=".pdf"
+                      accept=".pdf,application/pdf"
                       onChange={(e) => {
                         const f = e.target.files?.[0] || null;
                         if (f && f.size > 15 * 1024 * 1024) {

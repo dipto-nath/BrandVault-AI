@@ -12,8 +12,8 @@ export const POST = withAdmin(async (ctx, req) => {
   const formData = await req.formData();
   const file = formData.get('file') as File;
   if (!file) return fail('VALIDATION_ERROR', 'No file provided', 400);
-  if (file.size > 10 * 1024 * 1024) {
-    return fail('VALIDATION_ERROR', 'File size exceeds maximum limit of 10MB', 400);
+  if (file.size > 15 * 1024 * 1024) {
+    return fail('VALIDATION_ERROR', 'File size exceeds maximum limit of 15MB', 400);
   }
   const buffer = Buffer.from(await file.arrayBuffer());
   const mimeType = file.type || 'application/octet-stream';

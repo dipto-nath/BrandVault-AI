@@ -128,6 +128,7 @@ export function Header({
       '/overview': 'Overview',
       '/reviews': 'Content Reviews',
       '/reviews/new': 'Review Studio',
+      '/consistency-checks': 'Consistency Checks',
       '/findings': 'Findings Registry',
       '/guidelines': 'Brand Guidelines',
       '/knowledge': 'Approved Knowledge',

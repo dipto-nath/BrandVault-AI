@@ -223,7 +223,9 @@ function SignupContent() {
       }
 
       setIsSuccess(true);
-      setTimeout(() => router.push(nextParam), 1200);
+      setTimeout(() => {
+        window.location.href = nextParam;
+      }, 500);
     } catch (err: any) {
       setError(err.message);
       setShakeCard(true);

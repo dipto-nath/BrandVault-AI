@@ -41,14 +41,17 @@ function emptyStore(): Store {
 }
 function loadStore(): Store {
   try {
+    let s: any = null;
     if (existsSync(DATA_FILE)) {
-      return JSON.parse(readFileSync(DATA_FILE, 'utf8')) as Store;
+      s = JSON.parse(readFileSync(DATA_FILE, 'utf8')) as Store;
+    } else {
+      const tmpFile = join('/tmp', '.brandvault', 'store.json');
+      if (existsSync(tmpFile)) {
+        s = JSON.parse(readFileSync(tmpFile, 'utf8')) as Store;
+      }
     }
-    const tmpFile = join('/tmp', '.brandvault', 'store.json');
-    if (existsSync(tmpFile)) {
-      return JSON.parse(readFileSync(tmpFile, 'utf8')) as Store;
-    }
-    return emptyStore();
+    if (!s) return emptyStore();
+    return { ...emptyStore(), ...s, products: s.products || [] };
   } catch {
     return emptyStore();
   }
@@ -77,6 +80,21 @@ function seed(store: Store): Store {
     store.guidelines = store.guidelines.filter((g) => !seenG.has(g.rule_code) && seenG.add(g.rule_code));
     const seenF = new Set<string>();
     store.facts = store.facts.filter((f) => !seenF.has(f.fact_code) && seenF.add(f.fact_code));
+
+    // Ensure demo products are always seeded
+    if (!store.products || store.products.length === 0) {
+      store.products = [
+        { id: '00000000-0000-0004-000000000001', workspace_id: DEMO_WORKSPACE_ID, name: 'NexaTech Nova', category: 'Smartphone', model_or_version: 'Nova', launch_date: '2026-12-15', status: 'ACTIVE', description: 'Flagship smartphone with recycled aluminium chassis', facts_count: 5, created_at: now(), updated_at: now() },
+        { id: '00000000-0000-0004-000000000002', workspace_id: DEMO_WORKSPACE_ID, name: 'NexaBuds Ultra', category: 'Audio', model_or_version: 'Ultra', launch_date: '2026-11-01', status: 'ACTIVE', description: 'Premium wireless earbuds with 30h battery', facts_count: 3, created_at: now(), updated_at: now() },
+      ];
+      // Also link demo facts to NexaTech Nova
+      for (const f of store.facts) {
+        if (!f.product_id && (f.entity_name?.includes('Nova') || f.title?.toLowerCase().includes('battery') || f.title?.toLowerCase().includes('device') || f.title?.toLowerCase().includes('material') || f.title?.toLowerCase().includes('waterproof') || f.title?.toLowerCase().includes('launch'))) {
+          f.product_id = '00000000-0000-0004-000000000001';
+        }
+      }
+      saveStore(store);
+    }
     return store;
   }
 
@@ -315,14 +333,18 @@ export class FileStorage implements Storage {
   async deactivateGuideline(id: string): Promise<void> { await this.updateGuideline(id, { active: false }); }
   
   // ---------- Products ----------
-  async listProducts(workspaceId: string): Promise<Product[]> { return clone(filterByWorkspace(this.store().products, workspaceId)); }
-  async getProduct(id: string): Promise<Product | null> { return this.store().products.find((p) => p.id === id) ?? null; }
+  async listProducts(workspaceId: string): Promise<Product[]> { return clone(filterByWorkspace(this.store().products || [], workspaceId)); }
+  async getProduct(id: string): Promise<Product | null> { return (this.store().products || []).find((p) => p.id === id) ?? null; }
   async createProduct(data: Omit<Product, 'id' | 'created_at' | 'updated_at'> & { created_by?: string | null }): Promise<Product> {
-    const store = this.store(); const p: Product = { id: uid(), workspace_id: data.workspace_id, name: data.name, category: data.category ?? null, model_or_version: data.model_or_version ?? null, launch_date: data.launch_date ?? null, status: data.status ?? 'ACTIVE', description: data.description ?? null, facts_count: 0, created_at: now(), updated_at: now() };
+    const store = this.store();
+    if (!store.products) store.products = [];
+    const p: Product = { id: uid(), workspace_id: data.workspace_id, name: data.name, category: data.category ?? null, model_or_version: data.model_or_version ?? null, launch_date: data.launch_date ?? null, status: data.status ?? 'ACTIVE', description: data.description ?? null, facts_count: 0, created_at: now(), updated_at: now() };
     store.products.push(p); persist(store); return clone(p);
   }
   async updateProduct(id: string, data: Partial<Pick<Product, 'name' | 'category' | 'model_or_version' | 'launch_date' | 'status' | 'description'>>): Promise<Product> {
-    const store = this.store(); const idx = store.products.findIndex((p) => p.id === id);
+    const store = this.store();
+    if (!store.products) store.products = [];
+    const idx = store.products.findIndex((p) => p.id === id);
     if (idx === -1) throw new Error('Product not found');
     const p = { ...store.products[idx], ...data, updated_at: now() };
     store.products[idx] = p; persist(store); return clone(p);

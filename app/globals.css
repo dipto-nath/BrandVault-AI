@@ -312,6 +312,39 @@
   .workspace-card { @apply p-3 rounded-xl bg-surface border border-line; background-color: var(--surface); border-color: var(--line); }
   .workspace-card-note { @apply mt-3 text-[12px] text-ink-3 italic leading-relaxed; font-family: var(--font-caveat), cursive; }
   
+  /* Indic Script Typography Rules (Blueprint §8 / Hard Rules) */
+  .font-indic-hi {
+    font-family: 'Noto Sans Devanagari', var(--font-inter), system-ui, sans-serif;
+    line-height: 1.7;
+    letter-spacing: normal !important;
+    text-transform: none !important;
+  }
+  .font-indic-bn {
+    font-family: 'Noto Sans Bengali', var(--font-inter), system-ui, sans-serif;
+    line-height: 1.7;
+    letter-spacing: normal !important;
+    text-transform: none !important;
+  }
+  /* Ruled paper background for authentic editorial drafting */
+  .ruled-paper {
+    background-color: #FFFDF8;
+    background-image: repeating-linear-gradient(transparent, transparent 31px, rgba(228, 220, 203, 0.55) 31px, rgba(228, 220, 203, 0.55) 32px);
+    line-height: 32px;
+  }
+  /* Proof-sheet card styling */
+  .proof-card {
+    background-color: #FFFDF8;
+    border: 1px solid #E4DCCB;
+    border-radius: 14px;
+    box-shadow: 0 1px 3px rgba(22, 32, 58, 0.04), 0 4px 16px rgba(22, 32, 58, 0.03);
+    padding: 24px;
+  }
+  @media (max-width: 640px) {
+    .proof-card {
+      padding: 20px;
+    }
+  }
+
   @media print {
     @page {
       margin: 12mm 15mm;

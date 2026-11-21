@@ -206,6 +206,13 @@ export async function POST(req: NextRequest) {
       organization: data.organization,
     });
 
+    // Detect if we should use secure cookie (MUST NOT be true on unencrypted localhost, otherwise Safari drops it!)
+    const proto = req.headers.get('x-forwarded-proto') || req.nextUrl.protocol?.replace(':', '') || '';
+    const host = req.headers.get('host') || req.nextUrl.host || '';
+    const isLocalhost = host.includes('localhost') || host.includes('127.0.0.1');
+    const isHttps = proto === 'https';
+    const isSecureCookie = isHttps && !isLocalhost;
+
     // Set secure HTTP-only cookies
     if (data.access_token) {
       response.cookies.set('bv_session', data.access_token, {
@@ -213,7 +220,7 @@ export async function POST(req: NextRequest) {
         path: '/',
         sameSite: 'lax',
         maxAge: 60 * 60 * 24 * 7, // 7 days
-        secure: process.env.NODE_ENV === 'production',
+        secure: isSecureCookie,
       });
     }
 
@@ -223,7 +230,7 @@ export async function POST(req: NextRequest) {
         path: '/',
         sameSite: 'lax',
         maxAge: 60 * 60 * 24 * 30, // 30 days
-        secure: process.env.NODE_ENV === 'production',
+        secure: isSecureCookie,
       });
     }
 
@@ -233,6 +240,7 @@ export async function POST(req: NextRequest) {
         path: '/',
         sameSite: 'lax',
         maxAge: 60 * 60 * 24 * 30,
+        secure: isSecureCookie,
       });
     }
 

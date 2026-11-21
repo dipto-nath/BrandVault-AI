@@ -52,63 +52,71 @@ export async function POST(req: NextRequest) {
     const normalizedEmail = String(email).trim().toLowerCase();
     let data: any = null;
 
-    // 1. Try FastAPI backend first
-    try {
-      data = await backendFetch('/api/v1/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email: normalizedEmail, password }),
-      });
-    } catch (backendErr: any) {
-      if (backendErr instanceof ApiError && (backendErr.status === 400 || backendErr.status === 401)) {
+    // Check if this is a judge/demo account first: instant local sandbox access
+    const isJudgeDemo = normalizedEmail === 'demo@nexatech.example' || normalizedEmail === 'judge@nexatech.example';
+    
+    if (isJudgeDemo) {
+      // Enforce demo password verification
+      const validDemoPasswords = ['demo12345', 'demo', 'nexatech2026', 'judge2026'];
+      if (!validDemoPasswords.includes(password)) {
         return NextResponse.json({ error: 'Email or password is incorrect.' }, { status: 401 });
       }
 
-      // Backend offline/unreachable: handle judge demo account and local accounts securely
-      const isJudgeDemo = normalizedEmail === 'demo@nexatech.example' || normalizedEmail === 'judge@nexatech.example';
-      
-      if (isJudgeDemo) {
-        // Enforce demo password verification
-        const validDemoPasswords = ['demo12345', 'demo', 'nexatech2026', 'judge2026'];
-        if (!validDemoPasswords.includes(password)) {
+      let ws = {
+        id: '11111111-1111-1111-1111-111111111111',
+        name: 'NexaTech',
+        slug: 'nexatech',
+      };
+      try {
+        const demoWs = await Promise.race([
+          storage.getDemoWorkspace(),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 1000)),
+        ]);
+        if (demoWs) ws = demoWs;
+      } catch {
+        // use fallback ws
+      }
+
+      const userId = '22222222-2222-2222-2222-222222222222';
+      const accessToken = createLocalJwt({
+        sub: userId,
+        org_id: ws.id,
+        role: 'ADMIN',
+        email: normalizedEmail,
+        name: 'Demo Reviewer (Judge Sandbox)',
+        is_demo: true,
+      });
+
+      data = {
+        access_token: accessToken,
+        refresh_token: crypto.randomBytes(32).toString('hex'),
+        token_type: 'bearer',
+        user: {
+          id: userId,
+          email: normalizedEmail,
+          full_name: 'Demo Reviewer',
+          role: 'ADMIN',
+          created_at: new Date().toISOString(),
+        },
+        organization: {
+          id: ws.id,
+          name: ws.name,
+          slug: ws.slug,
+          created_at: new Date().toISOString(),
+        },
+      };
+    } else {
+      // 1. Try FastAPI backend first
+      try {
+        data = await backendFetch('/api/v1/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({ email: normalizedEmail, password }),
+        });
+      } catch (backendErr: any) {
+        if (backendErr instanceof ApiError && (backendErr.status === 400 || backendErr.status === 401)) {
           return NextResponse.json({ error: 'Email or password is incorrect.' }, { status: 401 });
         }
 
-        const demoWs = await storage.getDemoWorkspace();
-        const ws = demoWs || {
-          id: '11111111-1111-1111-1111-111111111111',
-          name: 'NexaTech',
-          slug: 'nexatech',
-        };
-
-        const userId = '22222222-2222-2222-2222-222222222222';
-        const accessToken = createLocalJwt({
-          sub: userId,
-          org_id: ws.id,
-          role: 'ADMIN',
-          email: normalizedEmail,
-          name: 'Demo Reviewer (Judge Sandbox)',
-          is_demo: true,
-        });
-
-        data = {
-          access_token: accessToken,
-          refresh_token: crypto.randomBytes(32).toString('hex'),
-          token_type: 'bearer',
-          user: {
-            id: userId,
-            email: normalizedEmail,
-            full_name: 'Demo Reviewer',
-            role: 'ADMIN',
-            created_at: new Date().toISOString(),
-          },
-          organization: {
-            id: ws.id,
-            name: ws.name,
-            slug: ws.slug,
-            created_at: new Date().toISOString(),
-          },
-        };
-      } else {
         // For non-demo accounts, look up the user's REAL workspace!
         try {
           const userWs = await storage.getWorkspaceForUserByEmail(normalizedEmail);
@@ -177,6 +185,13 @@ export async function POST(req: NextRequest) {
       organization: data.organization,
     });
 
+    // Detect if we should use secure cookie (MUST NOT be true on unencrypted localhost, otherwise Safari drops it!)
+    const proto = req.headers.get('x-forwarded-proto') || req.nextUrl.protocol?.replace(':', '') || '';
+    const host = req.headers.get('host') || req.nextUrl.host || '';
+    const isLocalhost = host.includes('localhost') || host.includes('127.0.0.1');
+    const isHttps = proto === 'https';
+    const isSecureCookie = isHttps && !isLocalhost;
+
     // Set secure HTTP-only cookies
     if (data.access_token) {
       response.cookies.set('bv_session', data.access_token, {
@@ -184,7 +199,7 @@ export async function POST(req: NextRequest) {
         path: '/',
         sameSite: 'lax',
         maxAge: 60 * 60 * 24 * 7,
-        secure: process.env.NODE_ENV === 'production',
+        secure: isSecureCookie,
       });
     }
 
@@ -194,7 +209,7 @@ export async function POST(req: NextRequest) {
         path: '/',
         sameSite: 'lax',
         maxAge: 60 * 60 * 24 * 30,
-        secure: process.env.NODE_ENV === 'production',
+        secure: isSecureCookie,
       });
     }
 
@@ -203,6 +218,7 @@ export async function POST(req: NextRequest) {
         path: '/',
         sameSite: 'lax',
         maxAge: 60 * 60 * 24 * 30,
+        secure: isSecureCookie,
       });
     }
 

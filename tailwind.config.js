@@ -18,6 +18,7 @@ module.exports = {
         // BrandVault AI — Warm Reading Room Palette
         background: "var(--paper)",
         paper: "var(--paper)",
+        sheet: "#FFFDF8",
         surface: "var(--surface)",
         "surface-2": "var(--surface-2)",
         "surface-hover": "var(--surface-hover)",
@@ -28,6 +29,13 @@ module.exports = {
         brand: "var(--brand)",
         "brand-hover": "var(--brand-hover)",
         "brand-soft": "var(--brand-soft)",
+        indigo: {
+          DEFAULT: "#3B4BC8",
+          dark: "#2A3699",
+          soft: "#EEF1FC",
+        },
+        "proof-red": "#C2402E",
+        "approved-green": "#3F8F6B",
         terracotta: "var(--terracotta)",
         "accent-terracotta": "var(--terracotta)",
         supported: "var(--supported)",
@@ -67,6 +75,8 @@ module.exports = {
         serif: ["var(--font-fraunces)", "Georgia", "serif"],
         mono: ["var(--font-jetbrains-mono)", "JetBrains Mono", "monospace"],
         handwritten: ["var(--font-caveat)", "cursive"],
+        devanagari: ["'Noto Sans Devanagari'", "system-ui", "sans-serif"],
+        bengali: ["'Noto Sans Bengali'", "system-ui", "sans-serif"],
       },
       fontSize: {
         xs: ["0.6875rem", { lineHeight: "1.4", letterSpacing: "0.02em" }],     // 11px - metadata

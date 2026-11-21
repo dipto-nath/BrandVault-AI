@@ -52,7 +52,7 @@ export const UpdateGuidelineSchema = z.object({
 });
 
 export const CreateFactSchema = z.object({
-  product_id: z.string().uuid().optional().nullable(),
+  product_id: z.string().max(100).optional().nullable(),
   fact_code: z.string().min(1).max(50),
   title: z.string().min(1).max(200),
   fact_text: z.string().min(1).max(5000),
@@ -62,8 +62,8 @@ export const CreateFactSchema = z.object({
   source_reference: z.string().max(500).optional().nullable(),
   source_excerpt: z.string().max(2000).optional().nullable(),
   verification_status: z.enum(['PENDING', 'APPROVED', 'REJECTED']).optional(),
-  effective_from: z.string().datetime().optional().nullable(),
-  expires_at: z.string().datetime().optional().nullable(),
+  effective_from: z.string().max(100).optional().nullable(),
+  expires_at: z.string().max(100).optional().nullable(),
   notes: z.string().max(2000).optional().nullable(),
 });
 

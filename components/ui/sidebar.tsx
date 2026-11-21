@@ -18,7 +18,9 @@ import {
   FileText,
   ChevronLeft,
   ChevronRight,
-  Sparkles,
+  Languages,
+  HelpCircle,
+  LogOut,
 } from "lucide-react";
 
 export interface NavLink {
@@ -60,7 +62,27 @@ export const SidebarProvider = ({
 }) => {
   const [openState, setOpenState] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  const [pinned, setPinned] = useState(false);
+  const [pinned, setPinned] = useState(true);
+
+  // Initialize from localStorage if present
+  React.useEffect(() => {
+    try {
+      const stored = localStorage.getItem("bv_sidebar_pinned");
+      if (stored !== null) {
+        setPinned(stored === "true");
+      }
+    } catch {}
+  }, []);
+
+  const handleSetPinned: React.Dispatch<React.SetStateAction<boolean>> = (val) => {
+    setPinned((prev) => {
+      const next = typeof val === "function" ? val(prev) : val;
+      try {
+        localStorage.setItem("bv_sidebar_pinned", String(next));
+      } catch {}
+      return next;
+    });
+  };
 
   // If pinned, open is true. If not pinned, open reflects hover state or openProp
   const effectiveOpen = pinned ? true : (isHovered || (openProp !== undefined ? openProp : openState));
@@ -75,7 +97,7 @@ export const SidebarProvider = ({
         isHovered,
         setIsHovered,
         pinned,
-        setPinned,
+        setPinned: handleSetPinned,
       }}
     >
       {children}
@@ -125,7 +147,7 @@ export const DesktopSidebar = ({
       )}
       initial={false}
       animate={{
-        width: open ? 250 : 68,
+        width: open ? 232 : 64,
       }}
       transition={{
         duration: 0.28,
@@ -204,18 +226,18 @@ export const SidebarLink = ({
       href={link.href}
       onClick={onClick}
       className={cn(
-        "group relative flex items-center h-10 rounded-lg transition-all duration-200 focus-ring overflow-hidden",
-        open ? "px-3 gap-3" : "px-0 justify-center",
+        "group relative flex items-center h-9 rounded-lg transition-all duration-150 focus-ring overflow-hidden",
+        open ? "px-2.5 gap-2.5" : "px-0 justify-center",
         isActive
-          ? "bg-brand text-white shadow-sm shadow-brand/20 font-semibold"
+          ? "bg-[#ECE8DC] text-ink font-semibold relative before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:bg-brand before:rounded-r shadow-2xs"
           : "text-ink-2 hover:text-ink hover:bg-surface/80"
       )}
       title={!open ? link.label : undefined}
     >
-      {/* Icon with smooth scale / transition */}
+      {/* Icon */}
       <span className={cn(
-        "w-5 h-5 flex items-center justify-center shrink-0 transition-transform duration-200",
-        isActive ? "text-white" : "text-ink-3 group-hover:text-ink group-hover:scale-105"
+        "w-4.5 h-4.5 flex items-center justify-center shrink-0 transition-transform duration-150",
+        isActive ? "text-brand" : "text-ink-3 group-hover:text-ink"
       )}>
         {link.icon}
       </span>
@@ -224,11 +246,11 @@ export const SidebarLink = ({
       <AnimatePresence initial={false}>
         {open && (
           <motion.span
-            initial={{ opacity: 0, x: -10 }}
+            initial={{ opacity: 0, x: -8 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -8 }}
-            transition={{ duration: 0.18, ease: "easeOut" }}
-            className="text-sm font-medium whitespace-nowrap overflow-hidden leading-none tracking-normal truncate"
+            exit={{ opacity: 0, x: -6 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
+            className="text-[13px] font-medium whitespace-nowrap overflow-hidden leading-none tracking-normal truncate"
           >
             {link.label}
           </motion.span>
@@ -237,23 +259,66 @@ export const SidebarLink = ({
 
       {/* Active pill indicator when collapsed */}
       {isActive && !open && (
-        <span className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-brand rounded-r" />
+        <span className="absolute left-0 top-2 bottom-2 w-[3px] bg-brand rounded-r" />
       )}
     </Link>
   );
 };
 
-export const NAV_LINKS: NavLink[] = [
-  { href: "/overview", label: "Overview", icon: <LayoutDashboard className="w-5 h-5 shrink-0" /> },
-  { href: "/reviews", label: "Content Reviews", icon: <ClipboardList className="w-5 h-5 shrink-0" /> },
-  { href: "/consistency-checks", label: "Consistency Checks", icon: <Sparkles className="w-5 h-5 shrink-0" /> },
-  { href: "/findings", label: "Findings", icon: <FileText className="w-5 h-5 shrink-0" /> },
-  { href: "/guidelines", label: "Brand Guidelines", icon: <Shield className="w-5 h-5 shrink-0" /> },
-  { href: "/knowledge", label: "Approved Knowledge", icon: <BookOpen className="w-5 h-5 shrink-0" /> },
-  { href: "/passports", label: "Evidence Passports", icon: <FileCheck2 className="w-5 h-5 shrink-0" /> },
-  { href: "/insights", label: "Governance Insights", icon: <BarChart2 className="w-5 h-5 shrink-0" /> },
-  { href: "/settings", label: "Settings", icon: <Settings className="w-5 h-5 shrink-0" /> },
+export interface NavGroup {
+  title: string;
+  links: NavLink[];
+}
+
+export const NAV_GROUPS: NavGroup[] = [
+  {
+    title: "Review & verify",
+    links: [
+      { href: "/overview", label: "Overview", icon: <LayoutDashboard className="w-4.5 h-4.5 shrink-0" /> },
+      { href: "/reviews", label: "Content Reviews", icon: <ClipboardList className="w-4.5 h-4.5 shrink-0" /> },
+      { href: "/consistency-checks", label: "Consistency Checks", icon: <Languages className="w-4.5 h-4.5 shrink-0" /> },
+      { href: "/findings", label: "Findings", icon: <FileText className="w-4.5 h-4.5 shrink-0" /> },
+    ],
+  },
+  {
+    title: "Governance",
+    links: [
+      { href: "/guidelines", label: "Brand Guidelines", icon: <Shield className="w-4.5 h-4.5 shrink-0" /> },
+      { href: "/knowledge", label: "Approved Knowledge", icon: <BookOpen className="w-4.5 h-4.5 shrink-0" /> },
+      { href: "/passports", label: "Evidence Passports", icon: <FileCheck2 className="w-4.5 h-4.5 shrink-0" /> },
+      { href: "/insights", label: "Governance Insights", icon: <BarChart2 className="w-4.5 h-4.5 shrink-0" /> },
+      { href: "/settings", label: "Settings", icon: <Settings className="w-4.5 h-4.5 shrink-0" /> },
+    ],
+  },
 ];
+
+export const NAV_LINKS: NavLink[] = NAV_GROUPS.flatMap((g) => g.links);
+
+export const SidebarGroup = ({
+  group,
+  isFirst = false,
+}: {
+  group: NavGroup;
+  isFirst?: boolean;
+}) => {
+  const { open } = useSidebar();
+  return (
+    <div className="space-y-1">
+      {open ? (
+        <div className="px-2.5 text-[11px] font-medium text-ink-3 tracking-normal truncate">
+          {group.title}
+        </div>
+      ) : (
+        !isFirst && <div className="my-2 mx-auto w-6 border-t border-line/60" />
+      )}
+      <div className="space-y-0.5">
+        {group.links.map((link, idx) => (
+          <SidebarLink key={idx} link={link} />
+        ))}
+      </div>
+    </div>
+  );
+};
 
 export const Logo = () => {
   const { open } = useSidebar();
@@ -321,8 +386,8 @@ export const UserSection = ({
         "flex items-center transition-all duration-200 rounded-lg p-1.5",
         open ? "gap-2.5" : "justify-center"
       )}>
-        <div className="flex items-center justify-center w-8 h-8 rounded-full shrink-0 bg-surface border border-line text-brand font-bold text-xs shadow-2xs">
-          <Shield className="w-4 h-4 text-brand" />
+        <div className="flex items-center justify-center w-8 h-8 rounded-full shrink-0 bg-surface border border-line text-brand font-semibold text-xs shadow-2xs">
+          {userName.slice(0, 1).toUpperCase()}
         </div>
 
         <AnimatePresence initial={false}>
@@ -334,8 +399,13 @@ export const UserSection = ({
               transition={{ duration: 0.18, ease: "easeOut" }}
               className="min-w-0 overflow-hidden leading-tight flex-1"
             >
-              <div className="text-xs font-bold text-ink truncate">
-                {workspaceName}
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-bold text-ink truncate">
+                  {workspaceName}
+                </span>
+                <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-medium bg-[#9A6B12]/15 text-[#9A6B12]">
+                  Demo
+                </span>
               </div>
               <div className="text-[11px] text-ink-3 truncate mt-0.5">
                 {userName} · {userRole}
@@ -351,12 +421,26 @@ export const UserSection = ({
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden"
+            transition={{ duration: 0.18 }}
+            className="overflow-hidden pt-2 mt-2 border-t border-line/60 flex items-center justify-between text-[11px] text-ink-3"
           >
-            <p className="font-handwritten text-[11px] text-ink-3 italic mt-2 text-center">
-              "Verify. Validate. Build trust."
-            </p>
+            <Link
+              href="/settings"
+              className="flex items-center gap-1 hover:text-ink transition-colors px-1 py-0.5"
+            >
+              <HelpCircle className="w-3.5 h-3.5" />
+              <span>Workspace</span>
+            </Link>
+            <form action="/api/auth/logout" method="POST">
+              <button
+                type="submit"
+                className="flex items-center gap-1 hover:text-proof-red transition-colors px-1 py-0.5 cursor-pointer"
+                title="Sign out"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Sign out</span>
+              </button>
+            </form>
           </motion.div>
         )}
       </AnimatePresence>

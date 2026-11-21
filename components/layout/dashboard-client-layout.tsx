@@ -5,9 +5,11 @@ import {
   Sidebar,
   SidebarBody,
   SidebarLink,
+  SidebarGroup,
   Logo,
   UserSection,
-  NAV_LINKS,
+  NAV_GROUPS,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { Header } from "@/components/layout/header";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
@@ -54,9 +56,9 @@ export function DashboardClientLayout({
           <SidebarBody className="justify-between h-full">
             <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden scrollbar-none">
               <Logo />
-              <nav aria-label="Main navigation" className="flex flex-col gap-1.5 mt-2">
-                {NAV_LINKS.map((link, idx) => (
-                  <SidebarLink key={idx} link={link} />
+              <nav aria-label="Main navigation" className="flex flex-col gap-3 mt-2">
+                {NAV_GROUPS.map((group, gIdx) => (
+                  <SidebarGroup key={gIdx} group={group} isFirst={gIdx === 0} />
                 ))}
               </nav>
             </div>
@@ -103,13 +105,22 @@ export function DashboardClientLayout({
                     <X className="w-4 h-4" />
                   </button>
                 </div>
-                <nav aria-label="Mobile navigation" className="flex flex-col gap-1.5 mt-1">
-                  {NAV_LINKS.map((link, idx) => (
-                    <SidebarLink
-                      key={idx}
-                      link={link}
-                      onClick={() => setMobileMenuOpen(false)}
-                    />
+                <nav aria-label="Mobile navigation" className="flex flex-col gap-4 mt-1">
+                  {NAV_GROUPS.map((group, gIdx) => (
+                    <div key={gIdx} className="space-y-1">
+                      <div className="px-2 text-[11px] font-medium text-ink-3 tracking-normal">
+                        {group.title}
+                      </div>
+                      <div className="space-y-0.5">
+                        {group.links.map((link, idx) => (
+                          <SidebarLink
+                            key={idx}
+                            link={link}
+                            onClick={() => setMobileMenuOpen(false)}
+                          />
+                        ))}
+                      </div>
+                    </div>
                   ))}
                 </nav>
               </div>

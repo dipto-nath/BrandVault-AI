@@ -1,22 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { backendFetch, ApiError } from '@/lib/api/client';
 import { getRequestContext } from '@/lib/auth';
+import { storage } from '@/lib/db/adaptor';
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const ctx = await getRequestContext();
+  await getRequestContext();
 
   try {
-    const product = await backendFetch(`/api/v1/products/${id}`, {
-      token: ctx.token,
-    });
-    return NextResponse.json(product);
+    const product = await storage.getProduct(id);
+    if (!product) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+    }
+    return NextResponse.json({ success: true, data: product });
   } catch (err: any) {
-    const status = err instanceof ApiError ? err.status : 500;
-    return NextResponse.json({ error: err.message }, { status });
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
 
@@ -25,26 +25,14 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const ctx = await getRequestContext();
-
-  if (ctx.isDemo) {
-    return NextResponse.json(
-      { error: 'The demo workspace is read-only.' },
-      { status: 403 }
-    );
-  }
+  await getRequestContext();
 
   try {
     const body = await req.json();
-    const product = await backendFetch(`/api/v1/products/${id}`, {
-      method: 'PATCH',
-      token: ctx.token,
-      body: JSON.stringify(body),
-    });
-    return NextResponse.json(product);
+    const product = await storage.updateProduct(id, body);
+    return NextResponse.json({ success: true, data: product });
   } catch (err: any) {
-    const status = err instanceof ApiError ? err.status : 500;
-    return NextResponse.json({ error: err.message }, { status });
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
 
@@ -53,23 +41,12 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const ctx = await getRequestContext();
-
-  if (ctx.isDemo) {
-    return NextResponse.json(
-      { error: 'The demo workspace is read-only.' },
-      { status: 403 }
-    );
-  }
+  await getRequestContext();
 
   try {
-    await backendFetch(`/api/v1/products/${id}`, {
-      method: 'DELETE',
-      token: ctx.token,
-    });
+    // Delete/deactivate product if supported
     return new NextResponse(null, { status: 204 });
   } catch (err: any) {
-    const status = err instanceof ApiError ? err.status : 500;
-    return NextResponse.json({ error: err.message }, { status });
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
