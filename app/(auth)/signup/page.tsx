@@ -1,136 +1,255 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ShieldCheck,
+  User,
+  Mail,
+  Lock,
+  Building,
   ArrowRight,
   Loader2,
   AlertCircle,
   Eye,
   EyeOff,
-  ChevronLeft,
-  ChevronRight,
-  Search,
+  Check,
   CheckCircle2,
+  FileCheck2,
   Sparkles,
-  FileText,
+  Award,
+  ExternalLink,
+  HelpCircle,
   Upload,
   X,
-  Check,
+  ChevronRight,
+  ShoppingBag,
+  Landmark,
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+import { AuthHeader } from '@/components/auth/auth-header';
+import { AuthAmbientBg } from '@/components/auth/auth-ambient-bg';
+import { VaultTimelineShowpiece } from '@/components/auth/vault-timeline-showpiece';
+import { AuthHeroHeadline } from '@/components/auth/auth-hero-headline';
+import { AuthStatsRow } from '@/components/auth/auth-stats-row';
+import { AuthTrustMarquee } from '@/components/auth/auth-trust-marquee';
 
 const INDUSTRIES = [
-  'Consumer Tech & Hardware',
-  'B2B SaaS & Enterprise Software',
-  'Health & Wellness',
-  'E-commerce & Retail',
-  'Fintech & Financial Services',
-  'Media & Creative Agency',
-  'Other',
+  { value: 'Consumer Tech & Hardware', label: 'Consumer Tech & Hardware', icon: Sparkles },
+  { value: 'B2B SaaS & Enterprise Software', label: 'B2B SaaS & Enterprise Software', icon: FileCheck2 },
+  { value: 'Health & Wellness', label: 'Health & Wellness', icon: Award },
+  { value: 'E-commerce & Retail', label: 'E-commerce & Retail', icon: ShoppingBag },
+  { value: 'Fintech & Financial Services', label: 'Fintech & Financial Services', icon: Landmark },
+  { value: 'Media & Creative Agency', label: 'Media & Creative Agency', icon: ExternalLink },
+  { value: 'Other', label: 'Other', icon: HelpCircle },
 ];
 
-const SLIDES = [
-  {
-    number: '01',
-    title: 'Submit Content',
-    subtitle: 'Campaign copy, ad variations, or specifications enter the review queue.',
-    bg: 'from-[#1A2333]/90 via-[#101726]/95 to-[#0B0F19]',
-  },
-  {
-    number: '02',
-    title: 'Verify Claims',
-    subtitle: 'Every claim is checked against approved specifications and facts.',
-    bg: 'from-[#1B2936]/90 via-[#0F1D2B]/95 to-[#09121B]',
-  },
-  {
-    number: '03',
-    title: 'Explain with Evidence',
-    subtitle: 'Traceable citations, confidence ratings, and clear reasoning for every finding.',
-    bg: 'from-[#231E33]/90 via-[#161224]/95 to-[#0D0A17]',
-  },
-  {
-    number: '04',
-    title: 'Human Review',
-    subtitle: 'Human reviewers accept, edit, or override findings with recorded rationale.',
-    bg: 'from-[#2D211A]/90 via-[#1C1410]/95 to-[#120D0A]',
-  },
-  {
-    number: '05',
-    title: 'Evidence Passport',
-    subtitle: 'Cryptographic SHA-256 seal and complete immutable audit history.',
-    bg: 'from-[#17252A]/90 via-[#0E1A1E]/95 to-[#081013]',
-  },
-];
+const INDUSTRY_ICON_MAP: Record<string, React.ReactNode> = {
+  'Consumer Tech & Hardware': <Sparkles className="w-4 h-4" />,
+  'B2B SaaS & Enterprise Software': <FileCheck2 className="w-4 h-4" />,
+  'Health & Wellness': <Award className="w-4 h-4" />,
+  'E-commerce & Retail': <ShoppingBag className="w-4 h-4" />,
+  'Fintech & Financial Services': <Landmark className="w-4 h-4" />,
+  'Media & Creative Agency': <ExternalLink className="w-4 h-4" />,
+  Other: <HelpCircle className="w-4 h-4" />,
+};
 
 function SignupContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const nextParam = searchParams.get('next') || '/overview';
 
+  const [step, setStep] = useState(1);
   const [companyName, setCompanyName] = useState('');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [industry, setIndustry] = useState(INDUSTRIES[0]);
+  const [industry, setIndustry] = useState(INDUSTRIES[0].value);
   const [agreeTerms, setAgreeTerms] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  
-  // File upload state
+  const [shakeCard, setShakeCard] = useState(false);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
   const [sourceDocuments, setSourceDocuments] = useState<File[]>([]);
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
 
-  // Slider state
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [isHoveringSlider, setIsHoveringSlider] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const step2FirstInputRef = useRef<HTMLInputElement>(null);
 
-  // Compute workspace slug preview
+  const [fullNameFocused, setFullNameFocused] = useState(false);
+  const [emailFocused, setEmailFocused] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
+  const [companyFocused, setCompanyFocused] = useState(false);
+
+  const isFullNameValid = fullName.trim().length >= 2;
+  const isEmailValid = email.length > 0 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const isPasswordValid = password.length >= 8;
+  const isCompanyValid = companyName.trim().length >= 2;
+
+  const prefersReducedMotion =
+    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
   const slugPreview = companyName
     .toLowerCase()
     .replace(/[^\w\s-]/g, '')
     .replace(/[-\s]+/g, '-')
     .slice(0, 30);
 
-  // Password strength hint
-  const hasMinLength = password.length >= 8;
-  const hasMixedChar = /[A-Z]/.test(password) && /[0-9]/.test(password);
+  const passwordStrength = () => {
+    let strength = 0;
+    if (password.length >= 8) strength++;
+    if (/[A-Z]/.test(password)) strength++;
+    if (/[0-9]/.test(password)) strength++;
+    if (/[^A-Za-z0-9]/.test(password)) strength++;
+    return Math.min(strength, 4);
+  };
+
+  const validateField = (name: string, value: string) => {
+    switch (name) {
+      case 'fullName':
+        if (value && value.trim().length < 2) return 'Name must be at least 2 characters';
+        break;
+      case 'email':
+        if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))
+          return 'Enter a valid work email address';
+        break;
+      case 'password':
+        if (value && value.length < 8) return 'Password must be at least 8 characters';
+        break;
+      case 'companyName':
+        if (value && value.trim().length < 2) return 'Company name must be at least 2 characters';
+        break;
+      case 'agreeTerms':
+        if (!value || value === 'false') return 'You must agree to the terms';
+        break;
+    }
+    return '';
+  };
+
+  const handleBlur = (name: string, value: string) => {
+    const err = validateField(name, value);
+    setFormErrors((prev) => ({ ...prev, [name]: err }));
+  };
+
+  const handleFileSelect = (files: File[]) => {
+    const validFiles = Array.from(files).filter((f) => {
+      if (f.size > 10 * 1024 * 1024) {
+        alert(`File ${f.name} exceeds 10MB limit`);
+        return false;
+      }
+      return true;
+    });
+    if (sourceDocuments.length + validFiles.length > 10) {
+      alert('Maximum 10 files allowed');
+      return;
+    }
+    validFiles.forEach((f) => setUploadProgress((p) => ({ ...p, [f.name]: 0 })));
+    setSourceDocuments((prev) => [...prev, ...validFiles]);
+    setUploadingFiles(true);
+    validFiles.forEach((file) => {
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress += Math.random() * 20;
+        if (progress >= 100) {
+          progress = 100;
+          clearInterval(interval);
+          setUploadingFiles(false);
+        }
+        setUploadProgress((p) => ({ ...p, [file.name]: progress }));
+      }, 180);
+    });
+  };
+
+  const removeFile = (fileName: string) => {
+    setSourceDocuments((prev) => prev.filter((f) => f.name !== fileName));
+    setUploadProgress((p) => {
+      const np = { ...p };
+      delete np[fileName];
+      return np;
+    });
+  };
+
+  const filteredIndustries = INDUSTRIES.filter((i) =>
+    i.label.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleDropdownSelect = (value: string) => {
+    setIndustry(value);
+    setSearchQuery('');
+    setDropdownOpen(false);
+    setHighlightedIndex(-1);
+    handleBlur('industry', value);
+  };
+
+  const handleDropdownKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlightedIndex((prev) => Math.min(prev + 1, filteredIndustries.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlightedIndex((prev) => Math.max(prev - 1, -1));
+    } else if (e.key === 'Enter' && highlightedIndex >= 0) {
+      e.preventDefault();
+      handleDropdownSelect(filteredIndustries[highlightedIndex].value);
+    } else if (e.key === 'Escape') {
+      setDropdownOpen(false);
+    }
+  };
 
   useEffect(() => {
-    if (isHoveringSlider) return;
-    const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % SLIDES.length);
-    }, 6000);
-    return () => clearInterval(timer);
-  }, [isHoveringSlider]);
-
-  function handleFileSelect(files: File[]) {
-    const validFiles = files.filter(f => f.type === 'application/pdf' && f.size <= 10 * 1024 * 1024);
-    if (validFiles.length !== files.length) {
-      setError('Only PDF files up to 10MB are allowed.');
-    }
-    setSourceDocuments(prev => [...prev, ...validFiles].slice(0, 10));
-  }
-
-  function removeFile(index: number) {
-    setSourceDocuments(prev => prev.filter((_, i) => i !== index));
-  }
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (loading) return;
 
-    if (!agreeTerms) {
-      setError('Please accept the Terms of Service to create a workspace.');
+    const fieldsToValidate =
+      step === 1 ? ['fullName', 'email', 'password'] : ['companyName', 'agreeTerms'];
+
+    const newErrors: Record<string, string> = {};
+    fieldsToValidate.forEach((name) => {
+      const value =
+        name === 'fullName'
+          ? fullName
+          : name === 'email'
+          ? email
+          : name === 'password'
+          ? password
+          : name === 'companyName'
+          ? companyName
+          : agreeTerms.toString();
+      const err = validateField(name, value);
+      if (err) newErrors[name] = err;
+    });
+
+    if (Object.keys(newErrors).length > 0) {
+      setFormErrors((prev) => ({ ...prev, ...newErrors }));
+      setShakeCard(true);
+      setTimeout(() => setShakeCard(false), 400);
       return;
     }
 
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters long.');
+    if (step === 1) {
+      setStep(2);
+      setTimeout(() => {
+        setFormErrors({});
+        step2FirstInputRef.current?.focus({ preventScroll: true });
+      }, 150);
       return;
     }
 
@@ -138,485 +257,648 @@ function SignupContent() {
     setLoading(true);
 
     try {
-      if (sourceDocuments.length > 0) {
-        const formData = new FormData();
-        formData.append('company_name', companyName);
-        formData.append('workspace_slug', slugPreview || '');
-        formData.append('email', email);
-        formData.append('password', password);
-        formData.append('full_name', fullName);
-        if (industry !== INDUSTRIES[INDUSTRIES.length - 1]) {
-          formData.append('industry', industry);
-        }
-        sourceDocuments.forEach(f => formData.append('sourceDocuments', f));
-
-        const res = await fetch('/api/auth/register', {
-          method: 'POST',
-          body: formData,
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) {
-          throw new Error(data.error || 'Failed to create workspace');
-        }
-
-        setIsSuccess(true);
-        setTimeout(() => router.push('/knowledge?welcome=1'), 1000);
-        return;
-      }
+      const formData = new FormData();
+      formData.append('companyName', companyName.trim());
+      formData.append('fullName', fullName.trim());
+      formData.append('email', email.trim());
+      formData.append('password', password);
+      formData.append('industry', industry);
+      formData.append('agreeTerms', 'true');
+      sourceDocuments.forEach((file) => formData.append('sourceDocuments', file));
 
       const res = await fetch('/api/auth/register', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          company_name: companyName.trim(),
-          workspace_slug: slugPreview || undefined,
-          full_name: fullName.trim(),
-          email: email.trim(),
-          password,
-          industry,
-        }),
+        body: formData,
       });
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to create workspace.');
+        throw new Error(data.error || 'Registration failed');
       }
 
       setIsSuccess(true);
-      setTimeout(() => {
-        window.location.href = '/knowledge?welcome=1';
-      }, 700);
+      setTimeout(() => router.push(nextParam), 1200);
     } catch (err: any) {
-      setError(err.message || 'Something went wrong. Please try again.');
+      setError(err.message);
+      setShakeCard(true);
+      setTimeout(() => setShakeCard(false), 400);
+    } finally {
       setLoading(false);
     }
   }
 
+  const handleBack = () => {
+    setStep(1);
+    setFormErrors({});
+  };
+
   return (
-    <div className="min-h-screen py-4 sm:py-8 px-3 sm:px-6 lg:px-8 flex items-center justify-center">
-      {/* Outer Large Rounded Container */}
-      <div className="w-full max-w-7xl rounded-[28px] border border-[#E8E2D5] bg-[#FFFDF9] shadow-sm p-4 sm:p-7 lg:p-9 flex flex-col gap-6 lg:gap-8">
-        
-        {/* Top Floating Pill Navigation */}
-        <header className="w-full rounded-full bg-[#FAF8F5] border border-[#E8E2D5] px-4 sm:px-6 py-2.5 flex items-center justify-between shadow-xs">
-          {/* Brand Wordmark */}
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-7 h-7 rounded-lg bg-[#2F4FB3] text-white flex items-center justify-center shadow-xs">
-              <ShieldCheck className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-serif font-bold text-base tracking-tight text-[#1E2540]">
-              BrandVault <span className="text-[#2F4FB3] font-sans font-medium text-xs">AI</span>
-            </span>
-          </Link>
+    <div className="auth-page min-h-screen relative font-sans">
+      {/* Ambient background with drifting colour orbs */}
+      <AuthAmbientBg />
 
-          {/* Center Links (Desktop) */}
-          <nav className="hidden md:flex items-center gap-6 text-xs font-medium text-[#5A627A]">
-            <Link href="/" className="hover:text-[#1E2540] transition-colors">Home</Link>
-            <Link href="/#how-it-works" className="hover:text-[#1E2540] transition-colors">How it works</Link>
-            <span className="text-[#9CA3AF] cursor-default">About</span>
-            <span className="text-[#9CA3AF] cursor-default">Docs</span>
-          </nav>
+      {/* Unified Full-Width Header */}
+      <AuthHeader currentPage="register" />
 
-          {/* Decorative Search Pill & Auth Switcher */}
-          <div className="flex items-center gap-3">
-            <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-[#E8E2D5] text-xs text-[#9CA3AF]">
-              <Search className="w-3.5 h-3.5 text-[#9CA3AF]" />
-              <span className="italic">Try &ldquo;battery life claim&rdquo;</span>
-            </div>
-
-            <Link
-              href={`/login?next=${encodeURIComponent(nextParam)}`}
-              className="px-3.5 py-1.5 rounded-full bg-[#EDE8DE] hover:bg-[#E2DDD0] text-[#1E2540] text-xs font-medium tracking-tight border border-[#DCD5C5] transition-all"
-            >
-              Sign in
-            </Link>
+      {/* Main Two-Column Viewport-Locked Split */}
+      <div className="auth-split">
+        {/* STORY SIDE (Left Column) */}
+        <section className="auth-story" aria-label="Product introduction">
+          <div className="flex flex-col gap-4">
+            <AuthHeroHeadline />
+            <VaultTimelineShowpiece
+              currentFormStep={step}
+              hasUploadedFiles={sourceDocuments.length > 0}
+            />
           </div>
-        </header>
 
-        {/* Main Two-Column Split Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-stretch">
-          
-          {/* Left Column: Editorial Headline & Real About Card */}
-          <div className="lg:col-span-5 flex flex-col justify-between py-2">
-            <div>
-              {/* Small Caps Label */}
-              <div className="mb-3">
-                <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-[#2F4FB3] font-semibold">
-                  Evidence-First Brand Governance
-                </span>
-              </div>
+          <div className="flex flex-col gap-2 mt-auto">
+            <AuthStatsRow />
+            <AuthTrustMarquee />
+          </div>
+        </section>
 
-              {/* Large Headline in Fraunces */}
-              <h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-[#1E2540] leading-[1.12]">
-                EVERY CLAIM, <br />
-                <span className="relative inline-block">
-                  <span className="relative z-10">CHECKED BEFORE</span>
-                  <span
-                    className="absolute inset-x-0 bottom-1 h-3.5 -z-0 rounded-xs bg-[#2F4FB3]/15 transform -rotate-0.5"
-                    aria-hidden="true"
-                  />
-                </span>{' '}
-                <br />
-                <span className="inline-flex items-center gap-2.5">
-                  <span>IT GOES LIVE.</span>
-                  {/* Three Status Circles */}
-                  <span className="inline-flex items-center -space-x-1.5 ml-1">
-                    <span className="w-3.5 h-3.5 rounded-full bg-[#22C55E] ring-2 ring-[#FFFDF9]" title="Supported" />
-                    <span className="w-3.5 h-3.5 rounded-full bg-[#F59E0B] ring-2 ring-[#FFFDF9]" title="Unverified" />
-                    <span className="w-3.5 h-3.5 rounded-full bg-[#EF4444] ring-2 ring-[#FFFDF9]" title="Contradicted" />
-                  </span>
-                </span>
-              </h1>
-
-              {/* Sublink to Sign in */}
-              <div className="mt-5 text-sm text-[#5A627A]">
-                Already registered?{' '}
-                <Link
-                  href={`/login?next=${encodeURIComponent(nextParam)}`}
-                  className="font-semibold text-[#2F4FB3] hover:underline inline-flex items-center gap-1 group"
+        {/* FORM SIDE (Right Column - Independent Scroll) */}
+        <section className="auth-form-side" aria-label="Registration form">
+          <div className="auth-form-wrapper">
+            <AnimatePresence mode="wait">
+              {!isSuccess ? (
+                <motion.div
+                  key={`step-${step}`}
+                  className={`auth-form-card ${shakeCard ? 'shake-error' : ''}`}
+                  initial={prefersReducedMotion ? {} : { opacity: 0, x: step === 1 ? -16 : 16 }}
+                  animate={prefersReducedMotion ? {} : { opacity: 1, x: 0 }}
+                  exit={prefersReducedMotion ? {} : { opacity: 0, x: step === 1 ? 16 : -16 }}
+                  transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
                 >
-                  <span>Sign in to your vault</span>
-                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-                </Link>
-              </div>
-            </div>
-
-            {/* Bottom-Left About Card with Real Verified Facts */}
-            <div className="mt-8 lg:mt-12 rounded-2xl bg-[#1E2540] text-white p-5 sm:p-6 shadow-md border border-[#2B3454]">
-              <div className="flex items-center gap-2 mb-2 text-[#8EA8F5] text-xs font-mono uppercase tracking-wider">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Accountability Engine</span>
-              </div>
-              <p className="text-xs sm:text-sm text-[#EDEAE2]/85 leading-relaxed mb-4">
-                Verify claims against approved sources, explain every finding with citations, and keep a person in charge.
-              </p>
-              
-              {/* Row of 3 True Real Stats */}
-              <div className="grid grid-cols-3 gap-2 pt-3 border-t border-white/10 text-center">
-                <div>
-                  <div className="font-serif text-lg sm:text-xl font-bold text-white">4</div>
-                  <div className="text-[10px] text-[#A6AFC9] uppercase tracking-wider mt-0.5">Evidence States</div>
-                </div>
-                <div>
-                  <div className="font-serif text-lg sm:text-xl font-bold text-white">5</div>
-                  <div className="text-[10px] text-[#A6AFC9] uppercase tracking-wider mt-0.5">Resolution Actions</div>
-                </div>
-                <div>
-                  <div className="font-serif text-lg sm:text-xl font-bold text-white">1</div>
-                  <div className="text-[10px] text-[#A6AFC9] uppercase tracking-wider mt-0.5">Passport / Review</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column: Hero Image Panel with Floating Signup Card */}
-          <div
-            className="lg:col-span-7 relative min-h-[620px] rounded-[24px] overflow-hidden flex flex-col justify-between p-4 sm:p-7 transition-colors duration-700"
-            onMouseEnter={() => setIsHoveringSlider(true)}
-            onMouseLeave={() => setIsHoveringSlider(false)}
-          >
-            {/* Background gradient corresponding to active slide */}
-            <div
-              className={`absolute inset-0 bg-gradient-to-br ${SLIDES[currentSlide].bg} transition-colors duration-700`}
-            />
-
-            {/* Noise texture overlay */}
-            <div
-              className="pointer-events-none absolute inset-0 opacity-40 mix-blend-overlay"
-              style={{
-                backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.12'/%3E%3C/svg%3E")`,
-              }}
-            />
-
-            {/* Top Slide Caption */}
-            <div className="relative z-10 flex items-start justify-between text-white/90">
-              <div className="max-w-md">
-                <div className="text-[11px] font-mono uppercase tracking-[0.2em] text-[#8EA8F5]">
-                  Step {SLIDES[currentSlide].number} &middot; {SLIDES[currentSlide].title}
-                </div>
-                <div className="text-xs text-[#EDEAE2]/70 mt-0.5 line-clamp-1">
-                  {SLIDES[currentSlide].subtitle}
-                </div>
-              </div>
-            </div>
-
-            {/* Floating Glass Signup Card (scrollable if needed on smaller screens) */}
-            <div className="relative z-20 my-auto py-3 flex justify-center">
-              <div className="w-full max-w-[450px] max-h-[85vh] overflow-y-auto no-scrollbar rounded-[20px] bg-white/95 backdrop-blur-md border border-white/60 shadow-2xl p-6 sm:p-7 text-[#1E2540]">
-                
-                {/* Card Title & Subtitle */}
-                <div className="mb-4">
-                  <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#1E2540] tracking-tight">
-                    Create your BrandVault
-                  </h2>
-                  <p className="text-xs text-[#5A627A] mt-1">
-                    Establish an evidence-first review gate for your brand.
-                  </p>
-                </div>
-
-                {/* Error Banner */}
-                {error && (
-                  <div className="mb-4 p-3 rounded-xl bg-[#EF4444]/10 border border-[#EF4444]/20 text-[#B24A4A] text-xs flex items-start gap-2.5">
-                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                    <span>{error}</span>
+                  {/* Step Progress Bar */}
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-[#5B6477] mb-2">
+                      <span className="text-[#3B4BC8] font-mono">Step {step} of 2</span>
+                      <span>{step === 1 ? 'About You' : 'Your Company'}</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-[#E6DFD2] rounded-full overflow-hidden">
+                      <motion.div
+                        className="h-full bg-gradient-to-r from-[#3B4BC8] to-[#3F8F6B] rounded-full"
+                        animate={{ width: step === 1 ? '50%' : '100%' }}
+                        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                      />
+                    </div>
                   </div>
-                )}
 
-                {isSuccess ? (
-                  <div className="py-10 flex flex-col items-center justify-center text-center">
-                    <CheckCircle2 className="w-12 h-12 text-[#22C55E] mb-3 animate-bounce" />
-                    <span className="font-serif text-lg font-bold text-[#1E2540]">Workspace Created</span>
-                    <span className="text-xs text-[#5A627A] mt-1">Setting up your brand vault...</span>
-                  </div>
-                ) : (
-                  <form onSubmit={handleSubmit} className="space-y-3">
-                    {/* Company Name */}
-                    <div>
-                      <label className="block text-xs font-semibold text-[#1E2540] uppercase tracking-wider mb-1">
-                        Company Name
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        autoFocus
-                        value={companyName}
-                        onChange={(e) => setCompanyName(e.target.value)}
-                        placeholder="Acme Corporation"
-                        className="w-full px-3.5 py-2 rounded-xl border border-[#DCD5C5] bg-[#FAF8F5] text-xs text-[#1E2540] placeholder-[#8C93A8] focus:outline-none focus:ring-2 focus:ring-[#2F4FB3]/20 focus:border-[#2F4FB3] transition-all"
-                      />
-                      {slugPreview && (
-                        <p className="text-[10px] text-[#5A627A] mt-1 font-mono">
-                          Vault slug: <span className="text-[#2F4FB3]">brandvault.ai/{slugPreview}</span>
-                        </p>
-                      )}
-                    </div>
+                  <div>
+                    <h2 className="font-serif text-[28px] sm:text-[32px] font-bold text-[#16203A] tracking-tight leading-tight">
+                      {step === 1 ? 'Create account' : 'Set up your vault'}
+                    </h2>
+                    <p className="text-[14px] text-[#5B6477] mt-1 mb-6">
+                      {step === 1
+                        ? 'Get started with evidence-backed brand compliance.'
+                        : 'Configure your isolated company workspace.'}
+                    </p>
 
-                    {/* Industry Dropdown */}
-                    <div>
-                      <label className="block text-xs font-semibold text-[#1E2540] uppercase tracking-wider mb-1">
-                        Industry / Domain
-                      </label>
-                      <select
-                        value={industry}
-                        onChange={(e) => setIndustry(e.target.value)}
-                        className="w-full px-3.5 py-2 rounded-xl border border-[#DCD5C5] bg-[#FAF8F5] text-xs text-[#1E2540] focus:outline-none focus:ring-2 focus:ring-[#2F4FB3]/20 focus:border-[#2F4FB3] transition-all"
-                      >
-                        {INDUSTRIES.map((ind) => (
-                          <option key={ind} value={ind}>
-                            {ind}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Full Name */}
-                    <div>
-                      <label className="block text-xs font-semibold text-[#1E2540] uppercase tracking-wider mb-1">
-                        Your Full Name
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        placeholder="Sarah Chen"
-                        className="w-full px-3.5 py-2 rounded-xl border border-[#DCD5C5] bg-[#FAF8F5] text-xs text-[#1E2540] placeholder-[#8C93A8] focus:outline-none focus:ring-2 focus:ring-[#2F4FB3]/20 focus:border-[#2F4FB3] transition-all"
-                      />
-                    </div>
-
-                    {/* Work Email */}
-                    <div>
-                      <label className="block text-xs font-semibold text-[#1E2540] uppercase tracking-wider mb-1">
-                        Work Email
-                      </label>
-                      <input
-                        type="email"
-                        required
-                        autoComplete="username"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="sarah@acme.com"
-                        className="w-full px-3.5 py-2 rounded-xl border border-[#DCD5C5] bg-[#FAF8F5] text-xs text-[#1E2540] placeholder-[#8C93A8] focus:outline-none focus:ring-2 focus:ring-[#2F4FB3]/20 focus:border-[#2F4FB3] transition-all"
-                      />
-                    </div>
-
-                    {/* Password with Strength Hint */}
-                    <div>
-                      <label className="block text-xs font-semibold text-[#1E2540] uppercase tracking-wider mb-1">
-                        Password (min 8 characters)
-                      </label>
-                      <div className="relative">
-                        <input
-                          type={showPassword ? 'text' : 'password'}
-                          required
-                          minLength={8}
-                          autoComplete="new-password"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"
-                          className="w-full px-3.5 py-2 pr-10 rounded-xl border border-[#DCD5C5] bg-[#FAF8F5] text-xs text-[#1E2540] placeholder-[#8C93A8] focus:outline-none focus:ring-2 focus:ring-[#2F4FB3]/20 focus:border-[#2F4FB3] transition-all"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8C93A8] hover:text-[#1E2540] focus:outline-none"
-                          aria-label={showPassword ? 'Hide password' : 'Show password'}
-                        >
-                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
+                    <form onSubmit={handleSubmit} noValidate>
+                      {/* Reserved Slot for Global Error Banner */}
+                      <div className="min-h-[28px] mb-4">
+                        <AnimatePresence>
+                          {error && (
+                            <motion.div
+                              className="p-2.5 rounded-xl bg-[#FCEBE8] border border-[#D4553F]/30 flex items-center gap-2 text-[#D4553F] text-xs font-medium"
+                              initial={{ opacity: 0, y: -6 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -6 }}
+                            >
+                              <AlertCircle className="w-4 h-4 shrink-0" />
+                              <span>{error}</span>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
-                      {/* Password Strength Indicator */}
-                      <div className="flex items-center gap-2 mt-1.5">
-                        <div className="flex-1 h-1 rounded-full bg-[#E8E2D5] overflow-hidden flex">
-                          <div
-                            className={`h-full transition-all duration-300 ${
-                              hasMinLength && hasMixedChar
-                                ? 'w-full bg-[#22C55E]'
-                                : hasMinLength
-                                ? 'w-1/2 bg-[#E6A23C]'
-                                : password.length > 0
-                                ? 'w-1/4 bg-[#EF4444]'
-                                : 'w-0'
-                            }`}
-                          />
-                        </div>
-                        <span className="text-[10px] text-[#8C93A8]">
-                          {hasMinLength && hasMixedChar
-                            ? 'Strong'
-                            : hasMinLength
-                            ? 'Good'
-                            : '8+ chars'}
-                        </span>
-                      </div>
-                    </div>
 
-                    {/* Source Documents Upload */}
-                    <div className="pt-3">
-                      <label className="block text-xs font-semibold text-[#1E2540] uppercase tracking-wider mb-2">
-                        Source Documents (Optional)
-                      </label>
-                      <p className="text-[11px] text-[#5A627A] mb-2">
-                        Upload PDF documents (competition specs, brand guidelines, product specs) to seed your knowledge base.
-                      </p>
-                      <div
-                        className={`border-2 border-dashed rounded-xl p-4 transition-all ${
-                          sourceDocuments.length > 0
-                            ? 'border-[#2F4FB3] bg-[#E3EAFA]/50'
-                            : 'border-[#DCD5C5] bg-[#FAF8F5]'
-                        }`}
-                        onClick={() => document.getElementById('source-docs-input')?.click()}
-                        onDragOver={(e) => {
-                          e.preventDefault();
-                          e.currentTarget.classList.add('border-[#2F4FB3]', 'bg-[#E3EAFA]/50');
-                        }}
-                        onDragLeave={(e) => {
-                          e.currentTarget.classList.remove('border-[#2F4FB3]', 'bg-[#E3EAFA]/50');
-                        }}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          e.currentTarget.classList.remove('border-[#2F4FB3]', 'bg-[#E3EAFA]/50');
-                          const files = Array.from(e.dataTransfer.files).filter(f => f.type === 'application/pdf');
-                          if (files.length > 0) handleFileSelect(files);
-                        }}
-                      >
-                        <input
-                          id="source-docs-input"
-                          type="file"
-                          accept=".pdf"
-                          multiple
-                          onChange={(e) => e.target.files && handleFileSelect(Array.from(e.target.files))}
-                          className="hidden"
-                          disabled={uploadingFiles}
-                        />
-                        <div className="flex flex-col items-center gap-3">
-                          {sourceDocuments.length === 0 ? (
-                            <div className="flex flex-col items-center gap-2 text-[#5A627A]">
-                              <div className="w-12 h-12 rounded-full border-2 border-dashed border-[#DCD5C5] flex items-center justify-center">
-                                <Upload className="w-5 h-5 text-[#8C93A8]" />
-                              </div>
-                              <span className="text-sm font-medium text-[#1E2540]">
-                                Drag & drop PDF files here, or click to browse
-                              </span>
-                              <span className="text-[11px] text-[#8C93A8]">Max 10 files, 10MB each</span>
-                            </div>
-                          ) : null}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Terms Checkbox */}
-                    <div className="pt-1">
-                      <label className="flex items-start gap-2 cursor-pointer select-none text-[11px] text-[#5A627A]">
-                        <input
-                          type="checkbox"
-                          checked={agreeTerms}
-                          onChange={(e) => setAgreeTerms(e.target.checked)}
-                          className="w-3.5 h-3.5 rounded text-[#2F4FB3] border-[#DCD5C5] focus:ring-[#2F4FB3] mt-0.5"
-                        />
-                        <span>
-                          I agree to BrandVault AI&apos;s Terms of Service and Privacy Policy.
-                        </span>
-                      </label>
-                    </div>
-
-                    {/* Submit Button */}
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="w-full py-2.5 px-4 rounded-xl bg-[#2F4FB3] hover:bg-[#253f93] text-white text-xs font-medium shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-[#2F4FB3] focus:ring-offset-2 mt-2"
-                    >
-                      {loading ? (
+                      {step === 1 ? (
                         <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          <span>Creating workspace...</span>
+                          {/* Full Name */}
+                          <div className="mb-4">
+                            <label
+                              htmlFor="fullName"
+                              className="block text-xs font-semibold uppercase tracking-wider text-[#16203A] mb-1.5"
+                            >
+                              Full Name
+                            </label>
+                            <div className="relative">
+                              <div
+                                className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200 pointer-events-none ${
+                                  fullNameFocused ? 'text-[#3B4BC8]' : 'text-[#5B6477]'
+                                }`}
+                              >
+                                <User className="w-4 h-4" />
+                              </div>
+                              <input
+                                id="fullName"
+                                type="text"
+                                autoComplete="name"
+                                className={`w-full h-12 pl-10 pr-10 rounded-xl text-sm font-medium text-[#16203A] bg-white border transition-all duration-200 focus:outline-none ${
+                                  formErrors.fullName
+                                    ? 'border-[#D4553F] focus:ring-4 focus:ring-[#D4553F]/15'
+                                    : fullNameFocused
+                                    ? 'border-[#3B4BC8] ring-4 ring-[#3B4BC8]/15 shadow-sm shadow-[#3B4BC8]/10'
+                                    : 'border-[#E6DFD2] hover:border-[#16203A]/30'
+                                }`}
+                                placeholder="Jane Doe"
+                                value={fullName}
+                                onChange={(e) => setFullName(e.target.value)}
+                                onFocus={() => setFullNameFocused(true)}
+                                onBlur={(e) => {
+                                  setFullNameFocused(false);
+                                  handleBlur('fullName', e.target.value);
+                                }}
+                                aria-invalid={!!formErrors.fullName}
+                                aria-describedby={formErrors.fullName ? 'fullName-error' : undefined}
+                                disabled={loading}
+                              />
+                              {isFullNameValid && !formErrors.fullName && (
+                                <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#3F8F6B]">
+                                  <CheckCircle2 className="w-4 h-4" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="auth-error-slot">
+                              {formErrors.fullName && (
+                                <p id="fullName-error" className="flex items-center gap-1.5 text-xs text-[#D4553F]" role="alert">
+                                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                  <span>{formErrors.fullName}</span>
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Work Email */}
+                          <div className="mb-4">
+                            <label
+                              htmlFor="email"
+                              className="block text-xs font-semibold uppercase tracking-wider text-[#16203A] mb-1.5"
+                            >
+                              Work Email
+                            </label>
+                            <div className="relative">
+                              <div
+                                className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200 pointer-events-none ${
+                                  emailFocused ? 'text-[#3B4BC8]' : 'text-[#5B6477]'
+                                }`}
+                              >
+                                <Mail className="w-4 h-4" />
+                              </div>
+                              <input
+                                id="email"
+                                type="email"
+                                autoComplete="email"
+                                className={`w-full h-12 pl-10 pr-10 rounded-xl text-sm font-medium text-[#16203A] bg-white border transition-all duration-200 focus:outline-none ${
+                                  formErrors.email
+                                    ? 'border-[#D4553F] focus:ring-4 focus:ring-[#D4553F]/15'
+                                    : emailFocused
+                                    ? 'border-[#3B4BC8] ring-4 ring-[#3B4BC8]/15 shadow-sm shadow-[#3B4BC8]/10'
+                                    : 'border-[#E6DFD2] hover:border-[#16203A]/30'
+                                }`}
+                                placeholder="you@company.com"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                onFocus={() => setEmailFocused(true)}
+                                onBlur={(e) => {
+                                  setEmailFocused(false);
+                                  handleBlur('email', e.target.value);
+                                }}
+                                aria-invalid={!!formErrors.email}
+                                aria-describedby={formErrors.email ? 'email-error' : undefined}
+                                disabled={loading}
+                              />
+                              {isEmailValid && !formErrors.email && (
+                                <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#3F8F6B]">
+                                  <CheckCircle2 className="w-4 h-4" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="auth-error-slot">
+                              {formErrors.email && (
+                                <p id="email-error" className="flex items-center gap-1.5 text-xs text-[#D4553F]" role="alert">
+                                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                  <span>{formErrors.email}</span>
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Password */}
+                          <div className="mb-4">
+                            <label
+                              htmlFor="password"
+                              className="block text-xs font-semibold uppercase tracking-wider text-[#16203A] mb-1.5"
+                            >
+                              Password
+                            </label>
+                            <div className="relative">
+                              <div
+                                className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200 pointer-events-none ${
+                                  passwordFocused ? 'text-[#3B4BC8]' : 'text-[#5B6477]'
+                                }`}
+                              >
+                                <Lock className="w-4 h-4" />
+                              </div>
+                              <input
+                                id="password"
+                                type={showPassword ? 'text' : 'password'}
+                                autoComplete="new-password"
+                                className={`w-full h-12 pl-10 pr-12 rounded-xl text-sm font-medium text-[#16203A] bg-white border transition-all duration-200 focus:outline-none ${
+                                  formErrors.password
+                                    ? 'border-[#D4553F] focus:ring-4 focus:ring-[#D4553F]/15'
+                                    : passwordFocused
+                                    ? 'border-[#3B4BC8] ring-4 ring-[#3B4BC8]/15 shadow-sm shadow-[#3B4BC8]/10'
+                                    : 'border-[#E6DFD2] hover:border-[#16203A]/30'
+                                }`}
+                                placeholder="Create a strong password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                onFocus={() => setPasswordFocused(true)}
+                                onBlur={(e) => {
+                                  setPasswordFocused(false);
+                                  handleBlur('password', e.target.value);
+                                }}
+                                aria-invalid={!!formErrors.password}
+                                aria-describedby={formErrors.password ? 'password-error' : undefined}
+                                disabled={loading}
+                              />
+                              <button
+                                type="button"
+                                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#5B6477] hover:text-[#16203A] transition-colors p-1"
+                                onClick={() => setShowPassword(!showPassword)}
+                                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                              >
+                                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                              </button>
+                            </div>
+
+                            {/* 4-Segment Spring Password Strength Meter */}
+                            <div
+                              className="flex gap-1.5 mt-2.5"
+                              role="progressbar"
+                              aria-valuenow={passwordStrength()}
+                              aria-valuemin={0}
+                              aria-valuemax={4}
+                            >
+                              {[1, 2, 3, 4].map((s) => {
+                                const active = passwordStrength() >= s;
+                                const barColor =
+                                  passwordStrength() === 1
+                                    ? 'bg-[#D4553F]'
+                                    : passwordStrength() === 2
+                                    ? 'bg-[#D9922B]'
+                                    : 'bg-[#3F8F6B]';
+
+                                return (
+                                  <div
+                                    key={s}
+                                    className="flex-1 h-1.5 rounded-full bg-[#E6DFD2] overflow-hidden"
+                                  >
+                                    <motion.div
+                                      className={`h-full rounded-full ${barColor}`}
+                                      initial={{ width: 0 }}
+                                      animate={{ width: active ? '100%' : '0%' }}
+                                      transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                                    />
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            <div className="auth-hint-slot">
+                              <p className="text-[11px] text-[#5B6477]">
+                                {password.length === 0
+                                  ? 'Minimum 8 characters'
+                                  : passwordStrength() === 1
+                                  ? 'Weak — add numbers or symbols'
+                                  : passwordStrength() === 2
+                                  ? 'Moderate — add uppercase letters'
+                                  : passwordStrength() === 3
+                                  ? 'Strong password'
+                                  : 'Excellent security'}
+                              </p>
+                            </div>
+                            <div className="auth-error-slot">
+                              {formErrors.password && (
+                                <p id="password-error" className="flex items-center gap-1.5 text-xs text-[#D4553F]" role="alert">
+                                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                  <span>{formErrors.password}</span>
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Continue Button */}
+                          <button
+                            type="submit"
+                            disabled={loading}
+                            className="relative w-full h-12 rounded-xl bg-gradient-to-r from-[#16203A] to-[#1E2540] hover:from-[#111A30] hover:to-[#171D33] active:scale-[0.98] text-white text-sm font-semibold tracking-tight shadow-md shadow-[#16203A]/20 flex items-center justify-center gap-2 overflow-hidden transition-all duration-200 group mt-2"
+                          >
+                            <div className="btn-shine-overlay" aria-hidden="true" />
+                            <span>Continue to Company Setup</span>
+                            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-200" />
+                          </button>
                         </>
                       ) : (
                         <>
-                          <span>Create workspace</span>
-                          <ArrowRight className="w-4 h-4" />
+                          {/* Company Name */}
+                          <div className="mb-4">
+                            <label
+                              htmlFor="companyName"
+                              className="block text-xs font-semibold uppercase tracking-wider text-[#16203A] mb-1.5"
+                            >
+                              Company Name
+                            </label>
+                            <div className="relative">
+                              <div
+                                className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200 pointer-events-none ${
+                                  companyFocused ? 'text-[#3B4BC8]' : 'text-[#5B6477]'
+                                }`}
+                              >
+                                <Building className="w-4 h-4" />
+                              </div>
+                              <input
+                                ref={step2FirstInputRef}
+                                id="companyName"
+                                type="text"
+                                autoComplete="organization"
+                                className={`w-full h-12 pl-10 pr-10 rounded-xl text-sm font-medium text-[#16203A] bg-white border transition-all duration-200 focus:outline-none ${
+                                  formErrors.companyName
+                                    ? 'border-[#D4553F] focus:ring-4 focus:ring-[#D4553F]/15'
+                                    : companyFocused
+                                    ? 'border-[#3B4BC8] ring-4 ring-[#3B4BC8]/15 shadow-sm shadow-[#3B4BC8]/10'
+                                    : 'border-[#E6DFD2] hover:border-[#16203A]/30'
+                                }`}
+                                placeholder="Acme Inc."
+                                value={companyName}
+                                onChange={(e) => setCompanyName(e.target.value)}
+                                onFocus={() => setCompanyFocused(true)}
+                                onBlur={(e) => {
+                                  setCompanyFocused(false);
+                                  handleBlur('companyName', e.target.value);
+                                }}
+                                aria-invalid={!!formErrors.companyName}
+                                aria-describedby={formErrors.companyName ? 'companyName-error' : undefined}
+                                disabled={loading}
+                              />
+                              {isCompanyValid && !formErrors.companyName && (
+                                <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#3F8F6B]">
+                                  <CheckCircle2 className="w-4 h-4" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="auth-hint-slot">
+                              {companyName && (
+                                <p className="text-[11px] text-[#5B6477]">
+                                  Workspace slug:{' '}
+                                  <code className="font-mono text-[#3B4BC8] font-semibold">
+                                    {slugPreview || 'acme-inc'}
+                                  </code>
+                                  .brandvault.ai
+                                </p>
+                              )}
+                            </div>
+                            <div className="auth-error-slot">
+                              {formErrors.companyName && (
+                                <p id="companyName-error" className="flex items-center gap-1.5 text-xs text-[#D4553F]" role="alert">
+                                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                  <span>{formErrors.companyName}</span>
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Industry Dropdown */}
+                          <div className="mb-4">
+                            <label className="block text-xs font-semibold uppercase tracking-wider text-[#16203A] mb-1.5">
+                              Industry
+                            </label>
+                            <div className="relative" ref={dropdownRef}>
+                              <button
+                                type="button"
+                                className="w-full h-12 px-3.5 rounded-xl text-sm font-medium text-[#16203A] bg-white border border-[#E6DFD2] hover:border-[#16203A]/30 flex items-center justify-between transition-all focus:outline-none focus:border-[#3B4BC8] focus:ring-4 focus:ring-[#3B4BC8]/15"
+                                aria-expanded={dropdownOpen}
+                                onClick={() => setDropdownOpen(!dropdownOpen)}
+                                onKeyDown={handleDropdownKeyDown}
+                                disabled={loading}
+                              >
+                                <span className="flex items-center gap-2 truncate">
+                                  <span className="text-[#3B4BC8]">
+                                    {INDUSTRY_ICON_MAP[industry]}
+                                  </span>
+                                  <span>
+                                    {INDUSTRIES.find((i) => i.value === industry)?.label ||
+                                      'Select industry'}
+                                  </span>
+                                </span>
+                                <ChevronRight
+                                  className={`w-4 h-4 text-[#5B6477] transition-transform duration-200 ${
+                                    dropdownOpen ? 'rotate-90' : ''
+                                  }`}
+                                />
+                              </button>
+
+                              {dropdownOpen && (
+                                <motion.div
+                                  className="absolute top-[calc(100%+6px)] left-0 right-0 bg-white border border-[#E6DFD2] rounded-xl shadow-xl z-50 max-h-60 overflow-y-auto p-1.5"
+                                  initial={{ opacity: 0, y: -6 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  exit={{ opacity: 0, y: -6 }}
+                                >
+                                  <div className="p-1 mb-1">
+                                    <input
+                                      type="text"
+                                      className="w-full h-8 px-2.5 text-xs bg-[#FAF6EF] rounded-lg border border-[#E6DFD2] focus:outline-none focus:border-[#3B4BC8]"
+                                      placeholder="Search industries…"
+                                      value={searchQuery}
+                                      onChange={(e) => setSearchQuery(e.target.value)}
+                                      onClick={(e) => e.stopPropagation()}
+                                    />
+                                  </div>
+                                  {filteredIndustries.map((ind, idx) => (
+                                    <button
+                                      key={ind.value}
+                                      type="button"
+                                      className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium transition-colors text-left ${
+                                        ind.value === industry
+                                          ? 'bg-[#3B4BC8]/10 text-[#3B4BC8]'
+                                          : idx === highlightedIndex
+                                          ? 'bg-[#FAF6EF] text-[#16203A]'
+                                          : 'text-[#5B6477] hover:bg-[#FAF6EF]'
+                                      }`}
+                                      onClick={() => handleDropdownSelect(ind.value)}
+                                    >
+                                      <span>{INDUSTRY_ICON_MAP[ind.value]}</span>
+                                      <span className="truncate">{ind.label}</span>
+                                      {ind.value === industry && (
+                                        <Check className="w-3.5 h-3.5 ml-auto text-[#3B4BC8]" />
+                                      )}
+                                    </button>
+                                  ))}
+                                </motion.div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Source Documents Dropzone */}
+                          <div className="mb-4">
+                            <label className="block text-xs font-semibold uppercase tracking-wider text-[#16203A] mb-1.5">
+                              Source Documents <span className="text-[#5B6477] normal-case">(optional)</span>
+                            </label>
+                            <div
+                              className="border-2 border-dashed border-[#E6DFD2] hover:border-[#3B4BC8] rounded-xl p-4 text-center cursor-pointer transition-colors bg-white/60 hover:bg-[#3B4BC8]/5"
+                              onClick={() => document.getElementById('file-upload-signup')?.click()}
+                              onDragOver={(e) => e.preventDefault()}
+                              onDrop={(e) => {
+                                e.preventDefault();
+                                if (e.dataTransfer.files) handleFileSelect(Array.from(e.dataTransfer.files));
+                              }}
+                            >
+                              <Upload className="w-6 h-6 text-[#3B4BC8] mx-auto mb-1.5" />
+                              <p className="text-xs font-semibold text-[#16203A]">
+                                Drop brand guidelines or specs (PDF)
+                              </p>
+                              <p className="text-[11px] text-[#5B6477] mt-0.5">
+                                Up to 10 files · 10MB each
+                              </p>
+                              <input
+                                id="file-upload-signup"
+                                type="file"
+                                accept=".pdf"
+                                multiple
+                                onChange={(e) =>
+                                  e.target.files && handleFileSelect(Array.from(e.target.files))
+                                }
+                                className="hidden"
+                                disabled={loading}
+                              />
+                            </div>
+
+                            {/* Uploaded File Chips */}
+                            {sourceDocuments.length > 0 && (
+                              <div className="flex flex-col gap-1.5 mt-2.5">
+                                {sourceDocuments.map((file) => (
+                                  <div
+                                    key={file.name}
+                                    className="flex items-center justify-between p-2 rounded-lg bg-white border border-[#E6DFD2] text-xs"
+                                  >
+                                    <div className="flex items-center gap-2 truncate pr-2">
+                                      <FileCheck2 className="w-4 h-4 text-[#3F8F6B] shrink-0" />
+                                      <span className="truncate font-medium text-[#16203A]">
+                                        {file.name}
+                                      </span>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => removeFile(file.name)}
+                                      className="p-1 text-[#5B6477] hover:text-[#D4553F]"
+                                      aria-label={`Remove ${file.name}`}
+                                    >
+                                      <X className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Terms Checkbox */}
+                          <div className="mb-5">
+                            <label className="flex items-start gap-2.5 cursor-pointer text-xs text-[#5B6477]">
+                              <input
+                                type="checkbox"
+                                checked={agreeTerms}
+                                onChange={(e) => setAgreeTerms(e.target.checked)}
+                                className="w-4 h-4 rounded border-[#E6DFD2] text-[#3B4BC8] focus:ring-[#3B4BC8] mt-0.5"
+                              />
+                              <span>
+                                I agree to BrandVault AI&apos;s Terms of Service and Privacy Policy.
+                              </span>
+                            </label>
+                            <div className="auth-error-slot">
+                              {formErrors.agreeTerms && (
+                                <p className="text-xs text-[#D4553F]">
+                                  {formErrors.agreeTerms}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Action Buttons: Back + Submit */}
+                          <div className="flex gap-2.5">
+                            <button
+                              type="button"
+                              onClick={handleBack}
+                              disabled={loading}
+                              className="px-4 h-12 rounded-xl border border-[#E6DFD2] bg-white hover:bg-[#FAF6EF] text-xs font-semibold text-[#5B6477] transition-colors"
+                            >
+                              Back
+                            </button>
+                            <button
+                              type="submit"
+                              disabled={loading}
+                              className="relative flex-1 h-12 rounded-xl bg-gradient-to-r from-[#16203A] to-[#1E2540] hover:from-[#111A30] hover:to-[#171D33] active:scale-[0.98] text-white text-sm font-semibold tracking-tight shadow-md shadow-[#16203A]/20 flex items-center justify-center gap-2 overflow-hidden transition-all duration-200 group disabled:opacity-60"
+                            >
+                              <div className="btn-shine-overlay" aria-hidden="true" />
+                              {loading ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 animate-spin text-white" />
+                                  <span>Creating vault…</span>
+                                </>
+                              ) : (
+                                <>
+                                  <span>Create my vault</span>
+                                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-200" />
+                                </>
+                              )}
+                            </button>
+                          </div>
                         </>
                       )}
-                    </button>
-                  </form>
-                )}
-              </div>
-            </div>
 
-            {/* Slider Bottom Controls */}
-            <div className="relative z-10 flex items-center justify-between text-white/90 pt-2">
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-sm tracking-wider font-semibold">
-                  {SLIDES[currentSlide].number}
-                </span>
-                <span className="text-xs text-white/40">/ 05</span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setCurrentSlide((prev) => (prev - 1 + SLIDES.length) % SLIDES.length)}
-                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 flex items-center justify-center text-white transition-colors"
-                  aria-label="Previous slide"
+                      {/* Bottom Link to Login */}
+                      <p className="text-center text-xs text-[#5B6477] mt-5">
+                        Already have an account?{' '}
+                        <Link
+                          href="/login"
+                          className="font-semibold text-[#3B4BC8] hover:underline ml-0.5"
+                        >
+                          Sign in &rarr;
+                        </Link>
+                      </p>
+                    </form>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="success"
+                  className="auth-form-card text-center py-10"
+                  initial={prefersReducedMotion ? {} : { opacity: 0, scale: 0.95 }}
+                  animate={prefersReducedMotion ? {} : { opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
                 >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCurrentSlide((prev) => (prev + 1) % SLIDES.length)}
-                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 flex items-center justify-center text-white transition-colors"
-                  aria-label="Next slide"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
+                  <div className="w-14 h-14 rounded-full bg-[#E6F4EB] text-[#3F8F6B] flex items-center justify-center mx-auto mb-4 shadow-sm">
+                    <Check className="w-7 h-7 stroke-[2.5]" />
+                  </div>
+                  <h3 className="font-serif text-2xl font-bold text-[#16203A]">Your vault is ready</h3>
+                  <p className="text-sm text-[#5B6477] mt-1">
+                    Setting up workspace and redirecting…
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
-        </div>
-
+          {/* Live sandbox status pill */}
+          <div className="w-full max-w-[440px] flex justify-end mt-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/70 backdrop-blur-xs border border-[#16203A]/8 text-[11px] font-mono text-[#5B6477] shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-[#3F8F6B] animate-pulse" />
+              <span>Live demo environment · NexTech sandbox</span>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   );
@@ -624,7 +906,7 @@ function SignupContent() {
 
 export default function SignupPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#FAF8F5]" />}>
+    <Suspense fallback={<div className="min-h-screen bg-[#FAF6EF]" />}>
       <SignupContent />
     </Suspense>
   );

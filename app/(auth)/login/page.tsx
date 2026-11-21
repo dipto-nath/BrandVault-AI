@@ -4,54 +4,25 @@ import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ShieldCheck,
+  Mail,
+  Lock,
   ArrowRight,
   Loader2,
   AlertCircle,
   Eye,
   EyeOff,
-  ChevronLeft,
-  ChevronRight,
-  Search,
+  Check,
   CheckCircle2,
-  FileCheck2,
   Sparkles,
-  Award,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const SLIDES = [
-  {
-    number: '01',
-    title: 'Submit Content',
-    subtitle: 'Campaign copy, ad variations, or specifications enter the review queue.',
-    bg: 'from-[#1A2333]/90 via-[#101726]/95 to-[#0B0F19]',
-  },
-  {
-    number: '02',
-    title: 'Verify Claims',
-    subtitle: 'Every claim is checked against approved specifications and facts.',
-    bg: 'from-[#1B2936]/90 via-[#0F1D2B]/95 to-[#09121B]',
-  },
-  {
-    number: '03',
-    title: 'Explain with Evidence',
-    subtitle: 'Traceable citations, confidence ratings, and clear reasoning for every finding.',
-    bg: 'from-[#231E33]/90 via-[#161224]/95 to-[#0D0A17]',
-  },
-  {
-    number: '04',
-    title: 'Human Review',
-    subtitle: 'Human reviewers accept, edit, or override findings with recorded rationale.',
-    bg: 'from-[#2D211A]/90 via-[#1C1410]/95 to-[#120D0A]',
-  },
-  {
-    number: '05',
-    title: 'Evidence Passport',
-    subtitle: 'Cryptographic SHA-256 seal and complete immutable audit history.',
-    bg: 'from-[#17252A]/90 via-[#0E1A1E]/95 to-[#081013]',
-  },
-];
+import { AuthHeader } from '@/components/auth/auth-header';
+import { AuthAmbientBg } from '@/components/auth/auth-ambient-bg';
+import { ClaimDemoShowpiece } from '@/components/auth/claim-demo-showpiece';
+import { AuthHeroHeadline } from '@/components/auth/auth-hero-headline';
+import { AuthStatsRow } from '@/components/auth/auth-stats-row';
+import { AuthTrustMarquee } from '@/components/auth/auth-trust-marquee';
 
 function LoginContent() {
   const router = useRouter();
@@ -65,15 +36,23 @@ function LoginContent() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [shakeCard, setShakeCard] = useState(false);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
-  // Forgot password modal state
-  const [forgotOpen, setForgotOpen] = useState(false);
+  const [emailFocused, setEmailFocused] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
+
+  const isEmailValid = email.length > 0 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const isPasswordValid = password.length >= 8;
+
+  const forgotOpen = useRef(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotSent, setForgotSent] = useState(false);
+  const typingRef = useRef(false);
+  const submitBtnRef = useRef<HTMLButtonElement>(null);
 
-  // Slider state
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [isHoveringSlider, setIsHoveringSlider] = useState(false);
+  const prefersReducedMotion =
+    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // Auto-fill judge credentials if ?judge=true
   useEffect(() => {
@@ -83,18 +62,33 @@ function LoginContent() {
     }
   }, [searchParams]);
 
-  // Auto-advance slider every 6 seconds
-  useEffect(() => {
-    if (isHoveringSlider) return;
-    const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % SLIDES.length);
-    }, 6000);
-    return () => clearInterval(timer);
-  }, [isHoveringSlider]);
+  const validateField = (name: string, value: string) => {
+    if (name === 'email' && value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      return 'Enter a valid work email address';
+    }
+    if (name === 'password' && value && value.length < 8) {
+      return 'Password must be at least 8 characters';
+    }
+    return '';
+  };
+
+  const handleBlur = (name: string, value: string) => {
+    const err = validateField(name, value);
+    setFormErrors((prev) => ({ ...prev, [name]: err }));
+  };
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (loading) return;
+
+    const emailErr = validateField('email', email);
+    const passwordErr = validateField('password', password);
+    if (emailErr || passwordErr) {
+      setFormErrors({ email: emailErr, password: passwordErr });
+      setShakeCard(true);
+      setTimeout(() => setShakeCard(false), 400);
+      return;
+    }
 
     setError(null);
     setLoading(true);
@@ -108,415 +102,372 @@ function LoginContent() {
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || 'Email or password is incorrect.');
+        throw new Error(data.error || 'Email or password is incorrect');
       }
 
-      // Play stamp animation before navigation
       setIsSuccess(true);
-      setTimeout(() => {
-        // Sanitize redirect target
-        const target = nextParam.startsWith('/') && !nextParam.startsWith('//') ? nextParam : '/overview';
-        window.location.href = target;
-      }, 700);
+      setTimeout(() => router.push(nextParam), 800);
     } catch (err: any) {
-      setError(err.message || 'Email or password is incorrect.');
+      setError(err.message);
+      setShakeCard(true);
+      setTimeout(() => setShakeCard(false), 400);
+    } finally {
       setLoading(false);
     }
   }
 
-  function fillJudgeCredentials() {
-    setEmail('demo@nexatech.example');
-    setPassword('demo12345');
+  // Smooth character-by-character typing of demo credentials
+  const handleDemoFill = () => {
+    if (typingRef.current) return;
+    const targetEmail = 'demo@nexatech.example';
+    const targetPass = 'demo12345';
+    setEmail('');
+    setPassword('');
+    typingRef.current = true;
     setError(null);
-  }
+    setFormErrors({});
+
+    let i = 0;
+    const emailInterval = setInterval(() => {
+      i++;
+      setEmail(targetEmail.slice(0, i));
+      if (i >= targetEmail.length) {
+        clearInterval(emailInterval);
+        let j = 0;
+        const passInterval = setInterval(() => {
+          j++;
+          setPassword(targetPass.slice(0, j));
+          if (j >= targetPass.length) {
+            clearInterval(passInterval);
+            typingRef.current = false;
+            submitBtnRef.current?.focus({ preventScroll: true });
+          }
+        }, 28);
+      }
+    }, 22);
+  };
 
   return (
-    <div className="min-h-screen py-4 sm:py-8 px-3 sm:px-6 lg:px-8 flex items-center justify-center">
-      {/* Outer Large Rounded Container */}
-      <div className="w-full max-w-7xl rounded-[28px] border border-[#E8E2D5] bg-[#FFFDF9] shadow-sm p-4 sm:p-7 lg:p-9 flex flex-col gap-6 lg:gap-8">
-        
-        {/* Top Floating Pill Navigation */}
-        <header className="w-full rounded-full bg-[#FAF8F5] border border-[#E8E2D5] px-4 sm:px-6 py-2.5 flex items-center justify-between shadow-xs">
-          {/* Brand Wordmark */}
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-7 h-7 rounded-lg bg-[#2F4FB3] text-white flex items-center justify-center shadow-xs">
-              <ShieldCheck className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-serif font-bold text-base tracking-tight text-[#1E2540]">
-              BrandVault <span className="text-[#2F4FB3] font-sans font-medium text-xs">AI</span>
-            </span>
-          </Link>
+    <div className="auth-page min-h-screen relative font-sans">
+      {/* Ambient background with color orbs & spotlight */}
+      <AuthAmbientBg />
 
-          {/* Center Links (Desktop) */}
-          <nav className="hidden md:flex items-center gap-6 text-xs font-medium text-[#5A627A]">
-            <Link href="/" className="hover:text-[#1E2540] transition-colors">Home</Link>
-            <Link href="/#how-it-works" className="hover:text-[#1E2540] transition-colors">How it works</Link>
-            <span className="text-[#9CA3AF] cursor-default">About</span>
-            <span className="text-[#9CA3AF] cursor-default">Docs</span>
-          </nav>
+      {/* Unified Full-Width Header */}
+      <AuthHeader currentPage="login" />
 
-          {/* Decorative Search Pill & Auth Switcher */}
-          <div className="flex items-center gap-3">
-            <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-[#E8E2D5] text-xs text-[#9CA3AF]">
-              <Search className="w-3.5 h-3.5 text-[#9CA3AF]" />
-              <span className="italic">Try &ldquo;battery life claim&rdquo;</span>
-            </div>
-
-            <Link
-              href={`/signup?next=${encodeURIComponent(nextParam)}`}
-              className="px-3.5 py-1.5 rounded-full bg-[#EDE8DE] hover:bg-[#E2DDD0] text-[#1E2540] text-xs font-medium tracking-tight border border-[#DCD5C5] transition-all"
-            >
-              Create account
-            </Link>
+      {/* Main Two-Column Viewport-Locked Split */}
+      <div className="auth-split">
+        {/* STORY SIDE (Left Column) */}
+        <section className="auth-story" aria-label="Product introduction">
+          <div className="flex flex-col gap-4">
+            <AuthHeroHeadline />
+            <ClaimDemoShowpiece />
           </div>
-        </header>
 
-        {/* Main Two-Column Split Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-stretch">
-          
-          {/* Left Column: Editorial Headline & Real About Card */}
-          <div className="lg:col-span-5 flex flex-col justify-between py-2">
-            <div>
-              {/* Small Caps Label */}
-              <div className="mb-3">
-                <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-[#2F4FB3] font-semibold">
-                  Evidence-First Brand Governance
-                </span>
-              </div>
+          <div className="flex flex-col gap-2 mt-auto">
+            <AuthStatsRow />
+            <AuthTrustMarquee />
+          </div>
+        </section>
 
-              {/* Large Headline in Fraunces */}
-              <h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-[#1E2540] leading-[1.12]">
-                EVERY CLAIM, <br />
-                <span className="relative inline-block">
-                  <span className="relative z-10">CHECKED BEFORE</span>
-                  <span
-                    className="absolute inset-x-0 bottom-1 h-3.5 -z-0 rounded-xs bg-[#2F4FB3]/15 transform -rotate-0.5"
-                    aria-hidden="true"
-                  />
-                </span>{' '}
-                <br />
-                <span className="inline-flex items-center gap-2.5">
-                  <span>IT GOES LIVE.</span>
-                  {/* Three Status Circles */}
-                  <span className="inline-flex items-center -space-x-1.5 ml-1">
-                    <span className="w-3.5 h-3.5 rounded-full bg-[#22C55E] ring-2 ring-[#FFFDF9]" title="Supported" />
-                    <span className="w-3.5 h-3.5 rounded-full bg-[#F59E0B] ring-2 ring-[#FFFDF9]" title="Unverified" />
-                    <span className="w-3.5 h-3.5 rounded-full bg-[#EF4444] ring-2 ring-[#FFFDF9]" title="Contradicted" />
-                  </span>
-                </span>
-              </h1>
-
-              {/* Sublink to create account */}
-              <div className="mt-5 text-sm text-[#5A627A]">
-                Don&apos;t have an account?{' '}
-                <Link
-                  href={`/signup?next=${encodeURIComponent(nextParam)}`}
-                  className="font-semibold text-[#2F4FB3] hover:underline inline-flex items-center gap-1 group"
+        {/* FORM SIDE (Right Column - Independent Scroll) */}
+        <section className="auth-form-side" aria-label="Sign in form">
+          <div className="auth-form-wrapper">
+            <AnimatePresence mode="wait">
+              {!isSuccess ? (
+                <motion.div
+                  key="form"
+                  className={`auth-form-card ${shakeCard ? 'shake-error' : ''}`}
+                  initial={prefersReducedMotion ? {} : { opacity: 0, y: 16 }}
+                  animate={prefersReducedMotion ? {} : { opacity: 1, y: 0 }}
+                  exit={prefersReducedMotion ? {} : { opacity: 0, y: -16 }}
+                  transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
                 >
-                  <span>Create account</span>
-                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-                </Link>
-              </div>
-            </div>
+                  <div>
+                    <h2 className="font-serif text-[28px] sm:text-[32px] font-bold text-[#16203A] tracking-tight leading-tight">
+                      Welcome back
+                    </h2>
+                    <p className="text-[14px] text-[#5B6477] mt-1 mb-6">
+                      Sign in to your brand compliance workspace.
+                    </p>
 
-            {/* Bottom-Left About Card with Real Verified Facts */}
-            <div className="mt-8 lg:mt-12 rounded-2xl bg-[#1E2540] text-white p-5 sm:p-6 shadow-md border border-[#2B3454]">
-              <div className="flex items-center gap-2 mb-2 text-[#8EA8F5] text-xs font-mono uppercase tracking-wider">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Accountability Engine</span>
-              </div>
-              <p className="text-xs sm:text-sm text-[#EDEAE2]/85 leading-relaxed mb-4">
-                Verify claims against approved sources, explain every finding with citations, and keep a person in charge.
-              </p>
-              
-              {/* Row of 3 True Real Stats */}
-              <div className="grid grid-cols-3 gap-2 pt-3 border-t border-white/10 text-center">
-                <div>
-                  <div className="font-serif text-lg sm:text-xl font-bold text-white">4</div>
-                  <div className="text-[10px] text-[#A6AFC9] uppercase tracking-wider mt-0.5">Evidence States</div>
-                </div>
-                <div>
-                  <div className="font-serif text-lg sm:text-xl font-bold text-white">5</div>
-                  <div className="text-[10px] text-[#A6AFC9] uppercase tracking-wider mt-0.5">Resolution Actions</div>
-                </div>
-                <div>
-                  <div className="font-serif text-lg sm:text-xl font-bold text-white">1</div>
-                  <div className="text-[10px] text-[#A6AFC9] uppercase tracking-wider mt-0.5">Passport / Review</div>
-                </div>
-              </div>
-            </div>
-          </div>
+                    <form onSubmit={handleSubmit} noValidate>
+                      {/* Reserved Slot for Global Error Banner */}
+                      <div className="min-h-[28px] mb-4">
+                        <AnimatePresence>
+                          {error && (
+                            <motion.div
+                              className="p-2.5 rounded-xl bg-[#FCEBE8] border border-[#D4553F]/30 flex items-center gap-2 text-[#D4553F] text-xs font-medium"
+                              initial={{ opacity: 0, y: -6 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -6 }}
+                            >
+                              <AlertCircle className="w-4 h-4 shrink-0" />
+                              <span>{error}</span>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
 
-          {/* Right Column: Hero Image Panel with Floating Glass Card */}
-          <div
-            className="lg:col-span-7 relative min-h-[560px] sm:min-h-[620px] rounded-[24px] overflow-hidden flex flex-col justify-between p-4 sm:p-7 transition-colors duration-700"
-            onMouseEnter={() => setIsHoveringSlider(true)}
-            onMouseLeave={() => setIsHoveringSlider(false)}
-          >
-            {/* Background gradient corresponding to active slide */}
-            <div
-              className={`absolute inset-0 bg-gradient-to-br ${SLIDES[currentSlide].bg} transition-colors duration-700`}
-            />
+                      {/* Work Email Field */}
+                      <div className="mb-4">
+                        <label
+                          htmlFor="email"
+                          className="block text-xs font-semibold uppercase tracking-wider text-[#16203A] mb-1.5"
+                        >
+                          Work Email
+                        </label>
+                        <div className="relative">
+                          <div
+                            className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200 pointer-events-none ${
+                              emailFocused ? 'text-[#3B4BC8]' : 'text-[#5B6477]'
+                            }`}
+                          >
+                            <Mail className="w-4 h-4" />
+                          </div>
+                          <input
+                            id="email"
+                            type="email"
+                            autoComplete="email"
+                            className={`w-full h-12 pl-10 pr-10 rounded-xl text-sm font-medium text-[#16203A] bg-white border transition-all duration-200 focus:outline-none ${
+                              formErrors.email
+                                ? 'border-[#D4553F] focus:ring-4 focus:ring-[#D4553F]/15'
+                                : emailFocused
+                                ? 'border-[#3B4BC8] ring-4 ring-[#3B4BC8]/15 shadow-sm shadow-[#3B4BC8]/10'
+                                : 'border-[#E6DFD2] hover:border-[#16203A]/30'
+                            }`}
+                            placeholder="you@company.com"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            onFocus={() => setEmailFocused(true)}
+                            onBlur={(e) => {
+                              setEmailFocused(false);
+                              handleBlur('email', e.target.value);
+                            }}
+                            aria-invalid={!!formErrors.email}
+                            aria-describedby={formErrors.email ? 'email-error' : undefined}
+                            disabled={loading}
+                          />
+                          {/* Valid check indicator */}
+                          {isEmailValid && !formErrors.email && (
+                            <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#3F8F6B] animate-in zoom-in-75 duration-150">
+                              <CheckCircle2 className="w-4 h-4" />
+                            </div>
+                          )}
+                        </div>
+                        {/* Reserved Error Slot */}
+                        <div className="auth-error-slot">
+                          {formErrors.email && (
+                            <p id="email-error" className="flex items-center gap-1.5 text-xs text-[#D4553F]" role="alert">
+                              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                              <span>{formErrors.email}</span>
+                            </p>
+                          )}
+                        </div>
+                      </div>
 
-            {/* Noise texture overlay */}
-            <div
-              className="pointer-events-none absolute inset-0 opacity-40 mix-blend-overlay"
-              style={{
-                backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.12'/%3E%3C/svg%3E")`,
-              }}
-            />
+                      {/* Password Field */}
+                      <div className="mb-4">
+                        <label
+                          htmlFor="password"
+                          className="block text-xs font-semibold uppercase tracking-wider text-[#16203A] mb-1.5"
+                        >
+                          Password
+                        </label>
+                        <div className="relative">
+                          <div
+                            className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200 pointer-events-none ${
+                              passwordFocused ? 'text-[#3B4BC8]' : 'text-[#5B6477]'
+                            }`}
+                          >
+                            <Lock className="w-4 h-4" />
+                          </div>
+                          <input
+                            id="password"
+                            type={showPassword ? 'text' : 'password'}
+                            autoComplete="current-password"
+                            className={`w-full h-12 pl-10 pr-12 rounded-xl text-sm font-medium text-[#16203A] bg-white border transition-all duration-200 focus:outline-none ${
+                              formErrors.password
+                                ? 'border-[#D4553F] focus:ring-4 focus:ring-[#D4553F]/15'
+                                : passwordFocused
+                                ? 'border-[#3B4BC8] ring-4 ring-[#3B4BC8]/15 shadow-sm shadow-[#3B4BC8]/10'
+                                : 'border-[#E6DFD2] hover:border-[#16203A]/30'
+                            }`}
+                            placeholder="••••••••"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            onFocus={() => setPasswordFocused(true)}
+                            onBlur={(e) => {
+                              setPasswordFocused(false);
+                              handleBlur('password', e.target.value);
+                            }}
+                            aria-invalid={!!formErrors.password}
+                            aria-describedby={formErrors.password ? 'password-error' : undefined}
+                            disabled={loading}
+                          />
+                          <button
+                            type="button"
+                            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#5B6477] hover:text-[#16203A] transition-colors p-1 rounded-md"
+                            onClick={() => setShowPassword(!showPassword)}
+                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                          >
+                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                        {/* Reserved Error Slot */}
+                        <div className="auth-error-slot">
+                          {formErrors.password && (
+                            <p id="password-error" className="flex items-center gap-1.5 text-xs text-[#D4553F]" role="alert">
+                              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                              <span>{formErrors.password}</span>
+                            </p>
+                          )}
+                        </div>
+                      </div>
 
-            {/* Top Slide Caption */}
-            <div className="relative z-10 flex items-start justify-between text-white/90">
-              <div className="max-w-md">
-                <div className="text-[11px] font-mono uppercase tracking-[0.2em] text-[#8EA8F5]">
-                  Step {SLIDES[currentSlide].number} &middot; {SLIDES[currentSlide].title}
-                </div>
-                <div className="text-xs text-[#EDEAE2]/70 mt-0.5 line-clamp-1">
-                  {SLIDES[currentSlide].subtitle}
-                </div>
-              </div>
-            </div>
-
-            {/* Floating Glass Login Card */}
-            <div className="relative z-20 my-auto py-4 flex justify-center">
-              <div className="w-full max-w-[430px] rounded-[20px] bg-white/95 backdrop-blur-md border border-white/60 shadow-2xl p-6 sm:p-7 text-[#1E2540]">
-                
-                {/* Card Title & Subtitle */}
-                <div className="mb-5">
-                  <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#1E2540] tracking-tight">
-                    Log in to your account
-                  </h2>
-                  <p className="text-xs text-[#5A627A] mt-1">
-                    Sign in to access your company vault and reviews.
-                  </p>
-                </div>
-
-                {/* Error Banner */}
-                {error && (
-                  <div className="mb-4 p-3 rounded-xl bg-[#EF4444]/10 border border-[#EF4444]/20 text-[#B24A4A] text-xs flex items-start gap-2.5">
-                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                    <span>{error}</span>
-                  </div>
-                )}
-
-                {/* Success Stamp Overlay if verified */}
-                {isSuccess ? (
-                  <div className="py-10 flex flex-col items-center justify-center text-center">
-                    <div className="relative w-16 h-16 flex items-center justify-center mb-3">
-                      <motion.circle
-                        cx="32"
-                        cy="32"
-                        r="28"
-                        stroke="#22C55E"
-                        strokeWidth="3"
-                        strokeDasharray="176"
-                        initial={{ strokeDashoffset: 176 }}
-                        animate={{ strokeDashoffset: 0 }}
-                        transition={{ duration: 0.5 }}
-                        className="fill-none"
-                      />
-                      <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ delay: 0.2, type: 'spring' }}
-                      >
-                        <CheckCircle2 className="w-8 h-8 text-[#22C55E]" />
-                      </motion.div>
-                    </div>
-                    <span className="font-serif text-lg font-bold text-[#1E2540]">Verified & Signed In</span>
-                    <span className="text-xs text-[#5A627A] mt-0.5">Redirecting to workspace...</span>
-                  </div>
-                ) : (
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                    {/* Email Field */}
-                    <div>
-                      <label className="block text-xs font-semibold text-[#1E2540] uppercase tracking-wider mb-1">
-                        Work Email
-                      </label>
-                      <input
-                        type="email"
-                        required
-                        autoComplete="username"
-                        autoFocus
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="you@company.com"
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-[#DCD5C5] bg-[#FAF8F5] text-sm text-[#1E2540] placeholder-[#8C93A8] focus:outline-none focus:ring-2 focus:ring-[#2F4FB3]/20 focus:border-[#2F4FB3] transition-all"
-                      />
-                    </div>
-
-                    {/* Password Field with Show/Hide */}
-                    <div>
-                      <label className="block text-xs font-semibold text-[#1E2540] uppercase tracking-wider mb-1">
-                        Password
-                      </label>
-                      <div className="relative">
-                        <input
-                          type={showPassword ? 'text' : 'password'}
-                          required
-                          autoComplete="current-password"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"
-                          className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-[#DCD5C5] bg-[#FAF8F5] text-sm text-[#1E2540] placeholder-[#8C93A8] focus:outline-none focus:ring-2 focus:ring-[#2F4FB3]/20 focus:border-[#2F4FB3] transition-all"
-                        />
+                      {/* Remember me & Forgot Password */}
+                      <div className="flex items-center justify-between text-xs mb-6">
+                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={rememberMe}
+                            onChange={(e) => setRememberMe(e.target.checked)}
+                            className="w-4 h-4 rounded border-[#E6DFD2] text-[#3B4BC8] focus:ring-[#3B4BC8]"
+                          />
+                          <span className="text-[#5B6477] font-medium">Remember me</span>
+                        </label>
                         <button
                           type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8C93A8] hover:text-[#1E2540] focus:outline-none"
-                          aria-label={showPassword ? 'Hide password' : 'Show password'}
+                          className="font-medium text-[#3B4BC8] hover:underline focus:outline-none"
+                          onClick={() => {
+                            forgotOpen.current = true;
+                            setForgotSent(false);
+                          }}
                         >
-                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          Forgot password?
                         </button>
                       </div>
-                    </div>
 
-                    {/* Remember me & Forgot Password */}
-                    <div className="flex items-center justify-between text-xs">
-                      <label className="flex items-center gap-2 cursor-pointer select-none text-[#5A627A]">
-                        <input
-                          type="checkbox"
-                          checked={rememberMe}
-                          onChange={(e) => setRememberMe(e.target.checked)}
-                          className="w-4 h-4 rounded text-[#2F4FB3] border-[#DCD5C5] focus:ring-[#2F4FB3]"
-                        />
-                        <span>Remember me</span>
-                      </label>
-
+                      {/* Primary Sign In Button with 6s Shine Sweep & Scale Haptic */}
                       <button
-                        type="button"
-                        onClick={() => {
-                          setForgotEmail(email);
-                          setForgotOpen(true);
-                        }}
-                        className="text-[#2F4FB3] hover:underline"
+                        ref={submitBtnRef}
+                        type="submit"
+                        disabled={loading}
+                        className="relative w-full h-12 rounded-xl bg-gradient-to-r from-[#16203A] to-[#1E2540] hover:from-[#111A30] hover:to-[#171D33] active:scale-[0.98] text-white text-sm font-semibold tracking-tight shadow-md shadow-[#16203A]/20 flex items-center justify-center gap-2 overflow-hidden transition-all duration-200 group disabled:opacity-60"
                       >
-                        Forgot your password?
+                        {/* 6s Shine Sweep */}
+                        <div className="btn-shine-overlay" aria-hidden="true" />
+
+                        {loading ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin text-white" />
+                            <span>Signing in…</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>Sign in</span>
+                            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-200" />
+                          </>
+                        )}
                       </button>
-                    </div>
 
-                    {/* Login Submit Button */}
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="w-full py-2.5 px-4 rounded-xl bg-[#1E2540] hover:bg-[#121728] text-white text-sm font-medium shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-[#2F4FB3] focus:ring-offset-2"
-                    >
-                      {loading ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          <span>Signing in...</span>
-                        </>
-                      ) : (
-                        <>
-                          <span>Login</span>
-                          <ArrowRight className="w-4 h-4" />
-                        </>
-                      )}
-                    </button>
-
-                    {/* Mini Evidence-Passport Preview Strip */}
-                    <div className="pt-2">
-                      <div className="p-2.5 rounded-xl bg-[#FAF8F5] border border-[#E8E2D5] flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <FileCheck2 className="w-4 h-4 text-[#2F4FB3]" />
-                          <div>
-                            <div className="text-[11px] font-mono font-medium text-[#1E2540] leading-none">
-                              BVP-2026-0001
-                            </div>
-                            <div className="text-[9px] text-[#8C93A8] leading-tight mt-0.5">
-                              Sample Evidence Passport
-                            </div>
+                      {/* Judge Demo Access Box */}
+                      <div className="mt-6 p-3.5 rounded-xl bg-[#FAF6EF] border border-dashed border-[#E6DFD2] relative">
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-1.5 text-xs font-semibold text-[#16203A]">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#3F8F6B]" />
+                            <span>Judging this hackathon?</span>
                           </div>
+                          <span className="text-[10px] font-mono text-[#5B6477] uppercase bg-white px-1.5 py-0.5 rounded border border-[#E6DFD2]">
+                            Demo Sandbox
+                          </span>
                         </div>
-                        <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-[#22C55E]/10 text-[#16A34A] border border-[#22C55E]/20">
-                          APPROVED
-                        </span>
+                        <p className="font-mono text-xs text-[#5B6477] mb-2.5">
+                          demo@nexatech.example
+                        </p>
+                        <button
+                          type="button"
+                          onClick={handleDemoFill}
+                          disabled={loading}
+                          className="w-full h-9 rounded-lg border border-[#3B4BC8] bg-white hover:bg-[#E8E9FC]/60 text-[#3B4BC8] text-xs font-semibold flex items-center justify-center gap-1.5 transition-all duration-150 active:scale-[0.98]"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>Use demo credentials (auto-type)</span>
+                        </button>
                       </div>
-                    </div>
 
-                    {/* Judge & Evaluator Access Helper Card */}
-                    <div className="mt-3 p-3 rounded-xl bg-[#2F4FB3]/5 border border-[#2F4FB3]/15">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-[11px] font-semibold text-[#2F4FB3] flex items-center gap-1">
-                          <Award className="w-3.5 h-3.5" />
-                          <span>Judges & Evaluators</span>
-                        </span>
-                        <span className="text-[10px] font-mono text-[#5A627A]">NexaTech Sandbox</span>
-                      </div>
-                      <p className="text-[11px] text-[#5A627A] leading-tight mb-2">
-                        Pre-loaded with sample specs, approved facts, and active review submissions.
+                      {/* Bottom link */}
+                      <p className="text-center text-xs text-[#5B6477] mt-5">
+                        New to BrandVault?{' '}
+                        <Link
+                          href="/signup"
+                          className="font-semibold text-[#3B4BC8] hover:underline ml-0.5"
+                        >
+                          Create an account &rarr;
+                        </Link>
                       </p>
-                      <button
-                        type="button"
-                        onClick={fillJudgeCredentials}
-                        className="w-full py-1.5 px-3 rounded-lg bg-[#2F4FB3]/10 hover:bg-[#2F4FB3]/20 text-[#2F4FB3] text-xs font-medium transition-colors text-center"
-                      >
-                        Fill demo credentials (demo@nexatech.example)
-                      </button>
-                    </div>
-                  </form>
-                )}
-              </div>
-            </div>
-
-            {/* Slider Bottom Controls: 01/05 and Arrows */}
-            <div className="relative z-10 flex items-center justify-between text-white/90 pt-2">
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-sm tracking-wider font-semibold">
-                  {SLIDES[currentSlide].number}
-                </span>
-                <span className="text-xs text-white/40">/ 05</span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setCurrentSlide((prev) => (prev - 1 + SLIDES.length) % SLIDES.length)}
-                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 flex items-center justify-center text-white transition-colors"
-                  aria-label="Previous slide"
+                    </form>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="success"
+                  className="auth-form-card text-center py-10"
+                  initial={prefersReducedMotion ? {} : { opacity: 0, scale: 0.95 }}
+                  animate={prefersReducedMotion ? {} : { opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
                 >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCurrentSlide((prev) => (prev + 1) % SLIDES.length)}
-                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 flex items-center justify-center text-white transition-colors"
-                  aria-label="Next slide"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
+                  <div className="w-14 h-14 rounded-full bg-[#E6F4EB] text-[#3F8F6B] flex items-center justify-center mx-auto mb-4 shadow-sm">
+                    <Check className="w-7 h-7 stroke-[2.5]" />
+                  </div>
+                  <h3 className="font-serif text-2xl font-bold text-[#16203A]">Welcome back</h3>
+                  <p className="text-sm text-[#5B6477] mt-1">Redirecting you to your workspace…</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
-        </div>
-
+          {/* Live sandbox status pill in bottom right corner */}
+          <div className="w-full max-w-[440px] flex justify-end mt-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/70 backdrop-blur-xs border border-[#16203A]/8 text-[11px] font-mono text-[#5B6477] shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-[#3F8F6B] animate-pulse" />
+              <span>Live demo environment · NexTech sandbox</span>
+            </div>
+          </div>
+        </section>
       </div>
 
       {/* Forgot Password Modal */}
       <AnimatePresence>
-        {forgotOpen && (
+        {forgotOpen.current && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div
-              className="fixed inset-0 bg-black/60 backdrop-blur-xs"
-              onClick={() => setForgotOpen(false)}
+              className="fixed inset-0 bg-black/50 backdrop-blur-xs"
+              onClick={() => {
+                forgotOpen.current = false;
+                setForgotSent(false);
+              }}
             />
-            <div className="relative w-full max-w-sm rounded-2xl bg-[#FFFDF9] border border-[#E8E2D5] shadow-2xl p-6 text-[#1E2540] z-10">
-              <h3 className="font-serif text-lg font-bold text-[#1E2540] mb-2">Reset Password</h3>
+            <motion.div
+              className="relative w-full max-w-sm rounded-2xl bg-white border border-[#E6DFD2] shadow-2xl p-6 text-[#16203A] z-10"
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ duration: 0.2 }}
+            >
+              <h3 className="text-lg font-bold text-[#16203A] mb-1 font-serif">Reset Password</h3>
               {forgotSent ? (
                 <div>
-                  <p className="text-xs text-[#5A627A] mb-4">
+                  <p className="text-sm text-[#5B6477] mb-4">
                     If an account exists for {forgotEmail}, we have sent instructions to reset your password.
                   </p>
                   <button
                     type="button"
                     onClick={() => {
-                      setForgotOpen(false);
+                      forgotOpen.current = false;
                       setForgotSent(false);
                     }}
-                    className="w-full py-2 rounded-xl bg-[#1E2540] text-white text-xs font-medium"
+                    className="w-full py-2.5 rounded-xl bg-[#16203A] text-white text-xs font-semibold"
                   >
                     Close
                   </button>
@@ -529,8 +480,8 @@ function LoginContent() {
                   }}
                   className="space-y-3"
                 >
-                  <p className="text-xs text-[#5A627A]">
-                    Enter your work email address and we&apos;ll send you a recovery link.
+                  <p className="text-xs text-[#5B6477]">
+                    Enter your work email address and we’ll send you a recovery link.
                   </p>
                   <input
                     type="email"
@@ -538,26 +489,29 @@ function LoginContent() {
                     value={forgotEmail}
                     onChange={(e) => setForgotEmail(e.target.value)}
                     placeholder="you@company.com"
-                    className="w-full px-3 py-2 rounded-xl border border-[#DCD5C5] text-xs"
+                    className="w-full px-3 py-2 rounded-xl border border-[#E6DFD2] text-xs bg-[#FAF6EF] focus:outline-none focus:border-[#3B4BC8]"
                   />
                   <div className="flex gap-2 pt-2">
                     <button
                       type="button"
-                      onClick={() => setForgotOpen(false)}
-                      className="flex-1 py-2 rounded-xl border border-[#DCD5C5] text-xs text-[#5A627A]"
+                      onClick={() => {
+                        forgotOpen.current = false;
+                        setForgotSent(false);
+                      }}
+                      className="flex-1 py-2 rounded-xl border border-[#E6DFD2] text-xs font-medium text-[#5B6477]"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="flex-1 py-2 rounded-xl bg-[#2F4FB3] text-white text-xs font-medium"
+                      className="flex-1 py-2 rounded-xl bg-[#3B4BC8] text-white text-xs font-semibold"
                     >
                       Send link
                     </button>
                   </div>
                 </form>
               )}
-            </div>
+            </motion.div>
           </div>
         )}
       </AnimatePresence>
@@ -567,7 +521,7 @@ function LoginContent() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#FAF8F5]" />}>
+    <Suspense fallback={<div className="min-h-screen bg-[#FAF6EF]" />}>
       <LoginContent />
     </Suspense>
   );
