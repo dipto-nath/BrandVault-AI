@@ -20,17 +20,26 @@ except ImportError as e:
     print(json.dumps({"error": f"Missing visual dependencies: {e}"}))
     sys.exit(1)
 
-# Try to import pytesseract for OCR
+# Try to import OCR engines: ocrmac (Apple Vision native on macOS) or pytesseract
+OCRMAC_AVAILABLE = False
+try:
+    from ocrmac import ocrmac
+    OCRMAC_AVAILABLE = True
+except Exception:
+    OCRMAC_AVAILABLE = False
+
+TESSERACT_AVAILABLE = False
 try:
     import pytesseract
-    # Check if tesseract binary is actually available
     try:
         pytesseract.get_tesseract_version()
         TESSERACT_AVAILABLE = True
     except Exception:
         TESSERACT_AVAILABLE = False
-except ImportError:
+except Exception:
     TESSERACT_AVAILABLE = False
+
+OCR_AVAILABLE = OCRMAC_AVAILABLE or TESSERACT_AVAILABLE
 
 # Try to import the claim verification logic
 try:
@@ -334,44 +343,52 @@ def check_alt_text(alt_text: Optional[str], is_decorative: bool, channel: str) -
 
 # 5. OCR Text Extraction
 def extract_text_from_image(image_path: str) -> Tuple[str, Dict[str, Any]]:
-    """Extract text from image using OCR."""
+    """Extract text from image using OCR (Apple Vision on macOS or Tesseract)."""
     ocr_metadata = {
-        "ocrAvailable": TESSERACT_AVAILABLE,
-        "engine": "tesseract" if TESSERACT_AVAILABLE else "none",
+        "ocrAvailable": OCR_AVAILABLE,
+        "engine": "apple_vision" if OCRMAC_AVAILABLE else ("tesseract" if TESSERACT_AVAILABLE else "none"),
         "textExtracted": False,
         "characterCount": 0,
         "wordCount": 0,
     }
     
-    if not TESSERACT_AVAILABLE:
-        ocr_metadata["error"] = "Tesseract OCR engine not installed. Text claims in images cannot be verified. Install tesseract-ocr to enable claim verification from images."
+    if not OCR_AVAILABLE:
+        ocr_metadata["error"] = "OCR engine not installed. Text claims in images cannot be verified. Install ocrmac or tesseract-ocr."
         return "", ocr_metadata
     
-    try:
-        cv_img = cv2.imread(image_path)
-        if cv_img is None:
-            return "", ocr_metadata
-        
-        gray = cv2.cvtColor(cv_img, cv2.COLOR_BGR2GRAY)
-        _, thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        denoised = cv2.fastNlMeansDenoising(thresh, h=10)
-        
-        custom_config = r'--oem 3 --psm 6 -l eng'
-        text = pytesseract.image_to_string(denoised, config=custom_config)
-        
-        text = text.strip()
-        text = re.sub(r'\n+', ' ', text)
-        text = re.sub(r'\s+', ' ', text)
-        
+    text = ""
+    if OCRMAC_AVAILABLE:
+        try:
+            annotations = ocrmac.OCR(image_path).recognize()
+            if annotations:
+                lines = [item[0].strip() for item in annotations if item and item[0].strip()]
+                text = " ".join(lines)
+        except Exception as e:
+            text = ""
+            ocr_metadata["error"] = f"Apple Vision OCR error: {e}"
+
+    if not text and TESSERACT_AVAILABLE:
+        try:
+            cv_img = cv2.imread(image_path)
+            if cv_img is not None:
+                gray = cv2.cvtColor(cv_img, cv2.COLOR_BGR2GRAY)
+                _, thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+                denoised = cv2.fastNlMeansDenoising(thresh, h=10)
+                custom_config = r'--oem 3 --psm 6 -l eng'
+                text = pytesseract.image_to_string(denoised, config=custom_config)
+        except Exception as e:
+            ocr_metadata["error"] = f"Tesseract error: {e}"
+
+    text = text.strip()
+    text = re.sub(r'\n+', ' ', text)
+    text = re.sub(r'\s+', ' ', text)
+    
+    if text:
         ocr_metadata["textExtracted"] = True
         ocr_metadata["characterCount"] = len(text)
-        ocr_metadata["wordCount"] = len(text.split()) if text else 0
-        
-        return text, ocr_metadata
-        
-    except Exception as e:
-        ocr_metadata["error"] = str(e)
-        return "", ocr_metadata
+        ocr_metadata["wordCount"] = len(text.split())
+    
+    return text, ocr_metadata
 
 
 
@@ -551,9 +568,9 @@ def verify_claim_deterministic(claim_text: str, evidence: List[Dict[str, Any]]) 
 
         if "battery" in claim_lower and "battery" in fact_text:
 
-            claim_hours = re.findall(r'(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|h)\b', claim_lower)
+            claim_hours = re.findall(r'(\d+(?:\.\d+)?)[-\s]*(?:hours?|hrs?|h)\b', claim_lower)
 
-            fact_hours = re.findall(r'(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|h)\b', fact_text)
+            fact_hours = re.findall(r'(\d+(?:\.\d+)?)[-\s]*(?:hours?|hrs?|h)\b', fact_text)
 
 
 
@@ -805,20 +822,20 @@ def main():
         
         # Add finding if OCR is not available
         ocr_unavailable_finding = []
-        if not TESSERACT_AVAILABLE:
+        if not OCR_AVAILABLE:
             ocr_unavailable_finding = [{
                 "type": "OCR_UNAVAILABLE",
                 "severity": "MEDIUM",
                 "ruleId": "RULE-OCR-001",
                 "title": "OCR engine not available",
-                "message": "Tesseract OCR engine is not installed. Text claims in the image could not be extracted and verified against approved facts. Install tesseract-ocr to enable claim verification from images.",
+                "message": "OCR engine is not installed. Text claims in the image could not be extracted and verified against approved facts. Install ocrmac or tesseract-ocr to enable claim verification from images.",
                 "originalPhrase": "Image text content",
-                "suggestedCorrection": "Install tesseract-ocr system package to enable automatic claim verification from image text.",
+                "suggestedCorrection": "Install ocrmac (on macOS) or tesseract-ocr system package to enable automatic claim verification from image text.",
                 "confidence": 1.0,
                 "evidence": {
                     "ocrAvailable": False,
                     "engine": "none",
-                    "reason": "tesseract binary not found in PATH",
+                    "reason": "Neither ocrmac nor tesseract binary found",
                 }
             }]
         
