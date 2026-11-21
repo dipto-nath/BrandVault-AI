@@ -29,6 +29,8 @@ module.exports = {
         brand: "var(--brand)",
         "brand-hover": "var(--brand-hover)",
         "brand-soft": "var(--brand-soft)",
+        accent: "var(--brand)",
+        "accent-soft": "var(--brand-soft)",
         indigo: {
           DEFAULT: "#3B4BC8",
           dark: "#2A3699",

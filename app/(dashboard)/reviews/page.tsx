@@ -39,8 +39,8 @@ export default async function ReviewsPage({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border/60">
         <div>
           <div className="flex items-center gap-2 mb-1.5">
-            <span className="w-2 h-2 rounded-full bg-accent ring-4 ring-accent/20" />
-            <span className="text-xs font-bold text-accent uppercase tracking-wider">
+            <span className="w-2 h-2 rounded-full bg-brand ring-4 ring-brand/20" />
+            <span className="text-xs font-bold text-brand uppercase tracking-wider">
               Verification Pipeline
             </span>
           </div>
@@ -102,9 +102,9 @@ export default async function ReviewsPage({
 
       {/* Active Filter Indicator */}
       {(status || risk) && (
-        <div className="flex items-center justify-between p-3 rounded-lg bg-surface border border-accent/30 text-xs">
+        <div className="flex items-center justify-between p-3 rounded-lg bg-surface border border-brand/30 text-xs">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-accent">Active Filter:</span>
+            <span className="font-semibold text-brand">Active Filter:</span>
             {status && (
               <Badge variant={statusToVariant(status)}>
                 Status: {getStatusLabel(status)}
@@ -247,8 +247,10 @@ function StatusFilterBadge({ label, active, href }: { label: string; active: boo
   return (
     <Link
       href={href}
-      className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
-        active ? 'bg-accent text-white border-accent' : 'bg-surface border-border text-ink-secondary hover:bg-surface-hover'
+      className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all no-underline hover:no-underline cursor-pointer ${
+        active
+          ? 'bg-brand !text-white border-brand shadow-xs'
+          : 'bg-sheet border-line !text-ink-2 hover:!text-ink hover:bg-surface-hover hover:border-brand/40'
       }`}
     >
       {label}
@@ -257,16 +259,31 @@ function StatusFilterBadge({ label, active, href }: { label: string; active: boo
 }
 
 function RiskFilterBadge({ label, active, href }: { label: string; active: boolean; href: string }) {
-  const colors = {
-    All: active ? 'bg-accent text-white border-accent' : 'bg-surface border-border text-ink-secondary hover:bg-surface-hover',
-    HIGH: active ? 'bg-contradicted text-white border-contradicted' : 'bg-contradicted/10 text-contradicted border-contradicted/20 hover:bg-contradicted/20',
-    MEDIUM: active ? 'bg-unverified text-white border-unverified' : 'bg-unverified/10 text-unverified border-unverified/20 hover:bg-unverified/20',
-    LOW: active ? 'bg-supported text-white border-supported' : 'bg-supported/10 text-supported border-supported/20 hover:bg-supported/20',
-  };
+  const normalized = label.toUpperCase();
+  const activeClass =
+    normalized === 'HIGH'
+      ? 'bg-proof-red !text-white border-proof-red shadow-xs'
+      : normalized === 'MEDIUM'
+      ? 'bg-amber-600 !text-white border-amber-600 shadow-xs'
+      : normalized === 'LOW'
+      ? 'bg-approved-green !text-white border-approved-green shadow-xs'
+      : 'bg-brand !text-white border-brand shadow-xs';
+
+  const inactiveClass =
+    normalized === 'HIGH'
+      ? 'bg-proof-red/10 !text-proof-red border-proof-red/30 hover:bg-proof-red/20'
+      : normalized === 'MEDIUM'
+      ? 'bg-amber-500/10 !text-amber-700 border-amber-500/30 hover:bg-amber-500/20'
+      : normalized === 'LOW'
+      ? 'bg-approved-green/10 !text-approved-green border-approved-green/30 hover:bg-approved-green/20'
+      : 'bg-sheet border-line !text-ink-2 hover:!text-ink hover:bg-surface-hover hover:border-brand/40';
+
   return (
     <Link
       href={href}
-      className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${colors[label as keyof typeof colors] || colors.All}`}
+      className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all no-underline hover:no-underline cursor-pointer ${
+        active ? activeClass : inactiveClass
+      }`}
     >
       {label}
     </Link>
