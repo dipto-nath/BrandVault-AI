@@ -97,15 +97,32 @@ function seed(store: Store): Store {
       store.products = [
         { id: '00000000-0000-0004-000000000001', workspace_id: DEMO_WORKSPACE_ID, name: 'NexaTech Nova', category: 'Smartphone', model_or_version: 'Nova', launch_date: '2026-12-15', status: 'ACTIVE', description: 'Flagship smartphone with recycled aluminium chassis', facts_count: 5, created_at: now(), updated_at: now() },
         { id: '00000000-0000-0004-000000000002', workspace_id: DEMO_WORKSPACE_ID, name: 'NexaBuds Ultra', category: 'Audio', model_or_version: 'Ultra', launch_date: '2026-11-01', status: 'ACTIVE', description: 'Premium wireless earbuds with 30h battery', facts_count: 3, created_at: now(), updated_at: now() },
+        { id: '9e89fa40b9d048752b7d993304999de3', workspace_id: DEMO_WORKSPACE_ID, name: 'NexaWatch Pro', category: 'Wearables', model_or_version: 'Pro', launch_date: '2026-12-01', status: 'ACTIVE', description: 'Smartwatch with titanium bezel and health sensors', facts_count: 0, created_at: now(), updated_at: now() },
       ];
-      // Also link demo facts to NexaTech Nova
-      for (const f of store.facts) {
-        if (!f.product_id && (f.entity_name?.includes('Nova') || f.title?.toLowerCase().includes('battery') || f.title?.toLowerCase().includes('device') || f.title?.toLowerCase().includes('material') || f.title?.toLowerCase().includes('waterproof') || f.title?.toLowerCase().includes('launch'))) {
-          f.product_id = '00000000-0000-0004-000000000001';
-        }
-      }
+    }
 
-      // Feature 3: Ensure baseline fact versions and claim dependencies are seeded
+    // Ensure demo documents are always seeded
+    if (!store.documents || store.documents.length === 0) {
+      store.documents = [
+        { id: '00000000-0000-0000-0004-000000000001', workspace_id: DEMO_WORKSPACE_ID, filename: 'nova-product-spec-2026.pdf', storage_path: null, mime_type: 'application/pdf', file_size: 245000, source_name: 'Nova Product Specification', document_status: 'APPROVED', extracted_text: 'NexaTech Nova specifications: up to 12 hours of battery life under specified test conditions. Weight: 185g.', extraction_error: null, uploaded_by: DEMO_USER_ID, uploaded_at: now() },
+        { id: '00000000-0000-0000-0004-000000000002', workspace_id: DEMO_WORKSPACE_ID, filename: 'sustainability-fact-sheet.pdf', storage_path: null, mime_type: 'application/pdf', file_size: 180000, source_name: 'Sustainability Fact Sheet', document_status: 'APPROVED', extracted_text: 'NexaTech Nova chassis is manufactured using 100% recycled aluminium.', extraction_error: null, uploaded_by: DEMO_USER_ID, uploaded_at: now() },
+        { id: '00000000-0000-0000-0004-000000000003', workspace_id: DEMO_WORKSPACE_ID, filename: 'product-claims-register-q4.pdf', storage_path: null, mime_type: 'application/pdf', file_size: 320000, source_name: 'Product Claims Register', document_status: 'APPROVED', extracted_text: 'Official register of validated product performance claims. No waterproof rating documented for Nova.', extraction_error: null, uploaded_by: DEMO_USER_ID, uploaded_at: now() },
+        { id: '00000000-0000-0000-0004-000000000004', workspace_id: DEMO_WORKSPACE_ID, filename: 'nextech-launch-plan.pdf', storage_path: null, mime_type: 'application/pdf', file_size: 410000, source_name: 'NexaTech Launch Plan', document_status: 'APPROVED', extracted_text: 'Launch timeline: official availability begins 15 December 2026 across tier-1 retail partners.', extraction_error: null, uploaded_by: DEMO_USER_ID, uploaded_at: now() },
+      ];
+    }
+
+    // Also link demo facts to NexaTech Nova and documents
+    for (const f of store.facts) {
+      if (!f.product_id && (f.entity_name?.includes('Nova') || f.title?.toLowerCase().includes('battery') || f.title?.toLowerCase().includes('device') || f.title?.toLowerCase().includes('material') || f.title?.toLowerCase().includes('waterproof') || f.title?.toLowerCase().includes('launch'))) {
+        f.product_id = '00000000-0000-0004-000000000001';
+      }
+      if (f.fact_code === 'FACT-001' || f.fact_code === 'FACT-002') f.source_document_id = '00000000-0000-0000-0004-000000000001';
+      if (f.fact_code === 'FACT-003') f.source_document_id = '00000000-0000-0000-0004-000000000002';
+      if (f.fact_code === 'FACT-004') f.source_document_id = '00000000-0000-0000-0004-000000000003';
+      if (f.fact_code === 'FACT-005') f.source_document_id = '00000000-0000-0000-0004-000000000004';
+    }
+
+    // Feature 3: Ensure baseline fact versions and claim dependencies are seeded
       if (!store.factVersions || store.factVersions.length === 0) {
         store.factVersions = store.facts.map((f) => ({
           id: uid(),
@@ -155,9 +172,8 @@ function seed(store: Store): Store {
         ];
       }
       saveStore(store);
+      return store;
     }
-    return store;
-  }
 
   const t = now();
   const workspace: Workspace = { id: DEMO_WORKSPACE_ID, name: 'NexaTech', slug: DEMO_WORKSPACE_SLUG, description: 'Fictional Indian consumer technology company — demo workspace for BrandVault AI.', logo_url: null, created_at: t, updated_at: t };
@@ -174,19 +190,28 @@ function seed(store: Store): Store {
   ];
   store.guidelines.push(...guidelines);
 
+  const documents: SourceDocument[] = [
+    { id: '00000000-0000-0000-0004-000000000001', workspace_id: DEMO_WORKSPACE_ID, filename: 'nova-product-spec-2026.pdf', storage_path: null, mime_type: 'application/pdf', file_size: 245000, source_name: 'Nova Product Specification', document_status: 'APPROVED', extracted_text: 'NexaTech Nova specifications: up to 12 hours of battery life under specified test conditions. Weight: 185g.', extraction_error: null, uploaded_by: DEMO_USER_ID, uploaded_at: t },
+    { id: '00000000-0000-0000-0004-000000000002', workspace_id: DEMO_WORKSPACE_ID, filename: 'sustainability-fact-sheet.pdf', storage_path: null, mime_type: 'application/pdf', file_size: 180000, source_name: 'Sustainability Fact Sheet', document_status: 'APPROVED', extracted_text: 'NexaTech Nova chassis is manufactured using 100% recycled aluminium.', extraction_error: null, uploaded_by: DEMO_USER_ID, uploaded_at: t },
+    { id: '00000000-0000-0000-0004-000000000003', workspace_id: DEMO_WORKSPACE_ID, filename: 'product-claims-register-q4.pdf', storage_path: null, mime_type: 'application/pdf', file_size: 320000, source_name: 'Product Claims Register', document_status: 'APPROVED', extracted_text: 'Official register of validated product performance claims. No waterproof rating documented for Nova.', extraction_error: null, uploaded_by: DEMO_USER_ID, uploaded_at: t },
+    { id: '00000000-0000-0000-0004-000000000004', workspace_id: DEMO_WORKSPACE_ID, filename: 'nextech-launch-plan.pdf', storage_path: null, mime_type: 'application/pdf', file_size: 410000, source_name: 'NexaTech Launch Plan', document_status: 'APPROVED', extracted_text: 'Launch timeline: official availability begins 15 December 2026 across tier-1 retail partners.', extraction_error: null, uploaded_by: DEMO_USER_ID, uploaded_at: t },
+  ];
+  store.documents.push(...documents);
+
   const facts: ApprovedFact[] = [
-    { id: '00000000-0000-0000-0002-000000000001', workspace_id: DEMO_WORKSPACE_ID, fact_code: 'FACT-001', title: 'Battery life', fact_text: 'NexaTech Nova offers up to 24 hours of battery life under specified test conditions.', entity_name: 'NexaTech Nova', source_document_id: null, source_name: 'Nova Product Specification', source_reference: 'Nova Product Specification', source_excerpt: 'Up to 24 hours of battery life under specified test conditions.', verification_status: 'APPROVED', effective_from: null, expires_at: null, notes: null, created_by: DEMO_USER_ID, created_at: t, updated_at: t },
-    { id: '00000000-0000-0000-0002-000000000002', workspace_id: DEMO_WORKSPACE_ID, fact_code: 'FACT-002', title: 'Device weight', fact_text: 'NexaTech Nova weighs 185 grams.', entity_name: 'NexaTech Nova', source_document_id: null, source_name: 'Nova Product Specification', source_reference: 'Nova Product Specification', source_excerpt: '185 grams.', verification_status: 'APPROVED', effective_from: null, expires_at: null, notes: null, created_by: DEMO_USER_ID, created_at: t, updated_at: t },
-    { id: '00000000-0000-0000-0002-000000000003', workspace_id: DEMO_WORKSPACE_ID, fact_code: 'FACT-003', title: 'Materials', fact_text: 'The NexaTech Nova chassis uses recycled aluminium.', entity_name: 'NexaTech Nova', source_document_id: null, source_name: 'Sustainability Fact Sheet', source_reference: 'Sustainability Fact Sheet', source_excerpt: 'Recycled aluminium chassis.', verification_status: 'APPROVED', effective_from: null, expires_at: null, notes: null, created_by: DEMO_USER_ID, created_at: t, updated_at: t },
-    { id: '00000000-0000-0000-0002-000000000004', workspace_id: DEMO_WORKSPACE_ID, fact_code: 'FACT-004', title: 'Waterproofing', fact_text: 'No approved waterproof rating is currently documented.', entity_name: 'NexaTech Nova', source_document_id: null, source_name: 'Product Claims Register', source_reference: 'Product Claims Register', source_excerpt: 'No waterproof rating documented.', verification_status: 'APPROVED', effective_from: null, expires_at: null, notes: null, created_by: DEMO_USER_ID, created_at: t, updated_at: t },
-    { id: '00000000-0000-0000-0002-000000000005', workspace_id: DEMO_WORKSPACE_ID, fact_code: 'FACT-005', title: 'Launch date', fact_text: 'The NexaTech Nova launch is scheduled for 15 December 2026.', entity_name: 'NexaTech Nova', source_document_id: null, source_name: 'NexaTech Launch Plan', source_reference: 'NexaTech Launch Plan', source_excerpt: 'Launch scheduled for 15 December 2026.', verification_status: 'APPROVED', effective_from: null, expires_at: null, notes: null, created_by: DEMO_USER_ID, created_at: t, updated_at: t },
+    { id: '00000000-0000-0000-0002-000000000001', workspace_id: DEMO_WORKSPACE_ID, product_id: '00000000-0000-0004-000000000001', fact_code: 'FACT-001', title: 'Battery life', fact_text: 'NexaTech Nova offers up to 12 hours of battery life under specified test conditions.', entity_name: 'NexaTech Nova', source_document_id: '00000000-0000-0000-0004-000000000001', source_name: 'Nova Product Specification', source_reference: 'Nova Product Specification', source_excerpt: 'Up to 12 hours of battery life under specified test conditions.', verification_status: 'APPROVED', effective_from: null, expires_at: null, notes: null, created_by: DEMO_USER_ID, created_at: t, updated_at: t },
+    { id: '00000000-0000-0000-0002-000000000002', workspace_id: DEMO_WORKSPACE_ID, product_id: '00000000-0000-0004-000000000001', fact_code: 'FACT-002', title: 'Device weight', fact_text: 'NexaTech Nova weighs 185 grams.', entity_name: 'NexaTech Nova', source_document_id: '00000000-0000-0000-0004-000000000001', source_name: 'Nova Product Specification', source_reference: 'Nova Product Specification', source_excerpt: '185 grams.', verification_status: 'APPROVED', effective_from: null, expires_at: null, notes: null, created_by: DEMO_USER_ID, created_at: t, updated_at: t },
+    { id: '00000000-0000-0000-0002-000000000003', workspace_id: DEMO_WORKSPACE_ID, product_id: '00000000-0000-0004-000000000001', fact_code: 'FACT-003', title: 'Materials', fact_text: 'The NexaTech Nova chassis uses recycled aluminium.', entity_name: 'NexaTech Nova', source_document_id: '00000000-0000-0000-0004-000000000002', source_name: 'Sustainability Fact Sheet', source_reference: 'Sustainability Fact Sheet', source_excerpt: 'Recycled aluminium chassis.', verification_status: 'APPROVED', effective_from: null, expires_at: null, notes: null, created_by: DEMO_USER_ID, created_at: t, updated_at: t },
+    { id: '00000000-0000-0000-0002-000000000004', workspace_id: DEMO_WORKSPACE_ID, product_id: '00000000-0000-0004-000000000001', fact_code: 'FACT-004', title: 'Waterproofing', fact_text: 'No approved waterproof rating is currently documented.', entity_name: 'NexaTech Nova', source_document_id: '00000000-0000-0000-0004-000000000003', source_name: 'Product Claims Register', source_reference: 'Product Claims Register', source_excerpt: 'No waterproof rating documented.', verification_status: 'APPROVED', effective_from: null, expires_at: null, notes: null, created_by: DEMO_USER_ID, created_at: t, updated_at: t },
+    { id: '00000000-0000-0000-0002-000000000005', workspace_id: DEMO_WORKSPACE_ID, product_id: '00000000-0000-0004-000000000001', fact_code: 'FACT-005', title: 'Launch date', fact_text: 'The NexaTech Nova launch is scheduled for 15 December 2026.', entity_name: 'NexaTech Nova', source_document_id: '00000000-0000-0000-0004-000000000004', source_name: 'NexaTech Launch Plan', source_reference: 'NexaTech Launch Plan', source_excerpt: 'Launch scheduled for 15 December 2026.', verification_status: 'APPROVED', effective_from: null, expires_at: null, notes: null, created_by: DEMO_USER_ID, created_at: t, updated_at: t },
   ];
   store.facts.push(...facts);
 
   // Seed demo products
   const products: Product[] = [
-    { id: '00000000-0000-0000-0004-000000000001', workspace_id: DEMO_WORKSPACE_ID, name: 'NexaTech Nova', category: 'Smartphone', model_or_version: 'Nova', launch_date: '2026-12-15', status: 'ACTIVE', description: 'Flagship smartphone with recycled aluminium chassis', facts_count: 5, created_at: t, updated_at: t },
-    { id: '00000000-0000-0000-0004-000000000002', workspace_id: DEMO_WORKSPACE_ID, name: 'NexaBuds Ultra', category: 'Audio', model_or_version: 'Ultra', launch_date: '2026-11-01', status: 'ACTIVE', description: 'Premium wireless earbuds with 30h battery', facts_count: 3, created_at: t, updated_at: t },
+    { id: '00000000-0000-0004-000000000001', workspace_id: DEMO_WORKSPACE_ID, name: 'NexaTech Nova', category: 'Smartphone', model_or_version: 'Nova', launch_date: '2026-12-15', status: 'ACTIVE', description: 'Flagship smartphone with recycled aluminium chassis', facts_count: 5, created_at: t, updated_at: t },
+    { id: '00000000-0000-0004-000000000002', workspace_id: DEMO_WORKSPACE_ID, name: 'NexaBuds Ultra', category: 'Audio', model_or_version: 'Ultra', launch_date: '2026-11-01', status: 'ACTIVE', description: 'Premium wireless earbuds with 30h battery', facts_count: 3, created_at: t, updated_at: t },
+    { id: '9e89fa40b9d048752b7d993304999de3', workspace_id: DEMO_WORKSPACE_ID, name: 'NexaWatch Pro', category: 'Wearables', model_or_version: 'Pro', launch_date: '2026-12-01', status: 'ACTIVE', description: 'Smartwatch with titanium bezel and health sensors', facts_count: 0, created_at: t, updated_at: t },
   ];
   store.products.push(...products);
 
