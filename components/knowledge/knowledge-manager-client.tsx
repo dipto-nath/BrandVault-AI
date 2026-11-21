@@ -48,6 +48,8 @@ export interface KnowledgeManagerClientProps {
   initialDocuments: SourceDocument[];
   initialProducts: ProductItem[];
   showWelcome: boolean;
+  initialUploadOpen?: boolean;
+  returnTo?: string;
 }
 
 const CATEGORIES = [
@@ -65,6 +67,8 @@ export function KnowledgeManagerClient({
   initialDocuments,
   initialProducts,
   showWelcome,
+  initialUploadOpen = false,
+  returnTo,
 }: KnowledgeManagerClientProps) {
   const router = useRouter();
   const [facts, setFacts] = useState<ApprovedFact[]>(initialFacts);
@@ -103,7 +107,7 @@ export function KnowledgeManagerClient({
   const [factError, setFactError] = useState<string | null>(null);
 
   // Document Upload State
-  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [uploadModalOpen, setUploadModalOpen] = useState(Boolean(initialUploadOpen));
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -355,7 +359,11 @@ export function KnowledgeManagerClient({
       setTimeout(() => {
         setUploadModalOpen(false);
         setUploadSuccess(null);
-      }, 2500);
+        if (returnTo) {
+          const separator = returnTo.includes('?') ? '&' : '?';
+          router.push(`${returnTo}${separator}productId=${product.id}`);
+        }
+      }, 1500);
     } catch (err: any) {
       setUploadError(err.message || 'Error processing document.');
     } finally {

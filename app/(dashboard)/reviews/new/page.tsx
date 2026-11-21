@@ -8,7 +8,7 @@ import {
   Globe, Camera, Briefcase, Mail, Megaphone, MoreHorizontal,
   Info, RotateCw, Play, CheckCircle2, Lock, Award, FileText,
   FileCheck2, ChevronRight, X, ExternalLink, HelpCircle, Layers, BookOpen,
-  Plus, Box, Image as LucideImage, Upload, Trash2, Eye, Palette
+  Plus, Box, Image as LucideImage, Upload, Trash2, Eye, Palette, FileUp
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -993,14 +993,13 @@ export default function ReviewStudioPage() {
                     <label htmlFor="product-select" className="block text-xs font-semibold text-ink">
                       Product <span className="text-critical">*</span>
                     </label>
-                    <button
-                      type="button"
-                      onClick={() => setQuickProductModalOpen(true)}
+                    <Link
+                      href="/knowledge?action=upload&returnTo=/reviews/new"
                       className="text-xs text-brand hover:underline font-medium flex items-center gap-1"
                     >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>New Product</span>
-                    </button>
+                      <FileUp className="w-3.5 h-3.5" />
+                      <span>Upload Product Spec</span>
+                    </Link>
                   </div>
                   <select
                     id="product-select"
@@ -1019,15 +1018,18 @@ export default function ReviewStudioPage() {
                     ))}
                   </select>
                   {products.length === 0 && (
-                    <div id="product-hint" className="flex items-center justify-between text-[11px] text-amber-700 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2 mt-1.5">
-                      <span>No products found in this workspace.</span>
-                      <button
-                        type="button"
-                        onClick={() => setQuickProductModalOpen(true)}
-                        className="underline font-semibold hover:text-brand"
+                    <div id="product-hint" className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 text-[11px] text-amber-900 bg-amber-500/10 border border-amber-500/25 rounded-xl p-3 mt-2">
+                      <div>
+                        <span className="font-semibold text-ink block">No products found in this workspace</span>
+                        <span className="text-ink-3">Upload a specification PDF to auto-extract the product and verified facts.</span>
+                      </div>
+                      <Link
+                        href="/knowledge?action=upload&returnTo=/reviews/new"
+                        className="shrink-0 px-3 py-1.5 rounded-lg bg-brand text-white font-semibold hover:bg-brand-hover shadow-xs flex items-center gap-1.5 transition-colors no-underline hover:no-underline"
                       >
-                        + Create product now
-                      </button>
+                        <FileUp className="w-3.5 h-3.5 text-white" />
+                        <span>Upload Spec PDF</span>
+                      </Link>
                     </div>
                   )}
                   {products.length > 0 && !selectedProductId && (
@@ -1737,7 +1739,35 @@ export default function ReviewStudioPage() {
               </div>
             )}
 
-            <form onSubmit={handleQuickCreateProduct} className="space-y-3.5 pt-3">
+            {/* Auto-detect via Specification PDF */}
+            <div className="mt-3 p-3 rounded-xl bg-brand/5 border border-brand/20 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-brand flex items-center gap-1.5">
+                  <FileUp className="w-3.5 h-3.5 shrink-0" />
+                  <span>Have a Specification PDF?</span>
+                </p>
+                <p className="text-[11px] text-ink-3 mt-0.5">
+                  Auto-detect product details & facts directly from your PDF.
+                </p>
+              </div>
+              <Link
+                href="/knowledge?action=upload&returnTo=/reviews/new"
+                className="shrink-0 px-2.5 py-1.5 rounded-lg bg-brand text-white text-xs font-semibold hover:bg-brand-hover transition-colors shadow-2xs"
+              >
+                Upload PDF
+              </Link>
+            </div>
+
+            <div className="relative my-3 text-center">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-line" />
+              </div>
+              <span className="relative px-2 bg-surface text-[11px] text-ink-3 font-medium uppercase tracking-wider">
+                Or create manually
+              </span>
+            </div>
+
+            <form onSubmit={handleQuickCreateProduct} className="space-y-3.5 pt-1">
               <div>
                 <label className="block text-xs font-semibold text-ink mb-1">
                   Product Name *

@@ -14,12 +14,14 @@ interface ProductItem {
 export default async function KnowledgePage({
   searchParams,
 }: {
-  searchParams: Promise<{ welcome?: string }>;
+  searchParams: Promise<{ welcome?: string; action?: string; upload?: string; returnTo?: string }>;
 }) {
   const ctx = await getRequestContext();
   const workspaceId = ctx.workspaceId;
   const params = await searchParams;
   const showWelcome = params.welcome === '1';
+  const initialUploadOpen = params.action === 'upload' || params.upload === 'true' || params.upload === '1';
+  const returnTo = params.returnTo;
   
   const [facts, documents, products] = await Promise.all([
     workspaceId ? storage.listFacts(workspaceId, { active: true }) : Promise.resolve([]),
@@ -42,6 +44,8 @@ export default async function KnowledgePage({
       initialDocuments={documents}
       initialProducts={productItems}
       showWelcome={showWelcome}
+      initialUploadOpen={initialUploadOpen}
+      returnTo={returnTo}
     />
   );
 }
