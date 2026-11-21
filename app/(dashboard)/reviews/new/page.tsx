@@ -99,47 +99,6 @@ export default function ReviewStudioPage() {
   const [creatingProduct, setCreatingProduct] = useState(false);
   const [productModalError, setProductModalError] = useState<string | null>(null);
 
-  // Ground Truth Spec PDF Upload State
-  const [isExtractingPdf, setIsExtractingPdf] = useState(false);
-  const [specUploadSuccess, setSpecUploadSuccess] = useState<string | null>(null);
-  const [specUploadError, setSpecUploadError] = useState<string | null>(null);
-  const specFileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleSpecFileUpload = async (file: File) => {
-    if (!file) return;
-    if (file.size > 15 * 1024 * 1024) {
-      setSpecUploadError('PDF file exceeds 15MB limit.');
-      return;
-    }
-    setIsExtractingPdf(true);
-    setSpecUploadError(null);
-    setSpecUploadSuccess(null);
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const res = await fetch('/api/knowledge/extract-product', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const json = await res.json();
-      if (!res.ok || json.error) {
-        throw new Error(json.error?.message || json.error || 'Failed to extract product from PDF');
-      }
-
-      const { product, facts: newFacts } = json.data;
-      setProducts((prev) => [product, ...prev.filter((p) => p.id !== product.id)]);
-      setSelectedProductId(product.id);
-      setSpecUploadSuccess(`Extracted "${product.name}" with ${newFacts?.length || 0} verified facts.`);
-    } catch (err: any) {
-      setSpecUploadError(err.message || 'Error processing specification PDF.');
-    } finally {
-      setIsExtractingPdf(false);
-    }
-  };
-
   // Interaction State
   const [touched, setTouched] = useState<{ title?: boolean; content?: boolean }>({});
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
@@ -1050,142 +1009,78 @@ export default function ReviewStudioPage() {
                 </div>
               </div>
 
-              {/* b. Ground Truth Product Anchor Card */}
-              <div className="transition-all duration-200">
-                {products.length === 0 ? (
-                  <div className="rounded-2xl border-2 border-dashed border-line bg-[#FFFDF8] p-5 sm:p-6 transition-all hover:border-brand/40 shadow-xs relative overflow-hidden">
-                    <input
-                      type="file"
-                      ref={specFileInputRef}
-                      accept=".pdf,application/pdf"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleSpecFileUpload(file);
-                      }}
-                    />
+              {/* b. Target Product (Ground Truth Selection) */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="product-select" className="flex items-center gap-1.5 text-xs font-semibold text-ink">
+                    <Box className="w-3.5 h-3.5 text-brand" />
+                    <span>Choose Target Product</span>
+                    <span className="text-critical">*</span>
+                  </label>
+                  <Link
+                    href="/knowledge?action=upload&returnTo=/reviews/new"
+                    className="text-xs text-brand hover:underline font-medium inline-flex items-center gap-1 cursor-pointer"
+                  >
+                    <FileUp className="w-3.5 h-3.5" />
+                    <span>+ Upload spec in Knowledge Base</span>
+                  </Link>
+                </div>
 
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
-                      <div className="flex items-start gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-brand/10 border border-brand/20 text-brand flex items-center justify-center shrink-0 shadow-xs">
-                          <FileUp className="w-6 h-6 text-brand" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h4 className="font-serif font-bold text-base text-ink tracking-tight">
-                              Anchor this review to your Product Ground Truth
-                            </h4>
-                            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-800 border border-amber-500/25">
-                              Required
-                            </span>
-                          </div>
-                          <p className="text-xs text-ink-2 mt-1 max-w-xl leading-relaxed">
-                            BrandVault cross-checks every promise, battery rating, and warranty statement against your approved ground truth facts. Upload your product spec PDF to auto-detect its specifications and verified claims.
-                          </p>
+                {/* Dropdown for already saved products */}
+                <select
+                  id="product-select"
+                  value={selectedProductId || ''}
+                  onChange={(e) => setSelectedProductId(e.target.value || null)}
+                  disabled={loading || products.length === 0}
+                  required
+                  className="w-full px-3.5 py-2.5 rounded-[10px] text-xs font-medium text-ink bg-surface border border-line focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-all duration-200 cursor-pointer disabled:bg-surface-2 disabled:text-ink-3"
+                  aria-describedby="product-hint"
+                >
+                  <option value="">
+                    {products.length === 0
+                      ? 'No saved products available yet'
+                      : 'Select a saved product to cross-check…'}
+                  </option>
+                  {products.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                      {p.model_or_version ? ` — ${p.model_or_version}` : ''}
+                      {p.category ? ` (${p.category})` : ''}
+                    </option>
+                  ))}
+                </select>
 
-                          {specUploadError && (
-                            <div className="mt-2.5 text-xs text-critical bg-critical-soft border border-critical/20 rounded-lg p-2.5 flex items-center gap-2">
-                              <AlertCircle className="w-4 h-4 shrink-0" />
-                              <span>{specUploadError}</span>
-                            </div>
-                          )}
+                {/* Selected Product Confirmation Pill */}
+                {selectedProductId && (
+                  <p id="product-hint" className="text-[11px] text-supported flex items-center gap-1.5 font-medium pt-0.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-supported shrink-0" />
+                    <span>Verifying claims against approved facts for <strong>{products.find((p) => p.id === selectedProductId)?.name}</strong></span>
+                  </p>
+                )}
 
-                          {specUploadSuccess && (
-                            <div className="mt-2.5 text-xs text-supported bg-supported-soft border border-supported/20 rounded-lg p-2.5 flex items-center gap-2 font-medium">
-                              <CheckCircle2 className="w-4 h-4 shrink-0 text-supported" />
-                              <span>{specUploadSuccess}</span>
-                            </div>
-                          )}
-                        </div>
+                {/* Transfer Card when no products exist in workspace yet */}
+                {products.length === 0 && (
+                  <div className="mt-3 p-4 rounded-xl border border-line bg-[#FFFDF8] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center shrink-0 border border-brand/15">
+                        <FileUp className="w-5 h-5 text-brand" />
                       </div>
-
-                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto shrink-0">
-                        <Button
-                          type="button"
-                          disabled={isExtractingPdf}
-                          onClick={() => specFileInputRef.current?.click()}
-                          className="btn-primary text-xs flex items-center justify-center gap-2 py-2.5 px-5 shadow-sm font-semibold cursor-pointer"
-                        >
-                          <FileUp className="w-4 h-4 text-white" />
-                          <span>{isExtractingPdf ? 'Extracting Ground Truth…' : 'Upload Specification PDF'}</span>
-                        </Button>
-                        <button
-                          type="button"
-                          onClick={() => setQuickProductModalOpen(true)}
-                          className="text-xs text-ink-3 hover:text-ink font-medium px-2 py-1.5 text-center hover:underline cursor-pointer"
-                        >
-                          or create manually
-                        </button>
+                      <div>
+                        <h4 className="font-serif font-bold text-sm text-ink tracking-tight">
+                          No saved products in this workspace yet
+                        </h4>
+                        <p className="text-xs text-ink-2 mt-0.5 max-w-lg leading-relaxed">
+                          BrandVault checks claims against verified ground truth. Go to the Knowledge Base to upload your specification PDF, and we will bring you right back.
+                        </p>
                       </div>
                     </div>
-
-                    {isExtractingPdf && (
-                      <div className="mt-4 pt-4 border-t border-line/60 flex items-center gap-3 text-xs text-brand animate-pulse">
-                        <RotateCw className="w-4 h-4 animate-spin text-brand" />
-                        <span>Parsing PDF and extracting atomic facts via AI parser…</span>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="rounded-xl border border-line bg-surface p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <label htmlFor="product-select" className="flex items-center gap-1.5 text-xs font-semibold text-ink">
-                        <span>Target Product (Ground Truth Anchor)</span>
-                        <span className="text-critical">*</span>
-                      </label>
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="file"
-                          ref={specFileInputRef}
-                          accept=".pdf,application/pdf"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) handleSpecFileUpload(file);
-                          }}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => specFileInputRef.current?.click()}
-                          disabled={isExtractingPdf}
-                          className="text-xs text-brand hover:underline font-medium flex items-center gap-1 cursor-pointer"
-                        >
-                          <FileUp className="w-3.5 h-3.5" />
-                          <span>{isExtractingPdf ? 'Extracting…' : '+ Upload new spec PDF'}</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    <select
-                      id="product-select"
-                      value={selectedProductId || ''}
-                      onChange={(e) => setSelectedProductId(e.target.value || null)}
-                      disabled={loading}
-                      required
-                      className="w-full px-3.5 py-2.5 rounded-[10px] text-xs font-medium text-ink bg-surface border border-line focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-all duration-200 cursor-pointer"
-                      aria-describedby="product-hint"
+                    <Link
+                      href="/knowledge?action=upload&returnTo=/reviews/new"
+                      className="px-4 py-2.5 rounded-xl bg-brand hover:bg-brand-hover text-white text-xs font-semibold shadow-xs flex items-center gap-2 transition-all no-underline shrink-0 whitespace-nowrap cursor-pointer hover:shadow-sm"
                     >
-                      <option value="">Select a product to cross-check…</option>
-                      {products.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name}{p.model_or_version ? ` — ${p.model_or_version}` : ''}{p.category ? ` (${p.category})` : ''}
-                        </option>
-                      ))}
-                    </select>
-
-                    {specUploadSuccess && (
-                      <div className="mt-2 text-xs text-supported bg-supported-soft border border-supported/20 rounded-lg p-2 flex items-center gap-2 font-medium">
-                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-supported" />
-                        <span>{specUploadSuccess}</span>
-                      </div>
-                    )}
-
-                    {selectedProductId && (
-                      <p id="product-hint" className="text-[11px] text-supported mt-2 flex items-center gap-1.5 font-medium">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-supported shrink-0" />
-                        <span>Verifying claims against approved facts for <strong>{products.find((p) => p.id === selectedProductId)?.name}</strong></span>
-                      </p>
-                    )}
+                      <FileUp className="w-4 h-4 text-white" />
+                      <span>Upload Product Spec PDF →</span>
+                    </Link>
                   </div>
                 )}
               </div>
