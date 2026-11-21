@@ -402,90 +402,121 @@ export function InsightsManager({
       </div>
 
       {/* 3.2 The Guideline Learning Loop Strip */}
-      <div className="p-5 sm:p-6 rounded-2xl bg-brand/5 border border-brand/20 shadow-xs relative overflow-hidden">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="space-y-1 max-w-md">
+      <div className="rounded-2xl bg-surface border border-line p-5 sm:p-6 shadow-xs relative overflow-hidden space-y-4">
+        {/* Top row: Eyebrow + Title + Quote */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-brand" />
-              <h2 className="text-sm font-bold text-ink-dark uppercase tracking-wide">
-                The guideline learning loop
-              </h2>
+              <span className="w-2 h-2 rounded-full bg-brand ring-4 ring-brand/15" />
+              <span className="text-[11px] font-bold uppercase tracking-wider text-brand font-mono">
+                Continuous Governance Cycle
+              </span>
             </div>
-            <p className="text-xs text-ink-secondary leading-relaxed">
-              Repeated overrides show where a rule is unclear. BrandVault drafts clearer wording. An admin decides.
+            <h2 className="text-base sm:text-lg font-bold font-jakarta text-ink tracking-tight">
+              The Guideline Learning Loop
+            </h2>
+            <p className="text-xs text-ink-2 max-w-xl leading-relaxed">
+              When reviewers override a guideline, BrandVault flags ambiguous rules and drafts precise policy updates. Human administrators retain final approval.
             </p>
           </div>
 
-          {/* 4-Step Diagram */}
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs">
-            <Link
-              href="/reviews"
-              className="p-2.5 px-3.5 rounded-xl bg-surface border border-sand-dark/40 hover:border-brand/50 shadow-2xs flex items-center gap-2 transition-all group"
-            >
-              <span className="w-5 h-5 rounded-full bg-sand font-mono text-[11px] font-bold flex items-center justify-center text-ink-dark group-hover:bg-brand group-hover:text-white transition-colors">
-                1
-              </span>
-              <div>
-                <div className="font-semibold text-ink-dark group-hover:text-brand">Review</div>
-                <div className="text-[10px] text-ink-muted">{data.loopStats.submissionsCount} submissions</div>
-              </div>
-            </Link>
-
-            <span className="text-sand-dark font-mono hidden sm:inline">→</span>
-
-            <a
-              href="#chart-overrides"
-              className="p-2.5 px-3.5 rounded-xl bg-surface border border-sand-dark/40 hover:border-accent-terracotta/50 shadow-2xs flex items-center gap-2 transition-all group"
-            >
-              <span className="w-5 h-5 rounded-full bg-sand font-mono text-[11px] font-bold flex items-center justify-center text-ink-dark group-hover:bg-accent-terracotta group-hover:text-white transition-colors">
-                2
-              </span>
-              <div>
-                <div className="font-semibold text-ink-dark group-hover:text-accent-terracotta">Overrides</div>
-                <div className="text-[10px] text-ink-muted">{data.loopStats.overridesCount} overrides</div>
-              </div>
-            </a>
-
-            <span className="text-sand-dark font-mono hidden sm:inline">→</span>
-
-            <a
-              href="#scrutiny-section"
-              className="p-2.5 px-3.5 rounded-xl bg-surface border border-sand-dark/40 hover:border-brand/50 shadow-2xs flex items-center gap-2 transition-all group"
-            >
-              <span className="w-5 h-5 rounded-full bg-sand font-mono text-[11px] font-bold flex items-center justify-center text-ink-dark group-hover:bg-brand group-hover:text-white transition-colors">
-                3
-              </span>
-              <div>
-                <div className="font-semibold text-ink-dark group-hover:text-brand">Unclear rules</div>
-                <div className="text-[10px] text-ink-muted">{data.loopStats.unclearRulesCount} flagged</div>
-              </div>
-            </a>
-
-            <span className="text-sand-dark font-mono hidden sm:inline">→</span>
-
-            <button
-              type="button"
-              onClick={() => {
-                setScrutinyFilter('PENDING');
-                const el = document.getElementById('scrutiny-section');
-                el?.scrollIntoView({ behavior: 'smooth' });
-              }}
-              className="p-2.5 px-3.5 rounded-xl bg-surface border border-sand-dark/40 hover:border-evidence-supported/50 shadow-2xs flex items-center gap-2 transition-all group text-left"
-            >
-              <span className="w-5 h-5 rounded-full bg-sand font-mono text-[11px] font-bold flex items-center justify-center text-ink-dark group-hover:bg-evidence-supported group-hover:text-white transition-colors">
-                4
-              </span>
-              <div>
-                <div className="font-semibold text-ink-dark group-hover:text-evidence-supported">Admin approves</div>
-                <div className="text-[10px] text-ink-muted">{data.loopStats.awaitingApprovalCount} awaiting · {data.loopStats.approvedCount} approved</div>
-              </div>
-            </button>
+          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-paper border border-line shrink-0 self-start sm:self-center">
+            <span className="text-xs italic font-serif text-accent-terracotta font-medium tracking-wide">
+              &ldquo;AI suggests. People decide.&rdquo;
+            </span>
           </div>
+        </div>
 
-          {/* Caveat Handwritten Note */}
-          <div className="text-accent-terracotta text-sm italic font-serif tracking-wide border-t lg:border-t-0 lg:border-l border-sand-dark/30 pt-3 lg:pt-0 lg:pl-6 shrink-0">
-            "AI suggests. People decide."
-          </div>
+        {/* 4-Step Pipeline Flow */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-line/60">
+          {/* Step 1 */}
+          <Link
+            href="/reviews"
+            className="p-3.5 rounded-xl bg-paper/60 hover:bg-paper border border-line hover:border-brand/40 shadow-2xs transition-all group flex items-center justify-between"
+          >
+            <div className="flex items-center gap-3">
+              <span className="w-6 h-6 rounded-lg bg-surface border border-line font-mono text-[11px] font-bold flex items-center justify-center text-ink-2 group-hover:bg-brand group-hover:text-white group-hover:border-brand transition-colors">
+                01
+              </span>
+              <div>
+                <div className="text-xs font-semibold text-ink group-hover:text-brand transition-colors">
+                  Review Audits
+                </div>
+                <div className="text-[11px] text-ink-3">
+                  {data.loopStats.submissionsCount} submissions
+                </div>
+              </div>
+            </div>
+            <ChevronRight className="w-3.5 h-3.5 text-ink-3/60 group-hover:text-brand group-hover:translate-x-0.5 transition-all" />
+          </Link>
+
+          {/* Step 2 */}
+          <a
+            href="#chart-overrides"
+            className="p-3.5 rounded-xl bg-paper/60 hover:bg-paper border border-line hover:border-accent-terracotta/40 shadow-2xs transition-all group flex items-center justify-between"
+          >
+            <div className="flex items-center gap-3">
+              <span className="w-6 h-6 rounded-lg bg-surface border border-line font-mono text-[11px] font-bold flex items-center justify-center text-ink-2 group-hover:bg-accent-terracotta group-hover:text-white group-hover:border-accent-terracotta transition-colors">
+                02
+              </span>
+              <div>
+                <div className="text-xs font-semibold text-ink group-hover:text-accent-terracotta transition-colors">
+                  Track Overrides
+                </div>
+                <div className="text-[11px] text-ink-3">
+                  {data.loopStats.overridesCount} overrides
+                </div>
+              </div>
+            </div>
+            <ChevronRight className="w-3.5 h-3.5 text-ink-3/60 group-hover:text-accent-terracotta group-hover:translate-x-0.5 transition-all" />
+          </a>
+
+          {/* Step 3 */}
+          <a
+            href="#scrutiny-section"
+            className="p-3.5 rounded-xl bg-paper/60 hover:bg-paper border border-line hover:border-brand/40 shadow-2xs transition-all group flex items-center justify-between"
+          >
+            <div className="flex items-center gap-3">
+              <span className="w-6 h-6 rounded-lg bg-surface border border-line font-mono text-[11px] font-bold flex items-center justify-center text-ink-2 group-hover:bg-brand group-hover:text-white group-hover:border-brand transition-colors">
+                03
+              </span>
+              <div>
+                <div className="text-xs font-semibold text-ink group-hover:text-brand transition-colors">
+                  Flag Ambiguity
+                </div>
+                <div className="text-[11px] text-ink-3">
+                  {data.loopStats.unclearRulesCount} rules flagged
+                </div>
+              </div>
+            </div>
+            <ChevronRight className="w-3.5 h-3.5 text-ink-3/60 group-hover:text-brand group-hover:translate-x-0.5 transition-all" />
+          </a>
+
+          {/* Step 4 */}
+          <button
+            type="button"
+            onClick={() => {
+              setScrutinyFilter('PENDING');
+              const el = document.getElementById('scrutiny-section');
+              el?.scrollIntoView({ behavior: 'smooth' });
+            }}
+            className="p-3.5 rounded-xl bg-paper/60 hover:bg-paper border border-line hover:border-evidence-supported/50 shadow-2xs transition-all group flex items-center justify-between text-left"
+          >
+            <div className="flex items-center gap-3">
+              <span className="w-6 h-6 rounded-lg bg-surface border border-line font-mono text-[11px] font-bold flex items-center justify-center text-ink-2 group-hover:bg-evidence-supported group-hover:text-white group-hover:border-evidence-supported transition-colors">
+                04
+              </span>
+              <div>
+                <div className="text-xs font-semibold text-ink group-hover:text-evidence-supported transition-colors">
+                  Admin Decision
+                </div>
+                <div className="text-[11px] text-ink-3">
+                  {data.loopStats.awaitingApprovalCount} awaiting · {data.loopStats.approvedCount} approved
+                </div>
+              </div>
+            </div>
+            <ChevronRight className="w-3.5 h-3.5 text-ink-3/60 group-hover:text-evidence-supported group-hover:translate-x-0.5 transition-all" />
+          </button>
         </div>
       </div>
 
