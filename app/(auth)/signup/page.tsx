@@ -204,8 +204,12 @@ function SignupContent() {
 
     try {
       const formData = new FormData();
+      formData.append('company_name', companyName.trim());
       formData.append('companyName', companyName.trim());
+      formData.append('full_name', fullName.trim());
       formData.append('fullName', fullName.trim());
+      formData.append('workspace_slug', slugPreview);
+      formData.append('workspaceSlug', slugPreview);
       formData.append('email', email.trim());
       formData.append('password', password);
       formData.append('industry', industry);

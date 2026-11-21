@@ -29,23 +29,23 @@ export async function POST(req: NextRequest) {
 
     if (contentType.includes('multipart/form-data')) {
       const formData = await req.formData();
-      company_name = formData.get('company_name') as string;
-      workspace_slug = formData.get('workspace_slug') as string;
-      email = formData.get('email') as string;
-      password = formData.get('password') as string;
-      full_name = formData.get('full_name') as string;
-      industry = formData.get('industry') as string;
+      company_name = (formData.get('company_name') || formData.get('companyName')) as string || '';
+      workspace_slug = (formData.get('workspace_slug') || formData.get('workspaceSlug') || formData.get('slug')) as string || '';
+      email = (formData.get('email') || formData.get('workEmail')) as string || '';
+      password = (formData.get('password')) as string || '';
+      full_name = (formData.get('full_name') || formData.get('fullName') || formData.get('name')) as string || '';
+      industry = (formData.get('industry')) as string || '';
 
       const files = formData.getAll('sourceDocuments') as File[];
       sourceDocuments = files.filter(f => f.type === 'application/pdf');
     } else {
       const body = await req.json();
-      company_name = body.company_name;
-      workspace_slug = body.workspace_slug;
-      email = body.email;
-      password = body.password;
-      full_name = body.full_name;
-      industry = body.industry;
+      company_name = body.company_name || body.companyName || '';
+      workspace_slug = body.workspace_slug || body.workspaceSlug || body.slug || '';
+      email = body.email || body.workEmail || '';
+      password = body.password || '';
+      full_name = body.full_name || body.fullName || body.name || '';
+      industry = body.industry || '';
     }
 
     if (!company_name || !email || !password || !full_name) {
