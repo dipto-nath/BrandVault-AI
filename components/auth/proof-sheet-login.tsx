@@ -151,21 +151,17 @@ export function ProofSheetLogin() {
                     </motion.svg>
                   )}
 
-                  {/* Strikeout and Red Replacement on Step >= 2 */}
-                  {step >= 2 ? (
-                    <span className="relative inline-block">
-                      <span className="line-through text-[#C2402E] opacity-75 decoration-[#C2402E] decoration-2">
-                        all-day
-                      </span>
-                      {/* Replacement in red ink */}
-                      <span className="absolute -top-5 left-0 whitespace-nowrap font-serif italic text-[14px] text-[#C2402E] font-semibold tracking-tight">
-                        ^ up to 18 hours of mixed-use
-                      </span>
-                      <span> battery life.</span>
-                    </span>
-                  ) : (
-                    <span>all-day battery life.</span>
-                  )}
+                  {/* Strikeout on Step >= 2 */}
+                  <span
+                    className={
+                      step >= 2
+                        ? 'line-through text-[#C2402E] opacity-75 decoration-[#C2402E] decoration-2'
+                        : ''
+                    }
+                  >
+                    all-day
+                  </span>
+                  <span> battery life.</span>
 
                   {/* Footnote reference mark */}
                   <sup className="text-[12px] font-serif italic text-[#3B4BC8] font-bold ml-0.5">
@@ -173,13 +169,26 @@ export function ProofSheetLogin() {
                   </sup>
                 </span>
               </p>
+
+              {/* Corrected text in red below */}
+              <div
+                className={`mt-1.5 min-h-[22px] flex items-center gap-1.5 font-serif italic text-[14px] sm:text-[15px] text-[#C2402E] font-semibold tracking-tight transition-all duration-300 ${
+                  step >= 2
+                    ? 'opacity-100 translate-y-0'
+                    : 'opacity-0 -translate-y-1 pointer-events-none select-none'
+                }`}
+                aria-hidden={step < 2}
+              >
+                <span className="font-sans text-xs not-italic">↳</span>
+                <span>up to 18 hours of mixed-use</span>
+              </div>
             </div>
 
             {/* Marginal Note & Leader Line on Step >= 1 */}
             <AnimatePresence>
               {(step >= 1 || isReduced) && (
                 <motion.div
-                  className="mt-6 sm:mt-7 pl-3 border-l-2 border-[#E4DCCB] max-w-[360px]"
+                  className="mt-3.5 sm:mt-4 pl-3 border-l-2 border-[#E4DCCB] max-w-[360px]"
                   initial={{ opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0 }}
