@@ -10,6 +10,7 @@ from app.api.v1 import (
     passport,
     insights,
     audit,
+    consistency_checks,
 )
 
 __all__ = [
@@ -24,4 +25,5 @@ __all__ = [
     "passport",
     "insights",
     "audit",
+    "consistency_checks",
 ]

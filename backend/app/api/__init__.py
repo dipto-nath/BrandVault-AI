@@ -12,6 +12,7 @@ from app.api.v1 import (
     passport,
     insights,
     audit,
+    consistency_checks,
 )
 
 api_router = APIRouter()
@@ -27,3 +28,4 @@ api_router.include_router(reviews.router, prefix="/reviews", tags=["reviews"])
 api_router.include_router(passport.router, prefix="/passport", tags=["passport"])
 api_router.include_router(insights.router, prefix="/insights", tags=["insights"])
 api_router.include_router(audit.router, prefix="/audit", tags=["audit"])
+api_router.include_router(consistency_checks.router, prefix="/consistency-checks", tags=["consistency-checks"])

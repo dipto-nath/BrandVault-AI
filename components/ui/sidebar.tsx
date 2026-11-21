@@ -246,6 +246,7 @@ export const SidebarLink = ({
 export const NAV_LINKS: NavLink[] = [
   { href: "/overview", label: "Overview", icon: <LayoutDashboard className="w-5 h-5 shrink-0" /> },
   { href: "/reviews", label: "Content Reviews", icon: <ClipboardList className="w-5 h-5 shrink-0" /> },
+  { href: "/consistency-checks", label: "Consistency Checks", icon: <Sparkles className="w-5 h-5 shrink-0" /> },
   { href: "/findings", label: "Findings", icon: <FileText className="w-5 h-5 shrink-0" /> },
   { href: "/guidelines", label: "Brand Guidelines", icon: <Shield className="w-5 h-5 shrink-0" /> },
   { href: "/knowledge", label: "Approved Knowledge", icon: <BookOpen className="w-5 h-5 shrink-0" /> },

@@ -29,6 +29,11 @@ class ApprovedFact(Base, UUIDMixin, TimestampMixin, OrgMixin):
         ForeignKey("products.id", ondelete="SET NULL"),
         nullable=True,
     )
+    fact_set_id: Mapped[Optional[UUID]] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("approved_fact_sets.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     fact_code: Mapped[str] = mapped_column(String(50), nullable=False)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     fact_text: Mapped[str] = mapped_column(Text, nullable=False)
@@ -74,6 +79,9 @@ class ApprovedFact(Base, UUIDMixin, TimestampMixin, OrgMixin):
     )
     creator: Mapped[Optional["User"]] = relationship(
         "User", foreign_keys=[created_by], lazy="selectin"
+    )
+    fact_set: Mapped[Optional["ApprovedFactSet"]] = relationship(
+        "ApprovedFactSet", back_populates="facts", lazy="selectin"
     )
 
     __table_args__ = (

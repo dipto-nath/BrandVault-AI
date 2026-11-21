@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import List
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field
+from pydantic import Field, field_validator
 
 
 class Settings(BaseSettings):
@@ -42,6 +42,18 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = Field(default="development")
     LOG_LEVEL: str = Field(default="INFO")
     CORS_ORIGINS: List[str] = Field(default=["http://localhost:3000"])
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, v: str | List[str]) -> List[str]:
+        if isinstance(v, str):
+            # Handle both JSON array and comma-separated string
+            import json
+            try:
+                return json.loads(v)
+            except json.JSONDecodeError:
+                return [origin.strip() for origin in v.split(",") if origin.strip()]
+        return v
 
     # Demo
     DEMO_WORKSPACE_SLUG: str = Field(default="nexatech")

@@ -26,3 +26,16 @@ export function Th({ className, ...props }: React.ThHTMLAttributes<HTMLTableCell
 export function Td({ className, ...props }: React.TdHTMLAttributes<HTMLTableCellElement>) {
   return <td className={cn('py-3.5 px-4 align-middle text-sm text-ink', className)} {...props} />;
 }
+
+// Aliases for semantic naming
+export const TableHeader = Thead;
+export const TableBody = Tbody;
+export const TableRow = Tr;
+export const TableHead = Th;
+export const TableCell = Td;
+export const TableCaption = React.forwardRef<HTMLTableCaptionElement, React.HTMLAttributes<HTMLTableCaptionElement>>(
+  ({ className, ...props }, ref) => (
+    <caption ref={ref} className={cn('mt-4 text-sm text-ink-3', className)} {...props} />
+  )
+);
+TableCaption.displayName = 'TableCaption';

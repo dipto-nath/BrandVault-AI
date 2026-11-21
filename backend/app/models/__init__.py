@@ -16,6 +16,18 @@ from app.models.guideline_template import GuidelineTemplate
 from app.models.content import ContentItem, ContentVersion, ContentStatus, ContentType, Channel, RiskLevel
 from app.models.analysis import AnalysisRun, Claim, AnalysisStatus, VerificationStatus
 from app.models.finding import Finding, FindingEvidence, FindingType, EvidenceRelation
+from app.models.consistency import (
+    ConsistencyCheckLanguage,
+    ConsistencyCheckStatus,
+    ConsistencyFindingType,
+    ConsistencyFindingStatus,
+    ConsistencyCheckSubmission,
+    ConsistencyCheckJob,
+    ConsistencyFinding,
+    ApprovedFactSet,
+    GlossaryTerm,
+    EvaluationCase,
+)
 from app.models.review import ReviewDecision, FindingFeedback, ReviewDecisionType, FeedbackType
 from app.models.suggestion import GuidelineSuggestion, SuggestionStatus
 from app.models.audit import AuditEvent
@@ -66,4 +78,14 @@ __all__ = [
     "AuditEvent",
     "PassportRecord",
     "UsageCounter",
+    "ConsistencyCheckLanguage",
+    "ConsistencyCheckStatus",
+    "ConsistencyFindingType",
+    "ConsistencyFindingStatus",
+    "ConsistencyCheckSubmission",
+    "ConsistencyCheckJob",
+    "ConsistencyFinding",
+    "ApprovedFactSet",
+    "GlossaryTerm",
+    "EvaluationCase",
 ]
