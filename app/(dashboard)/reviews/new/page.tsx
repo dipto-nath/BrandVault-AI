@@ -149,6 +149,41 @@ export default function ReviewStudioPage() {
   };
 
   // Autosave State
+  const [docExtracting, setDocExtracting] = useState(false);
+  const handleDocUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setDocExtracting(true);
+    setError(null);
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const res = await fetch('/api/uploads/extract-text', {
+        method: 'POST',
+        body: formData,
+      });
+      const json = await res.json();
+      if (!res.ok || json.error) {
+        throw new Error(json.error?.message || json.error || 'Failed to extract text from document');
+      }
+      if (json.data?.text) {
+        setContent(json.data.text);
+        if (!title || title.trim() === '') {
+          const cleanTitle = file.name
+            .replace(/\.(pdf|docx|doc|txt)$/i, '')
+            .replace(/[-_]/g, ' ')
+            .trim();
+          setTitle(cleanTitle);
+        }
+      }
+    } catch (err: any) {
+      setError(err.message || 'Error parsing document.');
+    } finally {
+      setDocExtracting(false);
+      e.target.value = '';
+    }
+  };
+
   const [autosaveTime, setAutosaveTime] = useState<string | null>(null);
   const [restorableDraft, setRestorableDraft] = useState<{
     title: string;
@@ -1150,7 +1185,24 @@ export default function ReviewStudioPage() {
                   <label htmlFor="draft-content" className="text-xs font-semibold text-ink">
                     Your draft
                   </label>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
+                    <label
+                      htmlFor="review-doc-upload"
+                      className="text-[11px] font-medium text-brand hover:text-brand-hover hover:underline cursor-pointer flex items-center gap-1 transition-colors"
+                      title="Upload a PDF, Word document, or text file to extract its content into this draft"
+                    >
+                      <Upload className="w-3 h-3" />
+                      <span>{docExtracting ? 'Extracting text…' : 'Import from PDF / Document'}</span>
+                      <input
+                        id="review-doc-upload"
+                        type="file"
+                        accept=".pdf,.docx,.doc,.txt,application/pdf"
+                        onChange={handleDocUpload}
+                        className="hidden"
+                        disabled={docExtracting || loading}
+                      />
+                    </label>
+
                     {autosaveTime && (
                       <span className="text-[11px] text-ink-3 font-mono flex items-center gap-1.5">
                         <span className="w-1.5 h-1.5 rounded-full bg-supported" />

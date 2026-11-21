@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { backendFetch, ApiError } from '@/lib/api/client';
 import { storage } from '@/lib/db/adaptor';
+import { extractDocumentText, sanitizeExtractedText } from '@/lib/ai/documents';
+import { writeFileSync, mkdirSync, existsSync } from 'fs';
+import { join } from 'path';
 import crypto from 'crypto';
 
 function createLocalJwt(payload: { sub: string; org_id: string; role: string; email: string; name?: string; is_demo?: boolean }): string {
@@ -124,15 +127,28 @@ export async function POST(req: NextRequest) {
       await storage.ensureMember(workspace.id, userId, 'ADMIN');
 
       if (sourceDocuments.length > 0) {
+        const uploadDir = join(process.cwd(), '.brandvault', 'uploads');
+        if (!existsSync(uploadDir)) mkdirSync(uploadDir, { recursive: true });
+
         for (const file of sourceDocuments) {
           const arrayBuffer = await file.arrayBuffer();
           const buffer = Buffer.from(arrayBuffer);
-          const extractedText = buffer.toString('utf-8');
+          const sanitizedFilename = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+          const storagePath = join(uploadDir, `${Date.now()}-${sanitizedFilename}`);
+          writeFileSync(storagePath, buffer);
+
+          let extractedText = '';
+          try {
+            const extraction = await extractDocumentText(storagePath, 'application/pdf');
+            extractedText = sanitizeExtractedText(extraction.text);
+          } catch {
+            extractedText = '';
+          }
 
           await storage.createDocument({
             workspace_id: workspace.id,
             filename: file.name,
-            storage_path: '',
+            storage_path: storagePath,
             mime_type: 'application/pdf',
             file_size: file.size,
             source_name: file.name,

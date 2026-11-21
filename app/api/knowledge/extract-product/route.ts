@@ -74,25 +74,45 @@ function repairTruncatedJson(jsonText: string): any {
 }
 
 function extractProductFallback(filename: string, text: string): ExtractionResult {
-  const cleanName = filename
-    .replace(/\.pdf$/i, '')
-    .replace(/[-_]/g, ' ')
-    .replace(/\b(spec|specification|specs|datasheet|prd|manual|v\d+)\b/gi, '')
-    .trim();
-  const productName = cleanName || 'New Product';
-
-  const facts: ExtractedFact[] = [];
   const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
 
+  // Attempt to infer product name from the title header lines if they look like a product
+  let productName = '';
+  for (let i = 0; i < Math.min(8, lines.length); i++) {
+    const l = lines[i];
+    if (/(?:apple\s+)?(?:macbook|iphone|ipad|galaxy|nextech|nova|pixel|dell|lenovo|thinkpad|asus|watch|buds|air|pro|laptop|smartphone)/i.test(l) && l.length < 80) {
+      productName = l.replace(/\b(page \d+|research note|cut-off|report|confidential)\b/gi, '').trim();
+      if (productName.length > 3) break;
+    }
+  }
+
+  if (!productName) {
+    const cleanName = filename
+      .replace(/\.pdf$/i, '')
+      .replace(/^\d+[-_]/, '')
+      .replace(/[-_]/g, ' ')
+      .replace(/\b(spec|specification|specs|datasheet|prd|manual|v\d+|report)\b/gi, '')
+      .trim();
+    productName = cleanName || 'New Product';
+  }
+
+  const facts: ExtractedFact[] = [];
+
   const specPatterns = [
-    { key: 'BATT', title: 'Battery Life', regex: /(?:battery(?:\s+life)?|playback|runtime|charge).*?(?:\d+\s*(?:hours?|hrs?|h|mah))/i },
-    { key: 'DISP', title: 'Display', regex: /(?:display|screen).*?(?:\d+(?:\.\d+)?\s*(?:inch|inches|"|hz|oled|amoled|ips|pixels?|resolution))/i },
+    { key: 'BATT', title: 'Battery Life', regex: /(?:battery(?:\s+life)?|playback|runtime|charge).*?(?:\d+\s*(?:hours?|hrs?|h|mah|wh))/i },
+    { key: 'DISP', title: 'Display', regex: /(?:display|screen).*?(?:\d+(?:\.\d+)?\s*(?:inch|inches|"|hz|oled|amoled|ips|pixels?|resolution|retina|nits))/i },
     { key: 'WEIGHT', title: 'Weight', regex: /(?:weight|weighs?).*?(?:\d+\s*(?:grams?|g|kg|lbs?|ounces?|oz))/i },
     { key: 'DIM', title: 'Dimensions', regex: /(?:dimensions?|size|thickness).*?(?:\d+.*?(?:mm|cm|inches?))/i },
-    { key: 'PROC', title: 'Processor & Hardware', regex: /(?:processor|chipset|cpu|ram|memory|storage).*?(?:\d+\s*(?:gb|tb|ghz|core)|snapdragon|apple|intel|amd)/i },
-    { key: 'WATER', title: 'Water Resistance', regex: /(?:water|dust|submersion|splash).*?(?:ip\d+|resistant|waterproof|meters?|atm)/i },
+    { key: 'PROC', title: 'Processor & CPU', regex: /(?:processor|chipset|cpu|m\d|apple silicon|snapdragon|intel|amd|core).*?(?:\d+\s*(?:core|ghz|nm))/i },
+    { key: 'MEM', title: 'Memory (RAM)', regex: /(?:memory|ram|unified memory).*?(?:\d+\s*(?:gb|tb|mb|gb\/s))/i },
+    { key: 'STOR', title: 'Storage & SSD', regex: /(?:ssd|storage|internal storage|drive).*?(?:\d+\s*(?:gb|tb))/i },
     { key: 'CONN', title: 'Connectivity', regex: /(?:connectivity|wireless|bluetooth|wi-?fi|5g|lte|cellular|usb-?c|nfc)/i },
-    { key: 'WARR', title: 'Warranty', regex: /(?:warranty|guarantee).*?(?:\d+\s*(?:years?|months?))/i },
+    { key: 'PORTS', title: 'Ports & Expansion', regex: /(?:ports?|thunderbolt|magsafe|usb\s*\d|audio jack|hdmi|displayport)/i },
+    { key: 'CAM', title: 'Camera & Video', regex: /(?:camera|webcam|facetime|center stage).*?(?:\d+\s*(?:mp|p|fps))/i },
+    { key: 'AUDIO', title: 'Audio & Sound', regex: /(?:audio|speakers?|microphones?|spatial audio|dolby)/i },
+    { key: 'WATER', title: 'Water & Dust Resistance', regex: /(?:water|dust|submersion|splash).*?(?:ip\d+|resistant|waterproof|meters?|atm)/i },
+    { key: 'WARR', title: 'Warranty & Support', regex: /(?:warranty|guarantee|applecare|support).*?(?:\d+\s*(?:years?|months?))/i },
+    { key: 'PRICE', title: 'Pricing & Availability', regex: /(?:₹|rs\.?|\$|price|pricing|mrp|starting at).*?(?:\d+[,.\d]*)/i },
   ];
 
   let factIdx = 1;
@@ -121,24 +141,31 @@ function extractProductFallback(filename: string, text: string): ExtractionResul
     }
   }
 
-  if (facts.length < 3) {
-    const sentences = text.match(/[^.!?]+[.!?]+/g) || lines;
-    for (const s of sentences) {
-      const trimmed = s.trim();
-      if (trimmed.length > 25 && trimmed.length < 250 && /\d/.test(trimmed)) {
+  // If fewer than 8 facts found, extract lines with key-value syntax (e.g. "Spec: Value") or numeric specs
+  if (facts.length < 10) {
+    for (const line of lines) {
+      if (
+        (line.includes(':') || line.includes(' - ') || line.includes('–')) &&
+        line.length > 20 &&
+        line.length < 250 &&
+        /\d/.test(line) &&
+        !facts.some((f) => f.fact_text === line)
+      ) {
+        const parts = line.split(/[:–-]/);
+        const inferredTitle = parts[0].trim().slice(0, 40) || `Specification ${factIdx}`;
         facts.push({
           fact_code: `SPEC-${String(factIdx++).padStart(3, '0')}`,
-          title: `Specification ${factIdx - 1}`,
-          fact_text: trimmed,
+          title: inferredTitle,
+          fact_text: line,
           entity_name: productName,
-          source_reference: 'Specification Sheet',
-          source_excerpt: trimmed.slice(0, 200),
+          source_reference: 'Technical Specification Sheet',
+          source_excerpt: line.slice(0, 200),
           verification_status: 'APPROVED',
           effective_from: new Date().toISOString().split('T')[0],
           expires_at: null,
           notes: 'Extracted from specification document',
         });
-        if (facts.length >= 8) break;
+        if (facts.length >= 14) break;
       }
     }
   }

@@ -26,37 +26,51 @@ export interface GenerateJsonOptions {
 }
 
 async function generateWithGroq(options: GenerateJsonOptions): Promise<string> {
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${GROQ_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: GROQ_MODEL,
-      messages: [
-        {
-          role: 'system',
-          content: 'You are an evidence-first brand governance AI. Output valid JSON only, without conversational commentary or pleasantries.',
-        },
-        {
-          role: 'user',
-          content: options.prompt,
-        },
-      ],
-      temperature: options.temperature ?? 0.2,
-      max_tokens: options.maxTokens ?? 4000,
-    }),
-  });
+  const modelsToTry = [GROQ_MODEL, 'openai/gpt-oss-120b', 'qwen/qwen3.8-27b', 'openai/gpt-oss-20b'].filter(
+    (m, idx, arr) => Boolean(m) && arr.indexOf(m) === idx
+  );
 
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new ProviderError(res.status, `Groq API error (${res.status}): ${errorText}`);
+  let lastError: any = null;
+  for (const model of modelsToTry) {
+    try {
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${GROQ_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            {
+              role: 'system',
+              content: 'You are an evidence-first brand governance AI. Output valid JSON only, without conversational commentary or pleasantries.',
+            },
+            {
+              role: 'user',
+              content: options.prompt,
+            },
+          ],
+          temperature: options.temperature ?? 0.2,
+          max_tokens: options.maxTokens ?? 4000,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        lastError = new ProviderError(res.status, `Groq API error (${model}): ${errorText}`);
+        continue;
+      }
+
+      const data = await res.json();
+      const content = data.choices?.[0]?.message?.content ?? '';
+      if (content) return content;
+    } catch (err: any) {
+      lastError = err;
+    }
   }
 
-  const data = await res.json();
-  const content = data.choices?.[0]?.message?.content ?? '';
-  return content;
+  throw lastError || new ProviderError(null, 'All Groq models failed');
 }
 
 async function generateWithGemini(options: GenerateJsonOptions): Promise<string> {

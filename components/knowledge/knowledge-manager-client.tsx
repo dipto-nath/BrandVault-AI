@@ -351,6 +351,11 @@ export function KnowledgeManagerClient({
 
       setSelectedProductId(product.id);
       router.refresh();
+
+      setTimeout(() => {
+        setUploadModalOpen(false);
+        setUploadSuccess(null);
+      }, 2500);
     } catch (err: any) {
       setUploadError(err.message || 'Error processing document.');
     } finally {

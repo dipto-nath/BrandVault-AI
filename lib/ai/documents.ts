@@ -71,5 +71,10 @@ export async function extractDocumentText(filePath: string, mimeType: string): P
 }
 
 export function sanitizeExtractedText(text: string): string {
-  return text.replace(/\u0000/g, '').replace(/\s+/g, ' ').trim();
+  if (!text) return '';
+  return text
+    .replace(/\u0000/g, '')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/(\r?\n){3,}/g, '\n\n')
+    .trim();
 }

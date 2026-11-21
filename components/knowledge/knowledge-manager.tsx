@@ -269,6 +269,11 @@ export function KnowledgeManager({
       if (factsJson.data) setFacts(factsJson.data);
 
       router.refresh();
+
+      setTimeout(() => {
+        setProductModalOpen(false);
+        setUploadSuccess(null);
+      }, 2500);
     } catch (err: any) {
       setUploadError(err.message || 'Error processing document.');
     } finally {
