@@ -39,7 +39,7 @@ export async function GET(
     // Get visual findings
     const allFindings = await storage.listFindings(id);
     const visualFindings = allFindings.filter(
-      (f) => f.finding_type === 'ASSET_MISMATCH' || f.finding_type === 'LOW_CONTRAST' || f.finding_type === 'MISSING_ALT_TEXT'
+      (f) => f.finding_type === 'ASSET_MISMATCH' || f.finding_type === 'LOW_CONTRAST' || f.finding_type === 'MISSING_ALT_TEXT' || f.finding_type === 'OCR_UNAVAILABLE'
     );
 
     return NextResponse.json({

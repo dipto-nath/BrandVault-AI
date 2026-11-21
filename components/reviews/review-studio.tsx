@@ -131,6 +131,51 @@ function VisualAltTextCheck({ visualAsset }: { visualAsset: any }) {
   );
 }
 
+function VisualOcrCheck({ visualAsset }: { visualAsset: any }) {
+  const analysis = visualAsset?.analysis;
+  const ocrCheck = analysis?.metrics?.ocrCheck;
+  const ocrData = analysis?.image?.ocr;
+  const ocrFinding = analysis?.findings?.find((f: any) => f.type === 'OCR_UNAVAILABLE');
+  
+  if (ocrCheck === 'fail' && ocrFinding) {
+    return (
+      <div className="p-2 rounded-lg bg-surface border border-sand-dark/30">
+        <div className="text-[10px] text-ink-muted font-bold uppercase tracking-wider mb-1">
+          OCR Text
+        </div>
+        <div className="text-evidence-unverified font-semibold flex items-center gap-1 text-[11px]">
+          <AlertCircle className="w-3 h-3 shrink-0" />
+          <span>Unavailable</span>
+        </div>
+      </div>
+    );
+  }
+  if (ocrData?.textExtracted) {
+    return (
+      <div className="p-2 rounded-lg bg-surface border border-sand-dark/30">
+        <div className="text-[10px] text-ink-muted font-bold uppercase tracking-wider mb-1">
+          OCR Text
+        </div>
+        <div className="text-evidence-supported font-semibold flex items-center gap-1 text-[11px]">
+          <CheckCircle2 className="w-3 h-3 shrink-0" />
+          <span>Extracted</span>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="p-2 rounded-lg bg-surface border border-sand-dark/30">
+      <div className="text-[10px] text-ink-muted font-bold uppercase tracking-wider mb-1">
+        OCR Text
+      </div>
+      <div className="text-evidence-supported font-semibold flex items-center gap-1 text-[11px]">
+        <CheckCircle2 className="w-3 h-3 shrink-0" />
+        <span>Not Applicable</span>
+      </div>
+    </div>
+  );
+}
+
 interface ReviewStudioProps {
   submission: ContentSubmission;
   claims: ExtractedClaim[];
@@ -1024,13 +1069,15 @@ export function ReviewStudio({
                           <span className="text-[10px] text-ink-muted">OpenCV + WCAG 2.2</span>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 pt-1">
                           {/* Asset check */}
                           <VisualAssetCheck visualAsset={visualAsset} />
                           {/* Contrast check */}
                           <VisualContrastCheck visualAsset={visualAsset} />
                           {/* Alt-Text check */}
                           <VisualAltTextCheck visualAsset={visualAsset} />
+                          {/* OCR Text check */}
+                          <VisualOcrCheck visualAsset={visualAsset} />
                         </div>
                       </div>
 

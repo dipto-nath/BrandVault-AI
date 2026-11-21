@@ -276,6 +276,17 @@ export function mapRawFindingsToViewModel(
         category: 'ACCESSIBILITY',
         id: 'rule-a11y-001',
       };
+    } else if (f.finding_type === 'OCR_UNAVAILABLE') {
+      category = 'unverified';
+      categoryLabel = 'Unverified';
+      severity = 'MEDIUM';
+      humanTitle = f.title || 'OCR engine unavailable - text claims not verified';
+      rule = {
+        rule_code: 'RULE-OCR-001',
+        title: 'OCR engine required for text claim verification',
+        category: 'ACCESSIBILITY',
+        id: 'rule-ocr-001',
+      };
     }
 
     // Build Evidence Views with correct relations
@@ -324,6 +335,17 @@ export function mapRawFindingsToViewModel(
         validity: 'WCAG 2.2 AA Standard',
         factCode: 'A11Y-ALT-TEXT',
         factTitle: 'Alternative Text Presence',
+      });
+    } else if (f.finding_type === 'OCR_UNAVAILABLE') {
+      evidenceViews.push({
+        documentName: 'BrandVault Visual & Accessibility Engine',
+        versionSection: 'OCR Text Extraction Module',
+        snippet: 'Tesseract OCR engine is not installed on the server. Text claims in the image could not be extracted and verified against approved facts. Install tesseract-ocr system package to enable automatic claim verification from image text.',
+        relation: 'No approved source found',
+        relationVariant: 'unverified',
+        validity: 'Requires system dependency installation',
+        factCode: 'OCR-UNAVAILABLE',
+        factTitle: 'OCR Engine Availability',
       });
     } else if (f.finding_evidence && f.finding_evidence.length > 0) {
       for (const ev of f.finding_evidence) {

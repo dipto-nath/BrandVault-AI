@@ -23,7 +23,12 @@ except ImportError as e:
 # Try to import pytesseract for OCR
 try:
     import pytesseract
-    TESSERACT_AVAILABLE = True
+    # Check if tesseract binary is actually available
+    try:
+        pytesseract.get_tesseract_version()
+        TESSERACT_AVAILABLE = True
+    except Exception:
+        TESSERACT_AVAILABLE = False
 except ImportError:
     TESSERACT_AVAILABLE = False
 
@@ -339,6 +344,7 @@ def extract_text_from_image(image_path: str) -> Tuple[str, Dict[str, Any]]:
     }
     
     if not TESSERACT_AVAILABLE:
+        ocr_metadata["error"] = "Tesseract OCR engine not installed. Text claims in images cannot be verified. Install tesseract-ocr to enable claim verification from images."
         return "", ocr_metadata
     
     try:
@@ -378,30 +384,30 @@ def extract_claims_from_text(text: str) -> List[Dict[str, Any]]:
     claims = []
     text_lower = text.lower()
     
-    clauses = re.split(r'(?<=[.!?])\s+|;\s+|,\s+(?=(?:weighing|crafted|featuring|with|available|scheduled|get ready|ready to enjoy))|,\s*(?=and)|,\s*/i', text)
+    clauses = re.split(r'(?<=[.!?])\s+|;\s+|,\s+(?=(?:weighing|crafted|featuring|with|available|scheduled|get ready|ready to enjoy)\b)|,\s*(?=and\b)|,\s*/i', text)
     clauses = [c.strip() for c in clauses if len(c.strip()) > 3]
     
     for clause in clauses:
         lower = clause.lower()
         claim_type = None
         
-        if re.search(r'(battery|hours?\s+of\s+battery|battery\s+backup|mixed.use|mixed.use)', lower):
+        if re.search(r'\b(battery|hours?\s+of\s+battery|battery\s+backup|mixed.use|mixed.use)\b', lower):
             claim_type = 'PRODUCT_SPECIFICATION'
-        elif re.search(r'(screen|display|inch|"|retina|resolution)', lower):
+        elif re.search(r'\b(screen|display|inch|"|retina|resolution)\b', lower):
             claim_type = 'PRODUCT_SPECIFICATION'
-        elif re.search(r'(weigh|weight|185\s*g|gram)', lower):
+        elif re.search(r'\b(weigh|weight|185\s*g|gram)\b', lower):
             claim_type = 'PRODUCT_SPECIFICATION'
-        elif re.search(r'(waterproof|water.resist|IP68|water.resistant)', lower):
+        elif re.search(r'\b(waterproof|water.resist|IP68|water.resistant)\b', lower):
             claim_type = 'PRODUCT_SPECIFICATION'
-        elif re.search(r'(aluminium|aluminum|chassis|materials?|recycled)', lower):
+        elif re.search(r'\b(aluminium|aluminum|chassis|materials?|recycled)\b', lower):
             claim_type = 'PRODUCT_SPECIFICATION'
-        elif re.search(r'(launch|december\s+2026|available|release)', lower):
+        elif re.search(r'\b(launch|december\s+2026|available|release)\b', lower):
             claim_type = 'PRODUCT_SPECIFICATION'
-        elif re.search(r'(get ready|ready to enjoy|enjoy)', lower):
+        elif re.search(r'\b(get ready|ready to enjoy|enjoy)\b', lower):
             claim_type = 'PROMOTIONAL_CLAIM'
-        elif re.search(r'(robot\s+buddy|smart\s+assistant|AI\s+robot)', lower):
+        elif re.search(r'\b(robot\s+buddy|smart\s+assistant|AI\s+robot)\b', lower):
             claim_type = 'PRODUCT_SPECIFICATION'
-        elif re.search(r'(quantum|ultra.conductive|revolutionary|ultimate|flawless|miraculous)', lower):
+        elif re.search(r'\b(quantum|ultra.conductive|revolutionary|ultimate|flawless|miraculous)\b', lower):
             claim_type = 'PROMOTIONAL_CLAIM'
         elif re.search(r'\d', clause) and any(kw in lower for kw in ['hour', 'battery', 'weight', 'screen', 'inch', 'gram', 'launch', 'waterproof', 'material']):
             claim_type = 'PRODUCT_SPECIFICATION'
@@ -474,124 +480,265 @@ def retrieve_evidence_for_claim(claim_text: str) -> List[Dict[str, Any]]:
     evidence = []
     claim_lower = claim_text.lower()
     
+    # Extract keywords from claim
+    claim_keywords = set(re.findall(r'\b\w{4,}\b', claim_lower))
+    
     for fact in APPROVED_FACTS:
         fact_lower = fact["text"].lower()
-        
-        claim_keywords = set(re.findall(r'\w{4,}', claim_lower))
-        fact_keywords = set(re.findall(r'\w{4,}', fact_lower))
+        fact_keywords = set(re.findall(r'\b\w{4,}\b', fact_lower))
         
         overlap = claim_keywords & fact_keywords
-        if len(overlap) >= 2:
+        # Require at least 2 overlapping keywords (to avoid matching just brand names)
+        # But don't filter out domain-specific words like battery, life, hours, etc.
+        generic_brand_words = {'nextech', 'nova', 'the', 'and', 'has', 'with', 'for', 'all', 'day', 'delivers', 'up', 'to', 'features', 'includes', 'uses', 'weighs', 'scheduled', 'launch'}
+        meaningful_overlap = overlap - generic_brand_words
+        if len(meaningful_overlap) >= 1 or len(overlap) >= 2:
             evidence.append(fact)
     
     return evidence
 
-
 def verify_claim_deterministic(claim_text: str, evidence: List[Dict[str, Any]]) -> Dict[str, Any]:
+
     """Deterministically verify a claim against approved evidence."""
+
     claim_lower = claim_text.lower()
-    
+
+
+
     if not evidence:
-        is_waterproof = bool(re.search(r'waterproof', claim_lower))
-        is_superlative = bool(re.search(r'(best|fastest|world'?s\s+(?:best|first|fastest)|unmatched|#1|number\s+one|incredible|completely\s+waterproof|revolutionary|ultimate|flawless|miraculous)', claim_lower))
-        
+
+        is_waterproof = bool(re.search(r'\bwaterproof\b', claim_lower))
+
+        is_superlative = bool(re.search(r"\b(best|fastest|world's\s+(?:best|first|fastest)|unmatched|#1|number\s+one|incredible|completely\s+waterproof|revolutionary|ultimate|flawless|miraculous)\b", claim_lower))
+
+
+
         return {
+
             "status": "UNVERIFIED",
+
             "explanation": "No approved evidence found to verify or refute this claim.",
+
             "evidenceIds": [],
+
             "confidence": 0.7,
+
             "findingType": "UNVERIFIED_CLAIM",
+
             "severity": "HIGH" if is_waterproof else "MEDIUM",
+
         }
-    
+
+
+
+    # Track all evidence and check for contradictions
+
+    matched_facts = []
+
+    contradictions = []
+
+
+
     for fact in evidence:
+
         fact_text = fact["text"].lower()
-        
+
+        matched_facts.append(fact["text"])
+
+
+
+        # Check for battery contradiction
+
         if "battery" in claim_lower and "battery" in fact_text:
-            claim_hours = re.findall(r'(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|h)', claim_lower)
-            fact_hours = re.findall(r'(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|h)', fact_text)
-            
+
+            claim_hours = re.findall(r'(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|h)\b', claim_lower)
+
+            fact_hours = re.findall(r'(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|h)\b', fact_text)
+
+
+
             if claim_hours and fact_hours:
+
                 claim_val = float(claim_hours[0])
+
                 fact_val = float(fact_hours[0])
-                
+
+
+
                 if claim_val > fact_val * 1.1:
-                    return {
+
+                    contradictions.append({
+
                         "status": "CONTRADICTED",
+
                         "explanation": f"Approved spec states {fact['text']}",
+
                         "evidenceIds": [fact["id"]],
+
                         "confidence": 0.95,
+
                         "findingType": "FACTUAL_CONTRADICTION",
+
                         "severity": "HIGH",
-                    }
-        
+
+                    })
+
+
+
+        # Check for weight contradiction
+
         if "weigh" in claim_lower or "weight" in claim_lower or "gram" in claim_lower or "185" in claim_text:
+
             if "weigh" in fact_text or "weight" in fact_text or "185" in fact_text:
-                claim_weight = re.findall(r'(\d+(?:\.\d+)?)\s*(?:grams?|g|kg)', claim_lower)
-                fact_weight = re.findall(r'(\d+(?:\.\d+)?)\s*(?:grams?|g|kg)', fact_text)
-                
+
+                claim_weight = re.findall(r'(\d+(?:\.\d+)?)\s*(?:grams?|g|kg)\b', claim_lower)
+
+                fact_weight = re.findall(r'(\d+(?:\.\d+)?)\s*(?:grams?|g|kg)\b', fact_text)
+
+
+
                 if claim_weight and fact_weight:
+
                     claim_val = float(claim_weight[0])
+
                     fact_val = float(fact_weight[0])
-                    
+
+
+
                     if abs(claim_val - fact_val) > 5:
-                        return {
+
+                        contradictions.append({
+
                             "status": "CONTRADICTED",
+
                             "explanation": f"Approved spec states {fact['text']}",
+
                             "evidenceIds": [fact["id"]],
+
                             "confidence": 0.95,
+
                             "findingType": "FACTUAL_CONTRADICTION",
+
                             "severity": "HIGH",
-                        }
-        
+
+                        })
+
+
+
+        # Check for waterproof contradiction
+
         if "waterproof" in claim_lower or "water.resist" in claim_lower or "IP68" in claim_text.upper():
+
             if "waterproof" in fact_text and "no approved waterproof" in fact_text:
-                return {
+
+                contradictions.append({
+
                     "status": "CONTRADICTED",
+
                     "explanation": f"Approved fact states: {fact['text']}",
+
                     "evidenceIds": [fact["id"]],
+
                     "confidence": 0.98,
+
                     "findingType": "FACTUAL_CONTRADICTION",
+
                     "severity": "HIGH",
-                }
-        
+
+                })
+
+
+
+        # Check for screen size contradiction
+
         if "inch" in claim_lower or "screen" in claim_lower or "display" in claim_lower:
+
             if "inch" in fact_text or "display" in fact_text:
-                claim_inch = re.findall(r'(\d+(?:\.\d+)?)\s*inch', claim_lower)
-                fact_inch = re.findall(r'(\d+(?:\.\d+)?)\s*inch', fact_text)
-                
+
+                claim_inch = re.findall(r'(\d+(?:\.\d+)?)[-\s]*inch', claim_lower)
+
+                fact_inch = re.findall(r'(\d+(?:\.\d+)?)[-\s]*inch', fact_text)
+
+
+
                 if claim_inch and fact_inch:
+
                     claim_val = float(claim_inch[0])
+
                     fact_val = float(fact_inch[0])
-                    
+
+
+
                     if abs(claim_val - fact_val) > 0.5:
-                        return {
+
+                        contradictions.append({
+
                             "status": "CONTRADICTED",
+
                             "explanation": f"Approved spec states {fact['text']}",
+
                             "evidenceIds": [fact["id"]],
+
                             "confidence": 0.95,
+
                             "findingType": "FACTUAL_CONTRADICTION",
+
                             "severity": "HIGH",
-                        }
-        
+
+                        })
+
+
+
+        # Check for launch date contradiction
+
         if "launch" in claim_lower or "december" in claim_lower or "2026" in claim_text:
+
             if "launch" in fact_text and "december" in fact_text:
-                return {
-                    "status": "SUPPORTED" if "15 december 2026" in claim_lower else "CONTRADICTED",
-                    "explanation": f"Approved launch plan states {fact['text']}",
-                    "evidenceIds": [fact["id"]],
-                    "confidence": 0.95,
-                    "findingType": "FACTUAL_CONTRADICTION" if "15 december 2026" not in claim_lower else "SUPPORTED",
-                    "severity": "HIGH",
-                }
-    
+
+                if "15 december 2026" not in claim_lower:
+
+                    contradictions.append({
+
+                        "status": "CONTRADICTED",
+
+                        "explanation": f"Approved launch plan states {fact['text']}",
+
+                        "evidenceIds": [fact["id"]],
+
+                        "confidence": 0.95,
+
+                        "findingType": "FACTUAL_CONTRADICTION",
+
+                        "severity": "HIGH",
+
+                    })
+
+
+
+    # If any contradictions found, return the first one
+
+    if contradictions:
+
+        return contradictions[0]
+
+
+
+    # No contradictions found - claim is supported by evidence
+
     return {
+
         "status": "SUPPORTED",
-        "explanation": f"Claim is consistent with approved fact: {evidence[0]['text']}",
+
+        "explanation": f"Claim is consistent with approved fact(s): {' ; '.join(matched_facts)}",
+
         "evidenceIds": [e["id"] for e in evidence],
+
         "confidence": 0.9,
+
         "findingType": "SUPPORTED",
+
         "severity": "LOW",
+
     }
 
 
@@ -656,12 +803,31 @@ def main():
         # OCR Text Extraction
         extracted_text, ocr_metadata = extract_text_from_image(args.image)
         
+        # Add finding if OCR is not available
+        ocr_unavailable_finding = []
+        if not TESSERACT_AVAILABLE:
+            ocr_unavailable_finding = [{
+                "type": "OCR_UNAVAILABLE",
+                "severity": "MEDIUM",
+                "ruleId": "RULE-OCR-001",
+                "title": "OCR engine not available",
+                "message": "Tesseract OCR engine is not installed. Text claims in the image could not be extracted and verified against approved facts. Install tesseract-ocr to enable claim verification from images.",
+                "originalPhrase": "Image text content",
+                "suggestedCorrection": "Install tesseract-ocr system package to enable automatic claim verification from image text.",
+                "confidence": 1.0,
+                "evidence": {
+                    "ocrAvailable": False,
+                    "engine": "none",
+                    "reason": "tesseract binary not found in PATH",
+                }
+            }]
+        
         # Claim Verification on extracted text
         claim_findings = []
         if extracted_text:
             claim_findings = verify_claims_in_text(extracted_text)
 
-        all_findings = asset_findings + contrast_findings + alt_findings + claim_findings
+        all_findings = asset_findings + contrast_findings + alt_findings + claim_findings + ocr_unavailable_finding
 
         result = {
             "status": "complete",
@@ -683,12 +849,13 @@ def main():
             },
             "findings": all_findings,
             "metrics": {
-                "totalChecks": 4,
+                "totalChecks": 5,
                 "findingsCount": len(all_findings),
                 "assetCheck": "mismatch" if any(f["type"] == "ASSET_MISMATCH" for f in all_findings) else "pass",
                 "contrastCheck": "fail" if any(f["type"] == "LOW_CONTRAST" for f in all_findings) else "pass",
                 "altTextCheck": "fail" if any(f["type"] == "MISSING_ALT_TEXT" for f in all_findings) else "pass",
-                "claimCheck": "fail" if any(f["type"] in ["FACTUAL_CONTRADICTION", "UNVERIFIED_CLAIM"] for f in all_findings) else "pass"
+                "claimCheck": "fail" if any(f["type"] in ["FACTUAL_CONTRADICTION", "UNVERIFIED_CLAIM"] for f in all_findings) else "pass",
+                "ocrCheck": "fail" if any(f["type"] == "OCR_UNAVAILABLE" for f in all_findings) else "pass"
             }
         }
         print(json.dumps(result, indent=2))
