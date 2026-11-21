@@ -60,7 +60,7 @@ function SignupContent() {
   const searchParams = useSearchParams();
   const nextParam = searchParams.get('next') || '/overview';
 
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(searchParams.get('step') === '2' ? 2 : 1);
   const [companyName, setCompanyName] = useState('');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
