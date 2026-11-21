@@ -116,7 +116,8 @@ export default function ReviewStudioPage() {
 
   const handleImageSelect = (file: File) => {
     const allowed = ['image/png', 'image/jpeg', 'image/webp'];
-    if (!allowed.includes(file.type)) {
+    const isAllowed = allowed.includes(file.type) || /\.(png|jpe?g|webp)$/i.test(file.name);
+    if (!isAllowed) {
       setError('Choose a PNG, JPEG, or WebP image.');
       return;
     }
@@ -1358,8 +1359,11 @@ export default function ReviewStudioPage() {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/png,image/jpeg,image/webp"
+                  accept="image/*, .png, .jpg, .jpeg, .webp, image/png, image/jpeg, image/webp"
                   className="hidden"
+                  onClick={(e) => {
+                    (e.target as HTMLInputElement).value = '';
+                  }}
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) handleImageSelect(file);

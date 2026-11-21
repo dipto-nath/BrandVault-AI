@@ -1172,8 +1172,11 @@ export function ReviewStudio({
                   <input
                     ref={visualFileInputRef}
                     type="file"
-                    accept="image/png,image/jpeg,image/webp"
+                    accept="image/*, .png, .jpg, .jpeg, .webp, image/png, image/jpeg, image/webp"
                     className="hidden"
+                    onClick={(e) => {
+                      (e.target as HTMLInputElement).value = '';
+                    }}
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) handleVisualUpload(file);
