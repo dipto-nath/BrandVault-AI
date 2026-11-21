@@ -64,6 +64,7 @@ export function statusToVariant(status: string): BadgeVariant {
     case 'RESOLVED':
       return 'low';
     case 'NEEDS_REVIEW':
+    case 'NEEDS_RE_REVIEW':
     case 'CHANGES_REQUESTED':
     case 'OVERRIDDEN':
     case 'UNVERIFIED':
@@ -71,6 +72,7 @@ export function statusToVariant(status: string): BadgeVariant {
       return 'medium';
     case 'REJECTED':
     case 'FAILED':
+    case 'OUTDATED':
     case 'CONTRADICTED':
       return 'high';
     case 'DRAFT':
@@ -133,6 +135,7 @@ export function getRiskColor(level: string): string {
 export function getStatusLabel(status: string): string {
   const labels: Record<string, string> = {
     DRAFT: 'Draft', ANALYZING: 'Analysing', NEEDS_REVIEW: 'Needs Review',
+    NEEDS_RE_REVIEW: 'Needs Re-Review', OUTDATED: 'Outdated',
     CHANGES_REQUESTED: 'Changes Requested', APPROVED: 'Approved',
     REJECTED: 'Rejected', FAILED: 'Failed',
     SUPPORTED: 'Supported', CONTRADICTED: 'Contradicted', UNVERIFIED: 'Unverified',

@@ -17,6 +17,10 @@ import type {
   GuidelineSuggestion,
   AuditLog,
   Product,
+  FactVersion,
+  ClaimDependency,
+  DependencyChangeEvent,
+  ReverificationReviewTask,
 } from '@/types/database';
 
 export interface ListOptions {
@@ -78,7 +82,7 @@ export interface Storage {
   listSubmissions(workspaceId: string, opts?: ListOptions & { status?: string; risk_level?: string }): Promise<ContentSubmission[]>;
   getSubmission(id: string): Promise<ContentSubmission | null>;
   createSubmission(data: Omit<ContentSubmission, 'id' | 'created_at' | 'updated_at' | 'submitted_at'> & { id?: string; created_by?: string | null }): Promise<ContentSubmission>;
-  updateSubmission(id: string, data: Partial<Pick<ContentSubmission, 'title' | 'content_type' | 'channel' | 'original_content' | 'current_content' | 'status' | 'risk_level' | 'reviewer_id' | 'submitted_at'>>): Promise<ContentSubmission>;
+  updateSubmission(id: string, data: Partial<Pick<ContentSubmission, 'title' | 'content_type' | 'channel' | 'original_content' | 'current_content' | 'status' | 'risk_level' | 'reviewer_id' | 'submitted_at' | 'stale_passport' | 'stale_reason' | 'stale_trigger_event_id' | 'stale_at' | 'stale_dependency_name' | 'stale_diff_before' | 'stale_diff_after'>>): Promise<ContentSubmission>;
 
   // ---------- Content versions ----------
   listVersions(submissionId: string): Promise<ContentVersion[]>;
@@ -129,4 +133,22 @@ export interface Storage {
 
   // ---------- Dashboard ----------
   dashboardStats(workspaceId: string): Promise<DashboardStats>;
+
+  // ---------- Feature 3: Fact versions & history ----------
+  createFactVersion(data: Omit<FactVersion, 'id' | 'created_at'>): Promise<FactVersion>;
+  listFactVersions(factId: string): Promise<FactVersion[]>;
+
+  // ---------- Feature 3: Claim dependencies ----------
+  createClaimDependencies(dependencies: Array<Omit<ClaimDependency, 'id' | 'created_at'>>): Promise<ClaimDependency[]>;
+  listClaimDependencies(submissionId: string): Promise<ClaimDependency[]>;
+  findSubmissionsByDependency(workspaceId: string, dependencyType: 'FACT' | 'GUIDELINE' | 'SOURCE', dependencyId: string): Promise<string[]>;
+
+  // ---------- Feature 3: Dependency change events & review tasks ----------
+  createChangeEvent(data: Omit<DependencyChangeEvent, 'id' | 'created_at'>): Promise<DependencyChangeEvent>;
+  listChangeEvents(workspaceId: string): Promise<DependencyChangeEvent[]>;
+  getChangeEvent(id: string): Promise<DependencyChangeEvent | null>;
+
+  createReviewTask(data: Omit<ReverificationReviewTask, 'id' | 'created_at'>): Promise<ReverificationReviewTask>;
+  listReviewTasks(workspaceId: string, opts?: { status?: string }): Promise<ReverificationReviewTask[]>;
+  updateReviewTask(id: string, data: Partial<Pick<ReverificationReviewTask, 'status' | 'resolved_at'>>): Promise<ReverificationReviewTask>;
 }

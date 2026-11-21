@@ -137,7 +137,16 @@ export interface GovernanceInsightsData {
   timeline: TimelineEvent[];
 }
 
+// 30-second in-memory cache for ultra-fast page navigation & tab switching
+const insightsCache = new Map<string, { data: GovernanceInsightsData; timestamp: number }>();
+
 export async function getInsights(workspaceId: string, range: TimeRange = '30d'): Promise<GovernanceInsightsData> {
+  const cacheKey = `${workspaceId}:${range}`;
+  const cached = insightsCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < 30_000) {
+    return cached.data;
+  }
+
   const [
     allSubmissions,
     allGuidelines,
@@ -539,7 +548,7 @@ export async function getInsights(workspaceId: string, range: TimeRange = '30d')
     };
   });
 
-  return {
+  const result: GovernanceInsightsData = {
     workspaceId,
     timeRange: range,
     lastSynced: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
@@ -616,4 +625,7 @@ export async function getInsights(workspaceId: string, range: TimeRange = '30d')
     knowledgeGaps,
     timeline,
   };
+
+  insightsCache.set(cacheKey, { data: result, timestamp: Date.now() });
+  return result;
 }

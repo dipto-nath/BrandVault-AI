@@ -190,9 +190,52 @@ export async function runAnalysis(submissionId: string, workspaceId: string, use
     }
   }
 
+  // Feature 3: Persist exact claim dependencies for re-verification tracking
+  try {
+    const citedFactIds = new Set<string>();
+    for (const c of result.claims || []) {
+      if (c.evidenceIds) c.evidenceIds.forEach((id: string) => citedFactIds.add(id));
+    }
+    for (const f of result.findings || []) {
+      if (f.evidenceIds) f.evidenceIds.forEach((id: string) => citedFactIds.add(id));
+    }
+
+    if (citedFactIds.size > 0) {
+      const factsList = await storage.listFacts(workspaceId);
+      const factsMap = new Map(factsList.map((f) => [f.id, f]));
+      const dependenciesToSave = Array.from(citedFactIds).map((factId) => {
+        const fact = factsMap.get(factId);
+        return {
+          workspace_id: workspaceId,
+          submission_id: submissionId,
+          claim_id: null,
+          dependency_type: 'FACT' as const,
+          dependency_id: factId,
+          dependency_code: fact?.fact_code || 'FACT',
+          dependency_name: fact?.title || 'Approved Fact',
+          dependency_version: 1,
+          cited_value: fact?.fact_text || '',
+        };
+      });
+
+      if (dependenciesToSave.length > 0) {
+        await storage.createClaimDependencies(dependenciesToSave);
+      }
+    }
+  } catch (depErr) {
+    console.warn('[Submissions] Failed saving claim dependencies:', depErr);
+  }
+
   const riskLevel = result.riskLevel as 'LOW' | 'MEDIUM' | 'HIGH';
+  const currentSub = await storage.getSubmission(submissionId);
+  const nextStatus = currentSub?.status === 'OUTDATED'
+    ? 'OUTDATED'
+    : currentSub?.status === 'NEEDS_RE_REVIEW' || currentSub?.stale_passport
+    ? 'NEEDS_RE_REVIEW'
+    : 'NEEDS_REVIEW';
+
   await storage.updateSubmission(submissionId, {
-    status: result.findings.length > 0 ? 'NEEDS_REVIEW' : 'NEEDS_REVIEW',
+    status: nextStatus,
     risk_level: riskLevel,
   });
   await audit.log(workspaceId, userId, 'analysis_run', run.id, 'COMPLETED', null, {

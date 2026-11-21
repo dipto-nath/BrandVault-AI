@@ -85,6 +85,8 @@ export default async function ReviewsPage({
         <div className="flex flex-wrap gap-2">
           <StatusFilterBadge label="All" active={!status} href="/reviews" />
           <StatusFilterBadge label="Needs Review" active={status === 'NEEDS_REVIEW'} href="/reviews?status=NEEDS_REVIEW" />
+          <StatusFilterBadge label="Needs Re-Review" active={status === 'NEEDS_RE_REVIEW'} href="/reviews?status=NEEDS_RE_REVIEW" />
+          <StatusFilterBadge label="Outdated" active={status === 'OUTDATED'} href="/reviews?status=OUTDATED" />
           <StatusFilterBadge label="Changes Requested" active={status === 'CHANGES_REQUESTED'} href="/reviews?status=CHANGES_REQUESTED" />
           <StatusFilterBadge label="Approved" active={status === 'APPROVED'} href="/reviews?status=APPROVED" />
           <StatusFilterBadge label="Rejected" active={status === 'REJECTED'} href="/reviews?status=REJECTED" />
@@ -174,9 +176,21 @@ export default async function ReviewsPage({
                         >
                           {s.title}
                         </Link>
-                        <span className="font-mono text-[11px] text-ink-muted bg-surface-subtle px-1.5 py-0.5 rounded mt-1 inline-block border border-border/50">
-                          {getSubmissionReference(s)}
-                        </span>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                          <span className="font-mono text-[11px] text-ink-muted bg-surface-subtle px-1.5 py-0.5 rounded inline-block border border-border/50">
+                            {getSubmissionReference(s)}
+                          </span>
+                          {s.status === 'NEEDS_RE_REVIEW' && (
+                            <span className="text-[10px] font-semibold text-amber-900 bg-amber-100 border border-amber-300 px-1.5 py-0.5 rounded">
+                              Fact changed: {s.stale_dependency_name || 'Approved Fact'}
+                            </span>
+                          )}
+                          {s.status === 'OUTDATED' && (
+                            <span className="text-[10px] font-semibold text-proof-red bg-red-100 border border-proof-red/20 px-1.5 py-0.5 rounded">
+                              Evidence expired: {s.stale_dependency_name || 'Source'}
+                            </span>
+                          )}
+                        </div>
                       </Td>
                       <Td className="py-3 px-4 text-xs text-ink-secondary">
                         <span className="font-semibold text-ink-dark block">{s.content_type}</span>

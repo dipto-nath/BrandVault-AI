@@ -89,6 +89,29 @@ export function NotificationPopover() {
     };
 
     window.addEventListener('storage', handleStorageChange);
+
+    // Fetch active re-verification tasks
+    fetch('/api/review-tasks')
+      .then((res) => (res.ok ? res.json() : { tasks: [] }))
+      .then((data) => {
+        if (data?.tasks && data.tasks.length > 0) {
+          const taskNotifs: NotificationItem[] = data.tasks.map((t: any) => ({
+            id: `task-${t.id}`,
+            type: 'critical',
+            title: `Re-review required: ${t.dependency_name} changed`,
+            description: `Underlying specification changed from "${t.before_value}" to "${t.after_value}". Post "${t.submission_title || 'Nova Launch Campaign'}" requires human re-approval.`,
+            time: 'Just now',
+            href: `/reviews/${t.submission_id}`,
+            read: t.status === 'RESOLVED',
+          }));
+          setNotifications((prev) => {
+            const filtered = prev.filter((p) => !p.id.startsWith('task-'));
+            return [...taskNotifs, ...filtered];
+          });
+        }
+      })
+      .catch(() => {});
+
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 

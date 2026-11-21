@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, Tbody, Td, Th, Thead, Tr } from '@/components/ui/table';
 import { formatDateTime, getPassportReference, statusToVariant } from '@/lib/utils';
+import { StalePassportBanner } from './stale-passport-banner';
 import type {
   ContentSubmission, ExtractedClaim, Finding, ReviewDecisionRecord,
   ContentVersion, AnalysisRun, AuditLog, FindingEvidence, ApprovedFact
@@ -169,6 +170,19 @@ export function PassportView({
           </Button>
         </div>
       </div>
+
+      {/* Feature 3: Stale Passport Invalidation Banner */}
+      {(submission.stale_passport || submission.status === 'NEEDS_RE_REVIEW' || submission.status === 'OUTDATED') && (
+        <StalePassportBanner
+          submissionId={submission.reference || submission.id}
+          staleReason={submission.stale_reason}
+          dependencyName={submission.stale_dependency_name}
+          beforeValue={submission.stale_diff_before}
+          afterValue={submission.stale_diff_after}
+          status={submission.status}
+          staleAt={submission.stale_at}
+        />
+      )}
 
       {/* Main Passport Certificate Container */}
       <div className="bg-surface border-2 border-border rounded-xl p-8 sm:p-10 shadow-sm space-y-8 print:border-none print:shadow-none print:p-0 print:m-0 print:bg-transparent">

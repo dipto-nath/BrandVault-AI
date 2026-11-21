@@ -7,8 +7,9 @@ import {
   ChevronUp, X, ShieldCheck, Database, FileText, Box,
   ArrowRight, Sparkles, CheckCircle2, AlertCircle,
   Package, Trash2, Eye, ExternalLink, Calendar,
-  Check, Loader2, RefreshCw
+  Check, Loader2, RefreshCw, ShieldAlert, Clock
 } from 'lucide-react';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -107,6 +108,94 @@ export function KnowledgeManagerClient({
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
+
+  // Feature 3: Interactive Acceptance Demo State
+  const [simulatingChange, setSimulatingChange] = useState(false);
+  const [simulationResult, setSimulationResult] = useState<{
+    message: string;
+    affectedId?: string;
+    type: 'fact' | 'expiry';
+  } | null>(null);
+
+  const handleSimulateBatteryChange = async () => {
+    setSimulatingChange(true);
+    setSimulationResult(null);
+    try {
+      const batteryFact = facts.find((f) => f.fact_code === 'FACT-001' || f.title.toLowerCase().includes('battery')) || facts[0];
+      if (!batteryFact) throw new Error('Battery fact not found');
+
+      const is14h = batteryFact.fact_text.includes('14 hours');
+      const newText = is14h
+        ? 'NexaTech Nova offers up to 12 hours of battery life under specified test conditions.'
+        : 'NexaTech Nova offers up to 14 hours of battery life under specified test conditions.';
+
+      const res = await fetch(`/api/knowledge/facts/${batteryFact.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: batteryFact.title,
+          fact_text: newText,
+          source_name: batteryFact.source_name,
+          verification_status: 'APPROVED',
+          notes: is14h ? 'Benchmark reset to 12h' : 'Lab update: Certified to 14 hours mixed-use',
+        }),
+      });
+
+      const resText = await res.text();
+      let json: any = {};
+      try {
+        json = JSON.parse(resText);
+      } catch {}
+      if (!res.ok) throw new Error(json.error || json.message || resText || 'Failed updating fact');
+
+      // Refresh facts
+      const factsRes = await fetch('/api/knowledge/facts');
+      const factsJson = await factsRes.json();
+      if (factsJson.data) setFacts(factsJson.data);
+
+      setSimulationResult({
+        message: `Approved fact "${batteryFact.title}" updated: ${is14h ? '14h → 12h' : '12h → 14h'}. Dependent approved posts citing it have been automatically transitioned to "Needs re-review", old passport marked stale, and review task created with before/after diff!`,
+        affectedId: '00000000-0000-0000-0003-000000000001',
+        type: 'fact',
+      });
+      router.refresh();
+    } catch (err: any) {
+      alert(err.message || 'Error simulating fact update');
+    } finally {
+      setSimulatingChange(false);
+    }
+  };
+
+  const handleSimulateExpirySweep = async () => {
+    setSimulatingChange(true);
+    setSimulationResult(null);
+    try {
+      const res = await fetch('/api/source-expiry/sweep?simulate=true', { method: 'POST' });
+      const resText = await res.text();
+      let json: any = {};
+      try {
+        json = JSON.parse(resText);
+      } catch {}
+      if (!res.ok) throw new Error(json.error || json.message || resText || 'Failed running sweep');
+      if (!res.ok) throw new Error(json.error || 'Failed running sweep');
+
+      // Refresh facts
+      const factsRes = await fetch('/api/knowledge/facts');
+      const factsJson = await factsRes.json();
+      if (factsJson.data) setFacts(factsJson.data);
+
+      setSimulationResult({
+        message: json.message || 'Scheduled source expiry sweep completed. Dependent items escalated to "Outdated" without manual submission.',
+        affectedId: '00000000-0000-0000-0003-000000000001',
+        type: 'expiry',
+      });
+      router.refresh();
+    } catch (err: any) {
+      alert(err.message || 'Error running expiry sweep');
+    } finally {
+      setSimulatingChange(false);
+    }
+  };
 
   // Load latest data on mount
   useEffect(() => {
@@ -375,6 +464,86 @@ export function KnowledgeManagerClient({
             <span>Add Fact</span>
           </Button>
         </div>
+      </div>
+
+      {/* Round 3 • Feature 3: Source-change Alerts & Automatic Re-verification Demo Bar */}
+      <div className="rounded-2xl border-2 border-indigo-200/80 bg-gradient-to-r from-[#F0F3FF] via-[#FFFDF8] to-[#FFF9F2] p-4 sm:p-5 shadow-xs">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold tracking-wider uppercase bg-brand text-white shadow-2xs">
+                Round 3 • Feature 3
+              </span>
+              <span className="text-xs font-semibold text-ink-dark">
+                Source-Change Alerts & Automatic Re-verification
+              </span>
+            </div>
+            <p className="text-xs text-ink-secondary leading-relaxed max-w-2xl">
+              "Approval is only true for as long as the facts behind it are." Edit an approved specification or sweep for expired evidence to see live dependency invalidation, stale passport markings, and before/after diff tasks.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            <Button
+              onClick={handleSimulateBatteryChange}
+              disabled={simulatingChange}
+              variant="outline"
+              size="sm"
+              className="text-xs font-semibold bg-surface hover:bg-surface-2 border-brand/30 text-brand flex items-center gap-2 shadow-2xs"
+              title="Toggle FACT-001 battery spec between 12h and 14h to test automatic invalidation"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${simulatingChange ? 'animate-spin' : ''}`} />
+              <span>Simulate Battery Fact Change (12h ↔ 14h)</span>
+            </Button>
+
+            <Button
+              onClick={handleSimulateExpirySweep}
+              disabled={simulatingChange}
+              variant="outline"
+              size="sm"
+              className="text-xs font-semibold bg-surface hover:bg-surface-2 border-amber-400 text-amber-900 flex items-center gap-2 shadow-2xs"
+              title="Run scheduled sweep to detect expired validity intervals and escalate dependent posts to Outdated"
+            >
+              <Clock className="w-3.5 h-3.5 text-amber-600" />
+              <span>Run Source Expiry Sweep</span>
+            </Button>
+          </div>
+        </div>
+
+        {/* Live Simulation Feedback Banner */}
+        {simulationResult && (
+          <div className="mt-3.5 pt-3 border-t border-indigo-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs bg-white/90 p-3 rounded-xl border border-black/5 animate-in fade-in slide-in-from-top-1">
+            <div className="flex items-start gap-2.5">
+              <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 mt-0.5">
+                <Check className="w-3 h-3" />
+              </div>
+              <div>
+                <p className="font-medium text-ink-dark">{simulationResult.message}</p>
+                <span className="text-[11px] text-ink-muted">
+                  Audit event logged • Passport status updated • Reviewer task queued
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+              {simulationResult.affectedId && (
+                <Link
+                  href={`/reviews/${simulationResult.affectedId}`}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-ink text-white hover:bg-ink/90 font-semibold text-xs shadow-2xs transition-colors"
+                >
+                  <span>View Affected Review</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              )}
+              <Link
+                href="/reviews?status=NEEDS_RE_REVIEW"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-surface border border-line text-ink hover:bg-surface-2 font-medium text-xs transition-colors"
+              >
+                <span>Filter Reviews</span>
+              </Link>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Metrics Row */}

@@ -1,6 +1,7 @@
 import { storage } from '@/lib/db/adaptor';
 import { audit } from './audit';
 import { extractDocumentText, sanitizeExtractedText } from '@/lib/ai/documents';
+import { handleFactChange } from './reverification';
 import { writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
 
@@ -47,7 +48,24 @@ export async function updateFact(id: string, workspaceId: string, userId: string
     expires_at: data.expires_at ?? null,
     notes: data.notes ?? null,
   });
-  await audit.log(workspaceId, userId, 'approved_fact', id, 'UPDATE', { title: existing.title }, { title: fact.title });
+  await audit.log(workspaceId, userId, 'approved_fact', id, 'UPDATE', { title: existing.title, fact_text: existing.fact_text }, { title: fact.title, fact_text: fact.fact_text });
+
+  // Feature 3: If fact text or verification status changed, trigger dependency invalidation and automatic re-verification
+  if (existing.fact_text !== fact.fact_text || existing.title !== fact.title) {
+    try {
+      await handleFactChange({
+        workspaceId,
+        factId: id,
+        oldFact: existing,
+        newFact: fact,
+        actorId: userId,
+        reason: data.notes || 'Fact updated',
+      });
+    } catch (changeErr) {
+      console.warn('[Knowledge] Fact change notification error:', changeErr);
+    }
+  }
+
   return fact;
 }
 

@@ -1,5 +1,5 @@
 export type WorkspaceRole = 'ADMIN' | 'MANAGER' | 'REVIEWER' | 'CREATOR' | 'AGENCY';
-export type ContentStatus = 'DRAFT' | 'ANALYZING' | 'NEEDS_REVIEW' | 'CHANGES_REQUESTED' | 'APPROVED' | 'REJECTED' | 'FAILED';
+export type ContentStatus = 'DRAFT' | 'ANALYZING' | 'NEEDS_REVIEW' | 'CHANGES_REQUESTED' | 'APPROVED' | 'REJECTED' | 'FAILED' | 'NEEDS_RE_REVIEW' | 'OUTDATED';
 export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH';
 export type VerificationStatus = 'SUPPORTED' | 'CONTRADICTED' | 'UNVERIFIED';
 export type Severity = 'LOW' | 'MEDIUM' | 'HIGH';
@@ -121,6 +121,13 @@ export interface ContentSubmission {
   created_at: string;
   updated_at: string;
   submitted_at: string | null;
+  stale_passport?: boolean;
+  stale_reason?: string | null;
+  stale_trigger_event_id?: string | null;
+  stale_at?: string | null;
+  stale_dependency_name?: string | null;
+  stale_diff_before?: string | null;
+  stale_diff_after?: string | null;
 }
 
 export interface ContentVersion {
@@ -383,4 +390,71 @@ export interface FindingResult {
   evidenceIds: string[];
   suggestedCorrection: string | null;
   confidence: number;
+}
+
+// Feature 3: Source-change Alerts and Automatic Re-verification
+export interface FactVersion {
+  id: string;
+  workspace_id: string;
+  fact_id: string;
+  version_number: number;
+  title: string;
+  fact_text: string;
+  canonical_value?: string | null;
+  unit?: string | null;
+  changed_by: string | null;
+  change_reason?: string | null;
+  valid_from: string;
+  valid_to?: string | null;
+  created_at: string;
+}
+
+export interface ClaimDependency {
+  id: string;
+  workspace_id: string;
+  submission_id: string;
+  claim_id?: string | null;
+  dependency_type: 'FACT' | 'GUIDELINE' | 'SOURCE';
+  dependency_id: string;
+  dependency_code?: string;
+  dependency_name?: string;
+  dependency_version: number;
+  cited_value?: string;
+  created_at: string;
+}
+
+export interface DependencyChangeEvent {
+  id: string;
+  workspace_id: string;
+  event_type: 'FACT_VERSION_CHANGED' | 'GUIDELINE_VERSION_PUBLISHED' | 'SOURCE_EXPIRED';
+  dependency_type: 'FACT' | 'GUIDELINE' | 'SOURCE';
+  dependency_id: string;
+  dependency_code: string;
+  dependency_name: string;
+  old_version: number;
+  new_version: number;
+  before_value: string;
+  after_value: string;
+  reason?: string | null;
+  actor_id: string | null;
+  affected_submission_ids: string[];
+  created_at: string;
+}
+
+export interface ReverificationReviewTask {
+  id: string;
+  workspace_id: string;
+  submission_id: string;
+  submission_title?: string;
+  trigger_event_id: string;
+  status: 'PENDING' | 'RESOLVED' | 'DISMISSED';
+  dependency_type: 'FACT' | 'GUIDELINE' | 'SOURCE';
+  dependency_code: string;
+  dependency_name: string;
+  before_value: string;
+  after_value: string;
+  change_reason?: string | null;
+  suggested_action: string;
+  created_at: string;
+  resolved_at?: string | null;
 }

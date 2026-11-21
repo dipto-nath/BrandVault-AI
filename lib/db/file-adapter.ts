@@ -9,7 +9,7 @@ import type {
   FindingEvidence, ReviewDecisionRecord, FindingFeedback,
   GuidelineSuggestion, AuditLog, FactVerificationStatus,
   DocumentStatus, SuggestionStatus, FeedbackType,
-  Product,
+  Product, FactVersion, ClaimDependency, DependencyChangeEvent, ReverificationReviewTask,
 } from '@/types/database';
 
 const IS_VERCEL = Boolean(process.env.VERCEL);
@@ -33,11 +33,14 @@ interface Store {
   findingEvidence: FindingEvidence[]; reviewDecisions: ReviewDecisionRecord[];
   findingFeedback: FindingFeedback[]; guidelineSuggestions: GuidelineSuggestion[];
   auditLogs: AuditLog[]; products: Product[];
+  factVersions: FactVersion[]; claimDependencies: ClaimDependency[];
+  changeEvents: DependencyChangeEvent[]; reviewTasks: ReverificationReviewTask[];
 }
 function emptyStore(): Store {
   return { workspaces: [], profiles: [], members: [], guidelines: [], facts: [], documents: [],
     submissions: [], versions: [], analysisRuns: [], claims: [], findings: [],
-    findingEvidence: [], reviewDecisions: [], findingFeedback: [], guidelineSuggestions: [], auditLogs: [], products: [] };
+    findingEvidence: [], reviewDecisions: [], findingFeedback: [], guidelineSuggestions: [], auditLogs: [], products: [],
+    factVersions: [], claimDependencies: [], changeEvents: [], reviewTasks: [] };
 }
 function loadStore(): Store {
   try {
@@ -51,7 +54,15 @@ function loadStore(): Store {
       }
     }
     if (!s) return emptyStore();
-    return { ...emptyStore(), ...s, products: s.products || [] };
+    return {
+      ...emptyStore(),
+      ...s,
+      products: s.products || [],
+      factVersions: s.factVersions || [],
+      claimDependencies: s.claimDependencies || [],
+      changeEvents: s.changeEvents || [],
+      reviewTasks: s.reviewTasks || [],
+    };
   } catch {
     return emptyStore();
   }
@@ -92,6 +103,56 @@ function seed(store: Store): Store {
         if (!f.product_id && (f.entity_name?.includes('Nova') || f.title?.toLowerCase().includes('battery') || f.title?.toLowerCase().includes('device') || f.title?.toLowerCase().includes('material') || f.title?.toLowerCase().includes('waterproof') || f.title?.toLowerCase().includes('launch'))) {
           f.product_id = '00000000-0000-0004-000000000001';
         }
+      }
+
+      // Feature 3: Ensure baseline fact versions and claim dependencies are seeded
+      if (!store.factVersions || store.factVersions.length === 0) {
+        store.factVersions = store.facts.map((f) => ({
+          id: uid(),
+          workspace_id: f.workspace_id,
+          fact_id: f.id,
+          version_number: 1,
+          title: f.title,
+          fact_text: f.fact_text,
+          canonical_value: f.fact_code === 'FACT-001' ? '12 hours' : null,
+          unit: f.fact_code === 'FACT-001' ? 'hours' : null,
+          changed_by: DEMO_USER_ID,
+          change_reason: 'Initial approved baseline version',
+          valid_from: f.created_at,
+          valid_to: null,
+          created_at: f.created_at,
+        }));
+      }
+
+      if (!store.claimDependencies || store.claimDependencies.length === 0) {
+        store.claimDependencies = [
+          {
+            id: uid(),
+            workspace_id: DEMO_WORKSPACE_ID,
+            submission_id: '00000000-0000-0000-0003-000000000001',
+            claim_id: null,
+            dependency_type: 'FACT',
+            dependency_id: '00000000-0000-0000-0002-000000000001',
+            dependency_code: 'FACT-001',
+            dependency_name: 'Battery life',
+            dependency_version: 1,
+            cited_value: 'up to 12 hours under specified test conditions',
+            created_at: now(),
+          },
+          {
+            id: uid(),
+            workspace_id: DEMO_WORKSPACE_ID,
+            submission_id: '00000000-0000-0000-0003-000000000001',
+            claim_id: null,
+            dependency_type: 'FACT',
+            dependency_id: '00000000-0000-0000-0002-000000000002',
+            dependency_code: 'FACT-002',
+            dependency_name: 'Device weight',
+            dependency_version: 1,
+            cited_value: 'weighs 185 grams',
+            created_at: now(),
+          },
+        ];
       }
       saveStore(store);
     }
@@ -580,5 +641,153 @@ export class FileStorage implements Storage {
       highRisk: openHighFindings.length,
       recent: clone(recent),
     };
+  }
+
+  // ---------- Feature 3: Fact versions & history ----------
+  async createFactVersion(data: Omit<FactVersion, 'id' | 'created_at'>): Promise<FactVersion> {
+    const store = this.store();
+    if (!store.factVersions) store.factVersions = [];
+    const fv: FactVersion = {
+      id: uid(),
+      workspace_id: data.workspace_id,
+      fact_id: data.fact_id,
+      version_number: data.version_number,
+      title: data.title,
+      fact_text: data.fact_text,
+      canonical_value: data.canonical_value ?? null,
+      unit: data.unit ?? null,
+      changed_by: data.changed_by ?? null,
+      change_reason: data.change_reason ?? null,
+      valid_from: data.valid_from,
+      valid_to: data.valid_to ?? null,
+      created_at: now(),
+    };
+    store.factVersions.push(fv);
+    persist(store);
+    return clone(fv);
+  }
+
+  async listFactVersions(factId: string): Promise<FactVersion[]> {
+    const arr = (this.store().factVersions || []).filter((fv) => fv.fact_id === factId);
+    return clone(arr.sort((a, b) => b.version_number - a.version_number));
+  }
+
+  // ---------- Feature 3: Claim dependencies ----------
+  async createClaimDependencies(dependencies: Array<Omit<ClaimDependency, 'id' | 'created_at'>>): Promise<ClaimDependency[]> {
+    const store = this.store();
+    if (!store.claimDependencies) store.claimDependencies = [];
+    const created: ClaimDependency[] = dependencies.map((d) => ({
+      id: uid(),
+      workspace_id: d.workspace_id,
+      submission_id: d.submission_id,
+      claim_id: d.claim_id ?? null,
+      dependency_type: d.dependency_type,
+      dependency_id: d.dependency_id,
+      dependency_code: d.dependency_code,
+      dependency_name: d.dependency_name,
+      dependency_version: d.dependency_version,
+      cited_value: d.cited_value,
+      created_at: now(),
+    }));
+    store.claimDependencies.push(...created);
+    persist(store);
+    return clone(created);
+  }
+
+  async listClaimDependencies(submissionId: string): Promise<ClaimDependency[]> {
+    const arr = (this.store().claimDependencies || []).filter((d) => d.submission_id === submissionId);
+    return clone(arr);
+  }
+
+  async findSubmissionsByDependency(workspaceId: string, dependencyType: 'FACT' | 'GUIDELINE' | 'SOURCE', dependencyId: string): Promise<string[]> {
+    const deps = (this.store().claimDependencies || []).filter(
+      (d) => d.workspace_id === workspaceId && d.dependency_type === dependencyType && d.dependency_id === dependencyId
+    );
+    const subIds = new Set<string>(deps.map((d) => d.submission_id));
+    return Array.from(subIds);
+  }
+
+  // ---------- Feature 3: Dependency change events & review tasks ----------
+  async createChangeEvent(data: Omit<DependencyChangeEvent, 'id' | 'created_at'>): Promise<DependencyChangeEvent> {
+    const store = this.store();
+    if (!store.changeEvents) store.changeEvents = [];
+    const ev: DependencyChangeEvent = {
+      id: uid(),
+      workspace_id: data.workspace_id,
+      event_type: data.event_type,
+      dependency_type: data.dependency_type,
+      dependency_id: data.dependency_id,
+      dependency_code: data.dependency_code,
+      dependency_name: data.dependency_name,
+      old_version: data.old_version,
+      new_version: data.new_version,
+      before_value: data.before_value,
+      after_value: data.after_value,
+      reason: data.reason ?? null,
+      actor_id: data.actor_id ?? null,
+      affected_submission_ids: data.affected_submission_ids || [],
+      created_at: now(),
+    };
+    store.changeEvents.unshift(ev);
+    persist(store);
+    return clone(ev);
+  }
+
+  async listChangeEvents(workspaceId: string): Promise<DependencyChangeEvent[]> {
+    const arr = (this.store().changeEvents || []).filter((e) => e.workspace_id === workspaceId);
+    return clone(arr.sort((a, b) => b.created_at.localeCompare(a.created_at)));
+  }
+
+  async getChangeEvent(id: string): Promise<DependencyChangeEvent | null> {
+    const ev = (this.store().changeEvents || []).find((e) => e.id === id);
+    return ev ? clone(ev) : null;
+  }
+
+  async createReviewTask(data: Omit<ReverificationReviewTask, 'id' | 'created_at'>): Promise<ReverificationReviewTask> {
+    const store = this.store();
+    if (!store.reviewTasks) store.reviewTasks = [];
+    const task: ReverificationReviewTask = {
+      id: uid(),
+      workspace_id: data.workspace_id,
+      submission_id: data.submission_id,
+      submission_title: data.submission_title,
+      trigger_event_id: data.trigger_event_id,
+      status: data.status ?? 'PENDING',
+      dependency_type: data.dependency_type,
+      dependency_code: data.dependency_code,
+      dependency_name: data.dependency_name,
+      before_value: data.before_value,
+      after_value: data.after_value,
+      change_reason: data.change_reason ?? null,
+      suggested_action: data.suggested_action,
+      created_at: now(),
+      resolved_at: null,
+    };
+    store.reviewTasks.unshift(task);
+    persist(store);
+    return clone(task);
+  }
+
+  async listReviewTasks(workspaceId: string, opts?: { status?: string }): Promise<ReverificationReviewTask[]> {
+    let arr = (this.store().reviewTasks || []).filter((t) => t.workspace_id === workspaceId);
+    if (opts?.status) {
+      arr = arr.filter((t) => t.status === opts.status);
+    }
+    return clone(arr.sort((a, b) => b.created_at.localeCompare(a.created_at)));
+  }
+
+  async updateReviewTask(id: string, data: Partial<Pick<ReverificationReviewTask, 'status' | 'resolved_at'>>): Promise<ReverificationReviewTask> {
+    const store = this.store();
+    if (!store.reviewTasks) store.reviewTasks = [];
+    const idx = store.reviewTasks.findIndex((t) => t.id === id);
+    if (idx === -1) throw new Error('Review task not found');
+    const updated = {
+      ...store.reviewTasks[idx],
+      ...data,
+      resolved_at: data.status === 'RESOLVED' ? now() : store.reviewTasks[idx].resolved_at,
+    };
+    store.reviewTasks[idx] = updated;
+    persist(store);
+    return clone(updated);
   }
 }

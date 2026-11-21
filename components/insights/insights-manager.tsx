@@ -685,65 +685,73 @@ export function InsightsManager({
                   const maxBucketTotal = Math.max(
                     1,
                     ...data.charts.evidenceOverTime.map((item) => {
-                      const sup = seriesActive.supported ? item.supported : 0;
-                      const con = seriesActive.contradicted ? item.contradicted : 0;
-                      const unv = seriesActive.unverified ? item.unverified : 0;
-                      const out = seriesActive.outdated ? item.outdated : 0;
+                      const sup = seriesActive.supported ? (item.supported || 0) : 0;
+                      const con = seriesActive.contradicted ? (item.contradicted || 0) : 0;
+                      const unv = seriesActive.unverified ? (item.unverified || 0) : 0;
+                      const out = seriesActive.outdated ? (item.outdated || 0) : 0;
                       return sup + con + unv + out;
                     })
                   );
-                  const maxBarHeightPx = 135;
 
                   return (
-                    <div className="h-48 flex items-end justify-between gap-2 pt-4 px-2 border-b border-sand-dark/40 overflow-hidden">
+                    <div className="h-48 flex items-end justify-between gap-2 pt-4 px-2 border-b border-sand-dark/40 overflow-hidden relative isolate">
                       {data.charts.evidenceOverTime.map((item, idx) => {
-                        const sup = seriesActive.supported ? item.supported : 0;
-                        const con = seriesActive.contradicted ? item.contradicted : 0;
-                        const unv = seriesActive.unverified ? item.unverified : 0;
-                        const out = seriesActive.outdated ? item.outdated : 0;
+                        const sup = seriesActive.supported ? (item.supported || 0) : 0;
+                        const con = seriesActive.contradicted ? (item.contradicted || 0) : 0;
+                        const unv = seriesActive.unverified ? (item.unverified || 0) : 0;
+                        const out = seriesActive.outdated ? (item.outdated || 0) : 0;
                         const total = sup + con + unv + out;
-                        const barTotalHeight = total > 0 ? Math.max(4, Math.round((total / maxBucketTotal) * maxBarHeightPx)) : 0;
 
-                        // Proportional heights for each segment totaling exactly barTotalHeight
-                        const supHeight = total > 0 ? Math.round((sup / total) * barTotalHeight) : 0;
-                        const unvHeight = total > 0 ? Math.round((unv / total) * barTotalHeight) : 0;
-                        const conHeight = total > 0 ? Math.round((con / total) * barTotalHeight) : 0;
-                        const outHeight = total > 0 ? Math.max(0, barTotalHeight - supHeight - unvHeight - conHeight) : 0;
+                        // Height percentage of the bar relative to max bucket (clamped between 6% and 100%)
+                        const barHeightPct = total > 0 ? Math.max(6, Math.min(100, Math.round((total / maxBucketTotal) * 100))) : 0;
+
+                        // Calculate percentage of each segment within this specific bar
+                        const supPct = total > 0 ? (sup / total) * 100 : 0;
+                        const unvPct = total > 0 ? (unv / total) * 100 : 0;
+                        const conPct = total > 0 ? (con / total) * 100 : 0;
+                        const outPct = total > 0 ? Math.max(0, 100 - supPct - unvPct - conPct) : 0;
 
                         return (
                           <Link
                             key={idx}
                             href="/reviews"
-                            className="flex-1 flex flex-col items-center justify-end h-full group cursor-pointer"
+                            className="flex-1 flex flex-col items-center justify-end h-full group cursor-pointer relative"
                             title={`${item.label}: ${total} findings (Click to see reviews)`}
                           >
-                            <div
-                              style={{ height: `${barTotalHeight}px` }}
-                              className="w-full max-w-[28px] max-h-[135px] rounded-t-md overflow-hidden flex flex-col-reverse transition-transform group-hover:scale-105"
-                            >
-                              {supHeight > 0 && (
+                            {/* Bar Track with rigid bounded height */}
+                            <div className="w-full max-w-[28px] h-[135px] flex items-end justify-center relative overflow-hidden">
+                              {barHeightPct > 0 ? (
                                 <div
-                                  style={{ height: `${supHeight}px` }}
-                                  className="bg-evidence-supported w-full shrink-0"
-                                />
-                              )}
-                              {unvHeight > 0 && (
-                                <div
-                                  style={{ height: `${unvHeight}px` }}
-                                  className="bg-evidence-unverified w-full shrink-0"
-                                />
-                              )}
-                              {conHeight > 0 && (
-                                <div
-                                  style={{ height: `${conHeight}px` }}
-                                  className="bg-evidence-contradicted w-full shrink-0"
-                                />
-                              )}
-                              {outHeight > 0 && (
-                                <div
-                                  style={{ height: `${outHeight}px` }}
-                                  className="bg-evidence-outdated w-full shrink-0"
-                                />
+                                  style={{ height: `${barHeightPct}%` }}
+                                  className="w-full rounded-t-md overflow-hidden flex flex-col-reverse transition-transform duration-150 group-hover:scale-105 relative isolate"
+                                >
+                                  {supPct > 0 && (
+                                    <div
+                                      style={{ height: `${supPct}%` }}
+                                      className="bg-evidence-supported w-full shrink-0"
+                                    />
+                                  )}
+                                  {unvPct > 0 && (
+                                    <div
+                                      style={{ height: `${unvPct}%` }}
+                                      className="bg-evidence-unverified w-full shrink-0"
+                                    />
+                                  )}
+                                  {conPct > 0 && (
+                                    <div
+                                      style={{ height: `${conPct}%` }}
+                                      className="bg-evidence-contradicted w-full shrink-0"
+                                    />
+                                  )}
+                                  {outPct > 0 && (
+                                    <div
+                                      style={{ height: `${outPct}%` }}
+                                      className="bg-evidence-outdated w-full shrink-0"
+                                    />
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="w-full h-1 bg-sand-dark/20 rounded-full" />
                               )}
                             </div>
                             <span className="text-[10px] text-ink-muted font-mono mt-2 truncate w-full text-center">

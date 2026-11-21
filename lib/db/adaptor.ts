@@ -35,10 +35,10 @@ class ResilientStorage {
             }
 
             try {
-              // Enforce 1-second max timeout on Supabase queries so they never hang the UI
+              // Enforce 500ms max timeout on Supabase queries so they never hang the UI
               let timeoutHandle: any;
               const timeoutPromise = new Promise((_, reject) => {
-                timeoutHandle = setTimeout(() => reject(new Error('Supabase query timed out after 1000ms')), 1000);
+                timeoutHandle = setTimeout(() => reject(new Error('Supabase query timed out after 500ms')), 500);
               });
 
               const primaryPromise = (target.primary as any)[prop](...args).finally(() => {
@@ -47,27 +47,19 @@ class ResilientStorage {
 
               const res = await Promise.race([primaryPromise, timeoutPromise]);
               if (res === null && (prop === 'getDemoWorkspace' || prop === 'getWorkspace')) {
+                // Trip circuit breaker if Supabase doesn't have workspace records
+                isSupabaseOfflineUntil = Date.now() + 5 * 60 * 1000;
                 const fbRes = await (target.fallback as any)[prop](...args);
                 if (fbRes) return fbRes;
               }
               return res;
             } catch (err: any) {
               const msg = String(err?.message || err);
-              // Trip circuit breaker on network/DNS errors or timeout
-              if (
-                msg.includes('fetch failed') ||
-                msg.includes('ENOTFOUND') ||
-                msg.includes('ECONNREFUSED') ||
-                msg.includes('ETIMEDOUT') ||
-                msg.includes('timed out') ||
-                msg.includes('NetworkError')
-              ) {
-                // Trip circuit breaker for 5 minutes
-                isSupabaseOfflineUntil = Date.now() + 5 * 60 * 1000;
-                console.warn(`[Storage] Supabase unavailable (${msg.slice(0, 60)}). Routing to local fast storage for 5m.`);
-                if (typeof (target.fallback as any)[prop] === 'function') {
-                  return (target.fallback as any)[prop](...args);
-                }
+              // Trip circuit breaker for 5 minutes so subsequent calls are instant
+              isSupabaseOfflineUntil = Date.now() + 5 * 60 * 1000;
+              console.warn(`[Storage] Supabase query '${String(prop)}' failed (${msg.slice(0, 60)}). Routing to local fast storage for 5m.`);
+              if (typeof (target.fallback as any)[prop] === 'function') {
+                return (target.fallback as any)[prop](...args);
               }
               throw err;
             }

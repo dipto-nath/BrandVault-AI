@@ -21,6 +21,7 @@ import type {
   ReviewDecisionRecord, ContentVersion, FindingEvidence, ApprovedFact, BrandGuideline
 } from '@/types/database';
 import { mapRawFindingsToViewModel, FindingViewModel, FindingOccurrence } from './finding-mapper';
+import { ChangeDiff } from './change-diff';
 
 // Helper components for visual analysis display
 function VisualAssetCheck({ visualAsset }: { visualAsset: any }) {
@@ -737,6 +738,18 @@ export function ReviewStudio({
             <X className="w-4 h-4" />
           </button>
         </div>
+      )}
+
+      {/* Feature 3: Dependency Change & Invalidation Alert Banner */}
+      {(submission.stale_passport || submission.status === 'NEEDS_RE_REVIEW' || submission.status === 'OUTDATED') && (
+        <ChangeDiff
+          dependencyType={submission.status === 'OUTDATED' ? 'SOURCE' : 'FACT'}
+          dependencyName={submission.stale_dependency_name || 'Approved Specification'}
+          beforeValue={submission.stale_diff_before || '12 hours of battery life under test conditions'}
+          afterValue={submission.stale_diff_after || '14 hours of battery life under test conditions'}
+          reason={submission.stale_reason}
+          status={submission.status}
+        />
       )}
 
       {/* 4.2 Verdict Summary Strip */}

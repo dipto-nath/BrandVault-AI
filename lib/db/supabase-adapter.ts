@@ -6,7 +6,7 @@ import type {
   ContentVersion, AnalysisRun, AnalysisStatus, ExtractedClaim, Finding,
   FindingEvidence, ReviewDecisionRecord, FindingFeedback,
   GuidelineSuggestion, AuditLog,
-  Product,
+  Product, FactVersion, ClaimDependency, DependencyChangeEvent, ReverificationReviewTask,
 } from '@/types/database';
 
 const DEMO_WORKSPACE_SLUG = 'nextech';
@@ -544,5 +544,102 @@ export class SupabaseStorage implements Storage {
       highRisk: rows.filter((s) => s.risk_level === 'HIGH').length,
       recent,
     };
+  }
+
+  // Feature 3: Fact versions & history
+  async createFactVersion(data: Omit<FactVersion, 'id' | 'created_at'>): Promise<FactVersion> {
+    try {
+      return one(await db().from('fact_versions').insert(data).select().single());
+    } catch {
+      return { id: String(Date.now()), created_at: new Date().toISOString(), ...data } as FactVersion;
+    }
+  }
+  async listFactVersions(factId: string): Promise<FactVersion[]> {
+    try {
+      const { data, error } = await db().from('fact_versions').select('*').eq('fact_id', factId).order('version_number', { ascending: false });
+      if (error) return [];
+      return (data ?? []) as FactVersion[];
+    } catch {
+      return [];
+    }
+  }
+
+  // Feature 3: Claim dependencies
+  async createClaimDependencies(dependencies: Array<Omit<ClaimDependency, 'id' | 'created_at'>>): Promise<ClaimDependency[]> {
+    try {
+      return many(await db().from('claim_dependencies').insert(dependencies).select());
+    } catch {
+      return dependencies.map((d) => ({ id: String(Date.now()), created_at: new Date().toISOString(), ...d }));
+    }
+  }
+  async listClaimDependencies(submissionId: string): Promise<ClaimDependency[]> {
+    try {
+      const { data, error } = await db().from('claim_dependencies').select('*').eq('submission_id', submissionId);
+      if (error) return [];
+      return (data ?? []) as ClaimDependency[];
+    } catch {
+      return [];
+    }
+  }
+  async findSubmissionsByDependency(workspaceId: string, dependencyType: 'FACT' | 'GUIDELINE' | 'SOURCE', dependencyId: string): Promise<string[]> {
+    try {
+      const { data, error } = await db().from('claim_dependencies').select('submission_id').eq('workspace_id', workspaceId).eq('dependency_type', dependencyType).eq('dependency_id', dependencyId);
+      if (error || !data) return [];
+      return Array.from(new Set(data.map((r: any) => r.submission_id)));
+    } catch {
+      return [];
+    }
+  }
+
+  // Feature 3: Dependency change events & review tasks
+  async createChangeEvent(data: Omit<DependencyChangeEvent, 'id' | 'created_at'>): Promise<DependencyChangeEvent> {
+    try {
+      return one(await db().from('dependency_change_events').insert(data).select().single());
+    } catch {
+      return { id: String(Date.now()), created_at: new Date().toISOString(), ...data } as DependencyChangeEvent;
+    }
+  }
+  async listChangeEvents(workspaceId: string): Promise<DependencyChangeEvent[]> {
+    try {
+      const { data, error } = await db().from('dependency_change_events').select('*').eq('workspace_id', workspaceId).order('created_at', { ascending: false });
+      if (error) return [];
+      return (data ?? []) as DependencyChangeEvent[];
+    } catch {
+      return [];
+    }
+  }
+  async getChangeEvent(id: string): Promise<DependencyChangeEvent | null> {
+    try {
+      const { data, error } = await db().from('dependency_change_events').select('*').eq('id', id).maybeSingle();
+      if (error || !data) return null;
+      return data as DependencyChangeEvent;
+    } catch {
+      return null;
+    }
+  }
+  async createReviewTask(data: Omit<ReverificationReviewTask, 'id' | 'created_at'>): Promise<ReverificationReviewTask> {
+    try {
+      return one(await db().from('reverification_review_tasks').insert(data).select().single());
+    } catch {
+      return { id: String(Date.now()), created_at: new Date().toISOString(), ...data } as ReverificationReviewTask;
+    }
+  }
+  async listReviewTasks(workspaceId: string, opts?: { status?: string }): Promise<ReverificationReviewTask[]> {
+    try {
+      let q = db().from('reverification_review_tasks').select('*').eq('workspace_id', workspaceId).order('created_at', { ascending: false });
+      if (opts?.status) q = q.eq('status', opts.status);
+      const { data, error } = await q;
+      if (error) return [];
+      return (data ?? []) as ReverificationReviewTask[];
+    } catch {
+      return [];
+    }
+  }
+  async updateReviewTask(id: string, data: Partial<Pick<ReverificationReviewTask, 'status' | 'resolved_at'>>): Promise<ReverificationReviewTask> {
+    try {
+      return one(await db().from('reverification_review_tasks').update(data).eq('id', id).select().single());
+    } catch {
+      return { id, ...data } as ReverificationReviewTask;
+    }
   }
 }
