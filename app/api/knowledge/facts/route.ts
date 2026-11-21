@@ -3,6 +3,9 @@ import { withAuth, withAdmin, ok, fail, parseBody } from '@/lib/api/handler';
 import { CreateFactSchema } from '@/lib/validations';
 import { listFacts, createFact } from '@/lib/services/knowledge';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export const GET = withAuth(async (ctx) => {
   const facts = await listFacts(ctx.workspaceId);
   return ok(facts);

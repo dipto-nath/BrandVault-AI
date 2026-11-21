@@ -2,6 +2,9 @@ import { NextRequest } from 'next/server';
 import { withAuth, ok, fail } from '@/lib/api/handler';
 import { storage } from '@/lib/db/adaptor';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export const GET = withAuth(async (ctx, req) => {
   try {
     const products = await storage.listProducts(ctx.workspaceId);

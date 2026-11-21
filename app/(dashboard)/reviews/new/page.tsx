@@ -229,7 +229,7 @@ export default function ReviewStudioPage() {
     // Fetch products
     async function fetchProducts() {
       try {
-        const res = await fetch('/api/products');
+        const res = await fetch(`/api/products?_t=${Date.now()}`, { cache: 'no-store' });
         if (res.ok) {
           const json = await res.json();
           const items: ProductItem[] = Array.isArray(json)
@@ -246,7 +246,7 @@ export default function ReviewStudioPage() {
             if (targetId && items.some((p) => p.id === targetId)) {
               setSelectedProductId(targetId);
             } else if (items.length > 0) {
-              setSelectedProductId((prev) => prev || items[0].id);
+              setSelectedProductId((prev) => (prev && items.some((p) => p.id === prev) ? prev : items[0].id));
             }
           }
         }

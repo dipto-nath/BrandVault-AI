@@ -3,6 +3,9 @@ import { KnowledgeManagerClient } from '@/components/knowledge/knowledge-manager
 import { getRequestContext } from '@/lib/auth';
 import { storage } from '@/lib/db/adaptor';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 interface ProductItem {
   id: string;
   name: string;

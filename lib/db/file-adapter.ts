@@ -394,7 +394,18 @@ export class FileStorage implements Storage {
   async deactivateGuideline(id: string): Promise<void> { await this.updateGuideline(id, { active: false }); }
   
   // ---------- Products ----------
-  async listProducts(workspaceId: string): Promise<Product[]> { return clone(filterByWorkspace(this.store().products || [], workspaceId)); }
+  async listProducts(workspaceId: string): Promise<Product[]> {
+    const store = this.store();
+    const prods = filterByWorkspace(store.products || [], workspaceId);
+    return clone(
+      prods.map((p) => ({
+        ...p,
+        facts_count: (store.facts || []).filter(
+          (f) => f.product_id === p.id && f.verification_status === 'APPROVED'
+        ).length,
+      }))
+    );
+  }
   async getProduct(id: string): Promise<Product | null> { return (this.store().products || []).find((p) => p.id === id) ?? null; }
   async createProduct(data: Omit<Product, 'id' | 'created_at' | 'updated_at'> & { created_by?: string | null }): Promise<Product> {
     const store = this.store();
@@ -418,10 +429,32 @@ export class FileStorage implements Storage {
   }
   async getFact(id: string): Promise<ApprovedFact | null> { return this.store().facts.find((f) => f.id === id) ?? null; }
   async createFact(data: Omit<ApprovedFact, 'id' | 'created_at' | 'updated_at'> & { created_by?: string | null }): Promise<ApprovedFact> {
-    const store = this.store(); const f: ApprovedFact = { id: uid(), workspace_id: data.workspace_id, fact_code: data.fact_code, title: data.title, fact_text: data.fact_text, entity_name: data.entity_name ?? null, source_document_id: data.source_document_id ?? null, source_name: data.source_name, source_reference: data.source_reference ?? null, source_excerpt: data.source_excerpt ?? null, verification_status: data.verification_status ?? 'PENDING', effective_from: data.effective_from ?? null, expires_at: data.expires_at ?? null, notes: data.notes ?? null, created_by: data.created_by ?? null, created_at: now(), updated_at: now() };
-    store.facts.push(f); persist(store); return clone(f);
+    const store = this.store();
+    const f: ApprovedFact = {
+      id: uid(),
+      workspace_id: data.workspace_id,
+      product_id: (data as any).product_id ?? null,
+      fact_code: data.fact_code,
+      title: data.title,
+      fact_text: data.fact_text,
+      entity_name: data.entity_name ?? null,
+      source_document_id: data.source_document_id ?? null,
+      source_name: data.source_name,
+      source_reference: data.source_reference ?? null,
+      source_excerpt: data.source_excerpt ?? null,
+      verification_status: data.verification_status ?? 'APPROVED',
+      effective_from: data.effective_from ?? null,
+      expires_at: data.expires_at ?? null,
+      notes: data.notes ?? null,
+      created_by: data.created_by ?? null,
+      created_at: now(),
+      updated_at: now(),
+    };
+    store.facts.push(f);
+    persist(store);
+    return clone(f);
   }
-  async updateFact(id: string, data: Partial<Pick<ApprovedFact, 'title' | 'fact_text' | 'entity_name' | 'source_name' | 'source_reference' | 'source_excerpt' | 'verification_status' | 'effective_from' | 'expires_at' | 'notes'>>): Promise<ApprovedFact> {
+  async updateFact(id: string, data: Partial<Pick<ApprovedFact, 'title' | 'fact_text' | 'entity_name' | 'source_name' | 'source_reference' | 'source_excerpt' | 'verification_status' | 'effective_from' | 'expires_at' | 'notes' | 'product_id'>>): Promise<ApprovedFact> {
     const store = this.store(); const idx = store.facts.findIndex((f) => f.id === id);
     if (idx === -1) throw new Error('Fact not found');
     const f = { ...store.facts[idx], ...data, updated_at: now() };

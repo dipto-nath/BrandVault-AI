@@ -179,7 +179,28 @@ export class SupabaseStorage implements Storage {
   async listProducts(workspaceId: string): Promise<Product[]> {
     const { data, error } = await db().from('products').select('*').eq('workspace_id', workspaceId).order('name', { ascending: true });
     if (error) throw error;
-    return (data ?? []) as Product[];
+    const products = (data ?? []) as Product[];
+    if (products.length === 0) return [];
+
+    try {
+      const { data: facts } = await db()
+        .from('approved_facts')
+        .select('product_id')
+        .eq('workspace_id', workspaceId)
+        .eq('verification_status', 'APPROVED');
+      const counts: Record<string, number> = {};
+      if (facts) {
+        for (const f of facts) {
+          if (f.product_id) counts[f.product_id] = (counts[f.product_id] || 0) + 1;
+        }
+      }
+      return products.map((p) => ({
+        ...p,
+        facts_count: counts[p.id] ?? (p.facts_count || 0),
+      }));
+    } catch {
+      return products;
+    }
   }
   async getProduct(id: string): Promise<Product | null> {
     try {
@@ -215,10 +236,18 @@ export class SupabaseStorage implements Storage {
     }
   }
   async createFact(data: Omit<ApprovedFact, 'id' | 'created_at' | 'updated_at'> & { created_by?: string | null }): Promise<ApprovedFact> {
-    return one(await db().from('approved_facts').insert(data).select().single());
+    const isUUID = (v: any) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+    const cleanData: any = { ...data };
+    if (cleanData.created_by && !isUUID(cleanData.created_by)) cleanData.created_by = null;
+    if (cleanData.source_document_id && !isUUID(cleanData.source_document_id)) cleanData.source_document_id = null;
+    if (cleanData.product_id && !isUUID(cleanData.product_id)) cleanData.product_id = null;
+    return one(await db().from('approved_facts').insert(cleanData).select().single());
   }
-  async updateFact(id: string, data: Partial<Pick<ApprovedFact, 'title' | 'fact_text' | 'entity_name' | 'source_name' | 'source_reference' | 'source_excerpt' | 'verification_status' | 'effective_from' | 'expires_at' | 'notes'>>): Promise<ApprovedFact> {
-    return one(await db().from('approved_facts').update({ ...data, updated_at: new Date().toISOString() }).eq('id', id).select().single());
+  async updateFact(id: string, data: Partial<Pick<ApprovedFact, 'title' | 'fact_text' | 'entity_name' | 'source_name' | 'source_reference' | 'source_excerpt' | 'verification_status' | 'effective_from' | 'expires_at' | 'notes' | 'product_id'>>): Promise<ApprovedFact> {
+    const isUUID = (v: any) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+    const cleanData: any = { ...data, updated_at: new Date().toISOString() };
+    if (cleanData.product_id && !isUUID(cleanData.product_id)) cleanData.product_id = null;
+    return one(await db().from('approved_facts').update(cleanData).eq('id', id).select().single());
   }
   async listDocuments(workspaceId: string): Promise<SourceDocument[]> {
     const { data, error } = await db().from('source_documents').select('*').eq('workspace_id', workspaceId).order('uploaded_at', { ascending: false });
@@ -235,7 +264,10 @@ export class SupabaseStorage implements Storage {
     }
   }
   async createDocument(data: Omit<SourceDocument, 'id' | 'uploaded_at'> & { uploaded_by?: string | null }): Promise<SourceDocument> {
-    return one(await db().from('source_documents').insert(data).select().single());
+    const isUUID = (v: any) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+    const cleanData: any = { ...data };
+    if (cleanData.uploaded_by && !isUUID(cleanData.uploaded_by)) cleanData.uploaded_by = null;
+    return one(await db().from('source_documents').insert(cleanData).select().single());
   }
   async updateDocument(id: string, data: Partial<Pick<SourceDocument, 'document_status' | 'extracted_text' | 'extraction_error' | 'source_name'>>): Promise<SourceDocument> {
     return one(await db().from('source_documents').update(data).eq('id', id).select().single());

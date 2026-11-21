@@ -344,9 +344,9 @@ export function KnowledgeManagerClient({
 
       // Refresh data
       const [productsRes, docsRes, factsRes] = await Promise.all([
-        fetch('/api/products').then((r) => r.json()).catch(() => null),
-        fetch('/api/knowledge/documents').then((r) => r.json()).catch(() => null),
-        fetch('/api/knowledge/facts').then((r) => r.json()).catch(() => null),
+        fetch(`/api/products?_t=${Date.now()}`, { cache: 'no-store' }).then((r) => r.json()).catch(() => null),
+        fetch(`/api/knowledge/documents?_t=${Date.now()}`, { cache: 'no-store' }).then((r) => r.json()).catch(() => null),
+        fetch(`/api/knowledge/facts?_t=${Date.now()}`, { cache: 'no-store' }).then((r) => r.json()).catch(() => null),
       ]);
 
       if (productsRes?.data) setProducts(productsRes.data);
@@ -361,7 +361,7 @@ export function KnowledgeManagerClient({
         setUploadSuccess(null);
         if (returnTo) {
           const separator = returnTo.includes('?') ? '&' : '?';
-          router.push(`${returnTo}${separator}productId=${product.id}`);
+          window.location.href = `${returnTo}${separator}productId=${product.id}`;
         }
       }, 1500);
     } catch (err: any) {

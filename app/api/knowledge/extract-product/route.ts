@@ -128,7 +128,7 @@ function extractProductFallback(filename: string, text: string): ExtractionResul
             entity_name: productName,
             source_reference: 'Technical Specification',
             source_excerpt: line.slice(0, 200),
-            verification_status: 'APPROVED',
+            verification_status: 'APPROVED' as const,
             effective_from: new Date().toISOString().split('T')[0],
             expires_at: null,
             notes: 'Extracted from specification document',
@@ -158,7 +158,7 @@ function extractProductFallback(filename: string, text: string): ExtractionResul
           entity_name: productName,
           source_reference: 'Technical Specification Sheet',
           source_excerpt: line.slice(0, 200),
-          verification_status: 'APPROVED',
+          verification_status: 'APPROVED' as const,
           effective_from: new Date().toISOString().split('T')[0],
           expires_at: null,
           notes: 'Extracted from specification document',
@@ -230,17 +230,73 @@ Return JSON only in this exact format:
   ]
 }`;
 
+  const fallback = extractProductFallback(filename, pdfText);
+
   try {
     const response = await generateJson({ prompt, temperature: 0.1, maxTokens: 4000 });
     const jsonText = extractJsonBlock(response);
-    const result = repairTruncatedJson(jsonText) as ExtractionResult;
+    const result = repairTruncatedJson(jsonText) as any;
+
     if (result && result.product && result.product.name) {
-      return result;
+      // Find the facts array whether the AI called it facts, specifications, or key_specifications
+      let rawFacts: any[] = [];
+      if (Array.isArray(result.facts) && result.facts.length > 0) {
+        rawFacts = result.facts;
+      } else if (Array.isArray(result.specifications) && result.specifications.length > 0) {
+        rawFacts = result.specifications;
+      } else if (Array.isArray(result.key_specifications) && result.key_specifications.length > 0) {
+        rawFacts = result.key_specifications;
+      } else if (Array.isArray(result.claims) && result.claims.length > 0) {
+        rawFacts = result.claims;
+      }
+
+      // If AI extracted fewer than 8 facts, merge with deterministic fallback facts
+      if (rawFacts.length < 8) {
+        const existing = new Set(rawFacts.map((f: any) => String(f.fact_text || f.text || '').toLowerCase().slice(0, 40)));
+        for (const fb of fallback.facts) {
+          const key = fb.fact_text.toLowerCase().slice(0, 40);
+          if (!existing.has(key)) {
+            existing.add(key);
+            rawFacts.push(fb);
+          }
+        }
+      }
+
+      const formattedFacts: ExtractedFact[] = rawFacts.map((f: any, idx: number) => ({
+        fact_code: f.fact_code || `SPEC-${String(idx + 1).padStart(3, '0')}`,
+        title: f.title || f.key || `Specification ${idx + 1}`,
+        fact_text: f.fact_text || f.text || f.statement || f.value || '',
+        entity_name: f.entity_name || result.product.name,
+        source_reference: f.source_reference || 'Technical Specification Sheet',
+        source_excerpt: f.source_excerpt || (f.fact_text || f.text || '').slice(0, 200),
+        verification_status: 'APPROVED' as const,
+        effective_from: f.effective_from || new Date().toISOString().split('T')[0],
+        expires_at: f.expires_at || null,
+        notes: f.notes || 'Extracted verified specification',
+      })).filter((f) => f.fact_text && f.fact_text.trim().length > 5);
+
+      return {
+        product: {
+          name: result.product.name,
+          category: result.product.category || fallback.product.category || 'Consumer Hardware',
+          model_or_version: result.product.model_or_version || fallback.product.model_or_version || 'Standard',
+          launch_date: result.product.launch_date || fallback.product.launch_date || new Date().toISOString().split('T')[0],
+          status: result.product.status || 'ACTIVE',
+          description: result.product.description || fallback.product.description || `Extracted specifications for ${result.product.name}`,
+        },
+        facts: formattedFacts.length > 0 ? formattedFacts : fallback.facts,
+        documentData: {
+          filename,
+          storagePath: '',
+          fileSize: 0,
+          extractedText: pdfText.slice(0, 5000),
+        },
+      };
     }
-    return extractProductFallback(filename, pdfText);
+    return fallback;
   } catch (error) {
     console.warn('AI extraction failed or unavailable, using deterministic extractor:', error);
-    return extractProductFallback(filename, pdfText);
+    return fallback;
   }
 }
 
@@ -303,7 +359,7 @@ export const POST = withAdmin(async (ctx, req) => {
           source_name: file.name,
           source_reference: fact.source_reference || null,
           source_excerpt: fact.source_excerpt || null,
-          verification_status: 'APPROVED',
+          verification_status: 'APPROVED' as const,
           effective_from: fact.effective_from || new Date().toISOString().split('T')[0],
           expires_at: fact.expires_at || null,
           notes: fact.notes || null,

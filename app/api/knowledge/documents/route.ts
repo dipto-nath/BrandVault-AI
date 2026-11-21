@@ -3,6 +3,9 @@ import { withAuth, withAdmin, ok, fail } from '@/lib/api/handler';
 import { uploadDocument } from '@/lib/services/knowledge';
 import { storage } from '@/lib/db/adaptor';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export const GET = withAuth(async (ctx) => {
   const docs = await storage.listDocuments(ctx.workspaceId);
   return ok(docs);
