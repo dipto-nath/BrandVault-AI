@@ -681,55 +681,80 @@ export function InsightsManager({
                 </div>
 
                 {/* Stacked Bars Visual */}
-                <div className="h-48 flex items-end justify-between gap-2 pt-4 px-2 border-b border-sand-dark/40">
-                  {data.charts.evidenceOverTime.map((item, idx) => {
-                    const sup = seriesActive.supported ? item.supported : 0;
-                    const con = seriesActive.contradicted ? item.contradicted : 0;
-                    const unv = seriesActive.unverified ? item.unverified : 0;
-                    const out = seriesActive.outdated ? item.outdated : 0;
-                    const total = Math.max(1, sup + con + unv + out);
-                    const maxHeight = 150;
+                {(() => {
+                  const maxBucketTotal = Math.max(
+                    1,
+                    ...data.charts.evidenceOverTime.map((item) => {
+                      const sup = seriesActive.supported ? item.supported : 0;
+                      const con = seriesActive.contradicted ? item.contradicted : 0;
+                      const unv = seriesActive.unverified ? item.unverified : 0;
+                      const out = seriesActive.outdated ? item.outdated : 0;
+                      return sup + con + unv + out;
+                    })
+                  );
+                  const maxBarHeightPx = 135;
 
-                    return (
-                      <Link
-                        key={idx}
-                        href="/reviews"
-                        className="flex-1 flex flex-col items-center group cursor-pointer"
-                        title={`${item.label}: ${total} findings (Click to see reviews)`}
-                      >
-                        <div className="w-full max-w-[28px] rounded-t-md overflow-hidden flex flex-col-reverse transition-transform group-hover:scale-105">
-                          {sup > 0 && (
+                  return (
+                    <div className="h-48 flex items-end justify-between gap-2 pt-4 px-2 border-b border-sand-dark/40 overflow-hidden">
+                      {data.charts.evidenceOverTime.map((item, idx) => {
+                        const sup = seriesActive.supported ? item.supported : 0;
+                        const con = seriesActive.contradicted ? item.contradicted : 0;
+                        const unv = seriesActive.unverified ? item.unverified : 0;
+                        const out = seriesActive.outdated ? item.outdated : 0;
+                        const total = sup + con + unv + out;
+                        const barTotalHeight = total > 0 ? Math.max(4, Math.round((total / maxBucketTotal) * maxBarHeightPx)) : 0;
+
+                        // Proportional heights for each segment totaling exactly barTotalHeight
+                        const supHeight = total > 0 ? Math.round((sup / total) * barTotalHeight) : 0;
+                        const unvHeight = total > 0 ? Math.round((unv / total) * barTotalHeight) : 0;
+                        const conHeight = total > 0 ? Math.round((con / total) * barTotalHeight) : 0;
+                        const outHeight = total > 0 ? Math.max(0, barTotalHeight - supHeight - unvHeight - conHeight) : 0;
+
+                        return (
+                          <Link
+                            key={idx}
+                            href="/reviews"
+                            className="flex-1 flex flex-col items-center justify-end h-full group cursor-pointer"
+                            title={`${item.label}: ${total} findings (Click to see reviews)`}
+                          >
                             <div
-                              style={{ height: `${(sup / 8) * maxHeight}px` }}
-                              className="bg-evidence-supported w-full"
-                            />
-                          )}
-                          {unv > 0 && (
-                            <div
-                              style={{ height: `${(unv / 8) * maxHeight}px` }}
-                              className="bg-evidence-unverified w-full"
-                            />
-                          )}
-                          {con > 0 && (
-                            <div
-                              style={{ height: `${(con / 8) * maxHeight}px` }}
-                              className="bg-evidence-contradicted w-full"
-                            />
-                          )}
-                          {out > 0 && (
-                            <div
-                              style={{ height: `${(out / 8) * maxHeight}px` }}
-                              className="bg-evidence-outdated w-full"
-                            />
-                          )}
-                        </div>
-                        <span className="text-[10px] text-ink-muted font-mono mt-2 truncate w-full text-center">
-                          {item.label}
-                        </span>
-                      </Link>
-                    );
-                  })}
-                </div>
+                              style={{ height: `${barTotalHeight}px` }}
+                              className="w-full max-w-[28px] max-h-[135px] rounded-t-md overflow-hidden flex flex-col-reverse transition-transform group-hover:scale-105"
+                            >
+                              {supHeight > 0 && (
+                                <div
+                                  style={{ height: `${supHeight}px` }}
+                                  className="bg-evidence-supported w-full shrink-0"
+                                />
+                              )}
+                              {unvHeight > 0 && (
+                                <div
+                                  style={{ height: `${unvHeight}px` }}
+                                  className="bg-evidence-unverified w-full shrink-0"
+                                />
+                              )}
+                              {conHeight > 0 && (
+                                <div
+                                  style={{ height: `${conHeight}px` }}
+                                  className="bg-evidence-contradicted w-full shrink-0"
+                                />
+                              )}
+                              {outHeight > 0 && (
+                                <div
+                                  style={{ height: `${outHeight}px` }}
+                                  className="bg-evidence-outdated w-full shrink-0"
+                                />
+                              )}
+                            </div>
+                            <span className="text-[10px] text-ink-muted font-mono mt-2 truncate w-full text-center">
+                              {item.label}
+                            </span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </div>
             ) : (
               <div className="overflow-x-auto text-xs">
@@ -806,7 +831,7 @@ export function InsightsManager({
                       </div>
                       <div className="w-full h-2 rounded-full bg-sand overflow-hidden">
                         <div
-                          style={{ width: `${Math.min(100, (rule.count / 15) * 100)}%` }}
+                          style={{ width: `${Math.min(100, Math.round((rule.count / Math.max(1, data.charts.mostTriggeredRules[0]?.count || 1)) * 100))}%` }}
                           className="h-full bg-brand rounded-full transition-all group-hover:bg-brand/90"
                         />
                       </div>

@@ -143,27 +143,26 @@ export async function getInsights(workspaceId: string, range: TimeRange = '30d')
     allGuidelines,
     allSuggestions,
     allAuditLogs,
+    allFindings,
   ] = await Promise.all([
     storage.listSubmissions(workspaceId),
     storage.listGuidelines(workspaceId),
     storage.listGuidelineSuggestions(workspaceId),
     storage.listAuditLogs(workspaceId, { limit: 50 }),
+    storage.listFindings(undefined, workspaceId),
   ]);
 
-  // Collect all findings and feedbacks across submissions
+  // Index findings by submission in memory (instant O(N))
   const submissionFindingsMap = new Map<string, Finding[]>();
-  const allFindings: Finding[] = [];
-  const allFeedbacks: FindingFeedback[] = [];
-
-  for (const s of allSubmissions) {
-    const fList = await storage.listFindings(s.id);
-    submissionFindingsMap.set(s.id, fList);
-    allFindings.push(...fList);
-    for (const f of fList) {
-      const fbList = await storage.listFindingFeedback(f.id);
-      allFeedbacks.push(...fbList);
-    }
+  for (const f of allFindings) {
+    const list = submissionFindingsMap.get(f.submission_id) ?? [];
+    list.push(f);
+    submissionFindingsMap.set(f.submission_id, list);
   }
+
+  // Fetch all finding feedbacks across workspace in a single batch query
+  const findingIds = allFindings.map((f) => f.id);
+  const allFeedbacks = await storage.listFindingFeedbacks(findingIds);
 
   // Range window calculation
   const now = Date.now();

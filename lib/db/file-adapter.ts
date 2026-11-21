@@ -432,6 +432,10 @@ export class FileStorage implements Storage {
     store.findingFeedback.push(f); persist(store); return clone(f);
   }
   async listFindingFeedback(findingId: string): Promise<FindingFeedback[]> { return clone(this.store().findingFeedback.filter((f) => f.finding_id === findingId)); }
+  async listFindingFeedbacks(findingIds: string[]): Promise<FindingFeedback[]> {
+    const idSet = new Set(findingIds);
+    return clone(this.store().findingFeedback.filter((f) => idSet.has(f.finding_id)));
+  }
   async listGuidelineSuggestions(workspaceId: string): Promise<GuidelineSuggestion[]> { return clone(filterByWorkspace(this.store().guidelineSuggestions, workspaceId).sort((a, b) => b.created_at.localeCompare(a.created_at))); }
   async createGuidelineSuggestion(data: Omit<GuidelineSuggestion, 'id' | 'created_at'> & { created_by?: string | null }): Promise<GuidelineSuggestion> {
     const store = this.store(); const s: GuidelineSuggestion = { id: uid(), workspace_id: data.workspace_id, guideline_id: data.guideline_id, title: data.title, suggested_change: data.suggested_change, supporting_feedback_ids: data.supporting_feedback_ids ?? [], status: 'PENDING', created_by: data.created_by ?? null, reviewed_by: null, created_at: now(), reviewed_at: null };

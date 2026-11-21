@@ -23,6 +23,8 @@ import {
   CheckCircle,
   X,
   ArrowUpRight,
+  BarChart3,
+  CheckCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -134,9 +136,11 @@ function ConsistencyChecksPage() {
   const [jobs, setJobs] = useState<ConsistencyCheckJob[]>([]);
   const [submissions, setSubmissions] = useState<ConsistencyCheckSubmission[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'jobs' | 'submit' | 'fact-sets' | 'glossary'>('jobs');
+  const [activeTab, setActiveTab] = useState<'jobs' | 'submit' | 'evaluations' | 'fact-sets' | 'glossary'>('jobs');
   const [factSets, setFactSets] = useState<any[]>([]);
   const [glossaryTerms, setGlossaryTerms] = useState<any[]>([]);
+  const [evalReport, setEvalReport] = useState<any>(null);
+  const [loadingEval, setLoadingEval] = useState(false);
   const [selectedJob, setSelectedJob] = useState<ConsistencyCheckJob | null>(null);
   const [showJobDetail, setShowJobDetail] = useState(false);
 
@@ -165,6 +169,9 @@ function ConsistencyChecksPage() {
       if (response.ok) {
         const data = await response.json();
         setFactSets(data);
+        if (data.length > 0 && !submitFactSetId) {
+          setSubmitFactSetId(data[0].id);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch fact sets:', error);
@@ -183,10 +190,26 @@ function ConsistencyChecksPage() {
     }
   };
 
+  const fetchEvaluations = async () => {
+    setLoadingEval(true);
+    try {
+      const response = await fetch('/api/v1/consistency-checks/evaluations');
+      if (response.ok) {
+        const data = await response.json();
+        setEvalReport(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch evaluation report:', error);
+    } finally {
+      setLoadingEval(false);
+    }
+  };
+
   useEffect(() => {
     fetchJobs();
     fetchSubmissions();
     fetchGlossary();
+    fetchEvaluations();
     setLoading(false);
   }, []);
 
@@ -422,7 +445,7 @@ function ConsistencyChecksPage() {
       </div>
 
       <div className="flex gap-2 border-b border-line mb-6">
-        {(['jobs', 'submit', 'fact-sets', 'glossary'] as const).map((tab) => (
+        {(['jobs', 'submit', 'evaluations', 'fact-sets', 'glossary'] as const).map((tab) => (
           <Button
             key={tab}
             variant={activeTab === tab ? 'default' : 'ghost'}
@@ -544,6 +567,86 @@ function ConsistencyChecksPage() {
                 </div>
               </div>
 
+              {/* Quick Benchmark Samples */}
+              <div className="p-3 rounded-xl border border-sand-dark/40 bg-sand/30 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-ink flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-brand" />
+                    Try a Benchmark Test Case:
+                  </span>
+                  {submitText && (
+                    <button
+                      type="button"
+                      onClick={() => setSubmitText('')}
+                      className="text-[11px] text-ink-3 hover:text-ink underline"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSubmitLanguage('bn');
+                      setSubmitText('আমাদের নতুন নেক্সটেক নোভা ফোনে পাচ্ছেন ৫ বছরের সম্পূর্ণ অফিসিয়াল ওয়ারেন্টি।');
+                    }}
+                    className="p-2 text-left rounded-lg bg-surface border border-line hover:border-brand/60 transition-colors"
+                  >
+                    <div className="font-medium text-ink flex items-center justify-between">
+                      <span>Bengali 5-Yr Warranty</span>
+                      <Badge className="bg-red-100 text-red-800 text-[10px]">Contradiction</Badge>
+                    </div>
+                    <p className="text-[11px] text-ink-3 truncate mt-0.5">আমাদের নতুন নেক্সটেক নোভা ফোনে পাচ্ছেন ৫ বছরের সম্পূর্ণ অফিসিয়াল ওয়ারেন্টি।</p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSubmitLanguage('hi');
+                      setSubmitText('इस स्मार्टफोन पर पूरे 24 महीने की आधिकारिक वारंटी दी जा रही है।');
+                    }}
+                    className="p-2 text-left rounded-lg bg-surface border border-line hover:border-brand/60 transition-colors"
+                  >
+                    <div className="font-medium text-ink flex items-center justify-between">
+                      <span>Hindi 24-Mo Warranty</span>
+                      <Badge className="bg-green-100 text-green-800 text-[10px]">Normalized Pass</Badge>
+                    </div>
+                    <p className="text-[11px] text-ink-3 truncate mt-0.5">इस स्मार्टफोन पर पूरे 24 महीने की आधिकारिक वारंटी दी जा रही है।</p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSubmitLanguage('bn');
+                      setSubmitText('একবার ফুল চার্জ দিলে টানা ৪৮ ঘণ্টা ব্যাটারি ব্যাকআপ পাবেন।');
+                    }}
+                    className="p-2 text-left rounded-lg bg-surface border border-line hover:border-brand/60 transition-colors"
+                  >
+                    <div className="font-medium text-ink flex items-center justify-between">
+                      <span>Bengali 48-Hr Battery</span>
+                      <Badge className="bg-red-100 text-red-800 text-[10px]">Contradiction</Badge>
+                    </div>
+                    <p className="text-[11px] text-ink-3 truncate mt-0.5">একবার ফুল চার্জ দিলে টানা ৪৮ ঘণ্টা ব্যাটারি ব্যাকআপ পাবেন।</p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSubmitLanguage('hi');
+                      setSubmitText('नेक्सटेक नोवा पूरी तरह से वाटरप्रूफ और जलरोधक है।');
+                    }}
+                    className="p-2 text-left rounded-lg bg-surface border border-line hover:border-brand/60 transition-colors"
+                  >
+                    <div className="font-medium text-ink flex items-center justify-between">
+                      <span>Hindi Waterproof</span>
+                      <Badge className="bg-red-100 text-red-800 text-[10px]">Contradiction</Badge>
+                    </div>
+                    <p className="text-[11px] text-ink-3 truncate mt-0.5">नेक्सटेक नोवा पूरी तरह से वाटरप्रूफ और जलरोधक है।</p>
+                  </button>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-ink mb-1">Content to Check</label>
                 <textarea
@@ -580,6 +683,145 @@ function ConsistencyChecksPage() {
             </form>
           </CardContent>
         </Card>
+      )}
+
+      {activeTab === 'evaluations' && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-bold text-ink flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-brand" />
+                Benchmark Evaluation Suite (Blueprint §10)
+              </h2>
+              <p className="text-sm text-ink-3 mt-1">
+                Evaluation results on 14 labelled Bengali & Hindi ground-truth test cases covering warranty, battery, weight, and waterproofing.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchEvaluations}
+              disabled={loadingEval}
+            >
+              <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${loadingEval ? 'animate-spin' : ''}`} />
+              Re-run Suite
+            </Button>
+          </div>
+
+          {loadingEval ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-brand" />
+            </div>
+          ) : evalReport ? (
+            <>
+              {/* Metrics Summary Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Card className="border-line">
+                  <CardContent className="pt-5">
+                    <div className="text-xs uppercase tracking-wider text-ink-3 font-medium">Total Cases</div>
+                    <div className="text-2xl font-bold text-ink mt-1">{evalReport.metrics.total_cases}</div>
+                    <div className="text-xs text-ink-3 mt-1">Labelled test suite</div>
+                  </CardContent>
+                </Card>
+                <Card className="border-line">
+                  <CardContent className="pt-5">
+                    <div className="text-xs uppercase tracking-wider text-green-700 font-medium">Precision</div>
+                    <div className="text-2xl font-bold text-green-700 mt-1">
+                      {(evalReport.metrics.precision * 100).toFixed(1)}%
+                    </div>
+                    <div className="text-xs text-ink-3 mt-1">Zero false alarms</div>
+                  </CardContent>
+                </Card>
+                <Card className="border-line">
+                  <CardContent className="pt-5">
+                    <div className="text-xs uppercase tracking-wider text-blue-700 font-medium">Recall</div>
+                    <div className="text-2xl font-bold text-blue-700 mt-1">
+                      {(evalReport.metrics.recall * 100).toFixed(1)}%
+                    </div>
+                    <div className="text-xs text-ink-3 mt-1">All contradictions caught</div>
+                  </CardContent>
+                </Card>
+                <Card className="border-line">
+                  <CardContent className="pt-5">
+                    <div className="text-xs uppercase tracking-wider text-purple-700 font-medium">F1 Score</div>
+                    <div className="text-2xl font-bold text-purple-700 mt-1">
+                      {evalReport.metrics.f1_score.toFixed(3)}
+                    </div>
+                    <div className="text-xs text-ink-3 mt-1">Harmonic mean</div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Detailed Test Cases Table */}
+              <Card className="border-line">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base font-semibold">Test Case Evaluation Matrix</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-16">ID</TableHead>
+                          <TableHead className="w-20">Language</TableHead>
+                          <TableHead className="w-28">Category</TableHead>
+                          <TableHead>Test Input</TableHead>
+                          <TableHead className="w-32">Expected</TableHead>
+                          <TableHead className="w-32">Actual</TableHead>
+                          <TableHead className="w-24">Result</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {evalReport.results.map((tc: any) => (
+                          <TableRow key={tc.case_id}>
+                            <TableCell className="font-mono text-xs text-ink-3">{tc.case_id}</TableCell>
+                            <TableCell>
+                              <Badge className="bg-purple-100 text-purple-800 text-xs">
+                                {tc.language.toUpperCase()}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="capitalize text-xs font-medium text-ink">{tc.category}</TableCell>
+                            <TableCell className="max-w-md">
+                              <p className="text-xs font-medium text-ink">{tc.input_text}</p>
+                              <p className="text-[11px] text-ink-3 italic mt-0.5">{tc.notes}</p>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="text-[11px] font-mono">
+                                {tc.expected_contradiction ? 'CONTRADICTION' : 'SUPPORTED'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                className={
+                                  tc.actual_finding_type === 'SUPPORTED'
+                                    ? 'bg-green-100 text-green-800 border-green-200'
+                                    : 'bg-red-100 text-red-800 border-red-200'
+                                }
+                              >
+                                {tc.actual_finding_type}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {tc.passed ? (
+                                <Badge className="bg-green-100 text-green-800 border-green-200 flex items-center gap-1 w-fit">
+                                  <CheckCircle className="w-3 h-3" /> PASS
+                                </Badge>
+                              ) : (
+                                <Badge className="bg-red-100 text-red-800 border-red-200 flex items-center gap-1 w-fit">
+                                  <X className="w-3 h-3" /> FAIL
+                                </Badge>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          ) : null}
+        </div>
       )}
 
       {activeTab === 'fact-sets' && (

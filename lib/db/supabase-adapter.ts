@@ -421,6 +421,26 @@ export class SupabaseStorage implements Storage {
     if (error) throw error;
     return (data ?? []) as FindingFeedback[];
   }
+  async listFindingFeedbacks(findingIds: string[]): Promise<FindingFeedback[]> {
+    if (!findingIds || findingIds.length === 0) return [];
+    try {
+      const chunks: string[][] = [];
+      for (let i = 0; i < findingIds.length; i += 100) {
+        chunks.push(findingIds.slice(i, i + 100));
+      }
+      const results = await Promise.all(
+        chunks.map((chunk) => db().from('finding_feedback').select('*').in('finding_id', chunk).order('created_at', { ascending: true }))
+      );
+      const allData: FindingFeedback[] = [];
+      for (const res of results) {
+        if (res.data) allData.push(...(res.data as FindingFeedback[]));
+      }
+      return allData;
+    } catch (e) {
+      console.warn('Failed to list finding feedbacks:', e);
+      return [];
+    }
+  }
   async listGuidelineSuggestions(workspaceId: string): Promise<GuidelineSuggestion[]> {
     const { data, error } = await db().from('guideline_suggestions').select('*').eq('workspace_id', workspaceId).order('created_at', { ascending: false });
     if (error) throw error;

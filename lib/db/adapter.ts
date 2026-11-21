@@ -108,6 +108,7 @@ export interface Storage {
   // ---------- Finding feedback ----------
   createFindingFeedback(data: Omit<FindingFeedback, 'id' | 'created_at'> & { created_by?: string | null }): Promise<FindingFeedback>;
   listFindingFeedback(findingId: string): Promise<FindingFeedback[]>;
+  listFindingFeedbacks(findingIds: string[]): Promise<FindingFeedback[]>;
 
   // ---------- Guideline suggestions ----------
   listGuidelineSuggestions(workspaceId: string): Promise<GuidelineSuggestion[]>;

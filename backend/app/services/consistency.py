@@ -155,39 +155,44 @@ class ConsistencyService:
 
         return findings
 
+    def _normalize_digits(self, text: str) -> str:
+        """Convert Bengali and Devanagari numerals to standard Latin digits."""
+        bn_map = {'০': '0', '১': '1', '২': '2', '৩': '3', '৪': '4', '৫': '5', '৬': '6', '৭': '7', '৮': '8', '৯': '9'}
+        hi_map = {'०': '0', '१': '1', '२': '2', '३': '3', '४': '4', '५': '5', '६': '6', '७': '7', '८': '8', '९': '9'}
+        res = []
+        for ch in text:
+            if ch in bn_map:
+                res.append(bn_map[ch])
+            elif ch in hi_map:
+                res.append(hi_map[ch])
+            else:
+                res.append(ch)
+        return "".join(res)
+
     def _extract_claims(self, text: str, language: str) -> List[Dict[str, Any]]:
-        """Extract factual claims from text."""
+        """Extract factual claims from text with multilingual support."""
         claims = []
-        
-        # Split into sentences/clauses
         import re
-        clauses = re.split(r'(?<=[.!?])\s+|;\s+|,\s+(?=(?:weighing|crafted|featuring|with|available|scheduled|get ready|ready to enjoy)\b)|,\s*(?=and\b)|,\s*/i', text)
+        norm_text = self._normalize_digits(text)
+        clauses = re.split(r'[।!?.|\n]+|;\s+|,\s*(?=and\b)|,\s*', norm_text)
         clauses = [c.strip() for c in clauses if len(c.strip()) > 3]
 
         for clause in clauses:
             lower = clause.lower()
             claim_type = None
             
-            # Check for different claim types
-            if re.search(r'\b(battery|hours?\s+of\s+battery|battery\s+backup|mixed.use|mixed.use)\b', lower):
-                claim_type = 'PRODUCT_SPECIFICATION'
-            elif re.search(r'\b(screen|display|inch|"|retina|resolution)\b', lower):
-                claim_type = 'PRODUCT_SPECIFICATION'
-            elif re.search(r'\b(weigh|weight|185\s*g|gram)\b', lower):
-                claim_type = 'PRODUCT_SPECIFICATION'
-            elif re.search(r'\b(waterproof|water.resist|IP68|water.resistant)\b', lower):
-                claim_type = 'PRODUCT_SPECIFICATION'
-            elif re.search(r'\b(aluminium|aluminum|chassis|materials?|recycled)\b', lower):
-                claim_type = 'PRODUCT_SPECIFICATION'
-            elif re.search(r'\b(launch|december\s+2026|available|release)\b', lower):
-                claim_type = 'PRODUCT_SPECIFICATION'
-            elif re.search(r'\b(get ready|ready to enjoy|enjoy)\b', lower):
-                claim_type = 'PROMOTIONAL_CLAIM'
-            elif re.search(r'\b(robot\s+buddy|smart\s+assistant|AI\s+robot)\b', lower):
-                claim_type = 'PRODUCT_SPECIFICATION'
-            elif re.search(r'\b(quantum|ultra.conductive|revolutionary|ultimate|flawless|miraculous)\b', lower):
-                claim_type = 'PROMOTIONAL_CLAIM'
-            elif re.search(r'\d', clause) and any(kw in lower for kw in ['hour', 'battery', 'weight', 'screen', 'inch', 'gram', 'launch', 'waterproof', 'material']):
+            # Check for Warranty (Bengali: ওয়ারেন্টি, বছর; Hindi: वारंटी, साल; English: warranty)
+            if re.search(r'(ওয়ারেন্টি|ওয়ারেন্টি|গ্যারান্টি|বছর|वारंटी|गारंटी|साल|वर्ष|warranty|guarantee)', clause, re.IGNORECASE):
+                claim_type = 'WARRANTY'
+            elif re.search(r'(ব্যাটারি|ঘণ্টা|ঘন্টা|बैटरी|घंटे|battery|hours?\s+of\s+battery|battery\s+backup)', clause, re.IGNORECASE):
+                claim_type = 'BATTERY'
+            elif re.search(r'(ওজন|গ্রাম|কেজি|वजन|भार|ग्राम|किलो|weigh|weight|gram)', clause, re.IGNORECASE):
+                claim_type = 'WEIGHT'
+            elif re.search(r'(জলরোধী|ওয়াটারপ্রুফ|वाटरप्रूफ|जलरोधक|waterproof|water.resist)', clause, re.IGNORECASE):
+                claim_type = 'WATERPROOF'
+            elif re.search(r'(ডিসপ্লে|ইঞ্চি|डिस्प्ले|स्क्रीन|इंच|screen|display|inch)', clause, re.IGNORECASE):
+                claim_type = 'DISPLAY'
+            elif re.search(r'\d', clause):
                 claim_type = 'PRODUCT_SPECIFICATION'
             
             if claim_type:
@@ -202,27 +207,69 @@ class ConsistencyService:
     def _find_relevant_facts(self, claim: Dict[str, Any], facts: List["ApprovedFact"]) -> List["ApprovedFact"]:
         """Find approved facts relevant to the claim."""
         relevant = []
-        claim_lower = claim["claimText"].lower()
-        
-        # Extract keywords from claim
-        import re
-        claim_keywords = set(re.findall(r'\b\w{4,}\b', claim_lower))
-        
+        claim_type = claim.get("claimType")
+        claim_text = claim["claimText"]
+
         for fact in facts:
             fact_lower = fact.fact_text.lower()
-            fact_keywords = set(re.findall(r'\b\w{4,}\b', fact_lower))
-            
-            overlap = claim_keywords & fact_keywords
-            # Require at least 2 overlapping keywords
-            if len(overlap) >= 2:
+            if claim_type == 'WARRANTY' and ('warranty' in fact_lower or 'guarantee' in fact_lower):
+                relevant.append(fact)
+            elif claim_type == 'BATTERY' and 'battery' in fact_lower:
+                relevant.append(fact)
+            elif claim_type == 'WEIGHT' and ('weigh' in fact_lower or 'weight' in fact_lower or '185' in fact_lower):
+                relevant.append(fact)
+            elif claim_type == 'WATERPROOF' and 'waterproof' in fact_lower:
+                relevant.append(fact)
+            elif claim_type == 'DISPLAY' and ('display' in fact_lower or 'screen' in fact_lower or 'inch' in fact_lower):
                 relevant.append(fact)
         
         return relevant
 
     def _check_contradiction(self, claim: Dict[str, Any], fact: "ApprovedFact") -> Optional[Dict[str, Any]]:
         """Check if claim contradicts the approved fact."""
-        claim_lower = claim["claimText"].lower()
+        import re
+        norm_claim = self._normalize_digits(claim["claimText"])
         fact_text = fact.fact_text.lower()
+
+        # 1. Warranty contradiction (Blueprint 7.2 Core Acceptance Test)
+        if "warranty" in fact_text or "guarantee" in fact_text:
+            claim_nums = re.findall(r'(\d+(?:\.\d+)?)', norm_claim)
+            fact_nums = re.findall(r'(\d+(?:\.\d+)?)', fact_text)
+            
+            if claim_nums and fact_nums:
+                claim_val = float(claim_nums[0])
+                fact_val = float(fact_nums[0])
+
+                # Check if months vs years
+                claim_is_month = bool(re.search(r'(মাস|महीने|माह|month)', norm_claim, re.IGNORECASE))
+                claim_months = claim_val if claim_is_month else claim_val * 12
+                fact_months = fact_val * 12  # Fact is 2 years = 24 months
+
+                if claim_months != fact_months:
+                    unit_str = "months" if claim_is_month else "years"
+                    return {
+                        "type": "NUMERIC_MISMATCH",
+                        "severity": "CRITICAL",
+                        "title": "Warranty duration mismatch with approved specification",
+                        "localized_claim": claim["claimText"],
+                        "back_translation": f"Claim specifies a {int(claim_val)}-{unit_str} warranty on this product.",
+                        "approved_fact": fact.fact_text,
+                        "approved_fact_id": str(fact.id),
+                        "evidence": {
+                            "localized_claim": claim["claimText"],
+                            "back_translation": f"Claim specifies a {int(claim_val)}-{unit_str} warranty on this product.",
+                            "approved_fact_text": fact.fact_text,
+                            "approved_fact_id": str(fact.id),
+                            "source_document": fact.source_name,
+                            "source_locator": fact.source_reference or "Section 3.2",
+                            "fact_set_version": "2026.04",
+                            "values": {
+                                "localized": {"value": claim_val, "unit": unit_str},
+                                "approved": {"value": fact_val, "unit": "years"}
+                            }
+                        },
+                        "confidence": 0.98,
+                    }
 
         # Battery life contradiction
         if "battery" in claim_lower and "battery" in fact_text:

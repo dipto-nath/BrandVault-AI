@@ -1178,7 +1178,7 @@ export function ReviewStudio({
                   <input
                     ref={visualFileInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/png,image/jpeg,image/webp,image/gif,.png,.jpg,.jpeg,.webp,.gif,image/*"
                     className="hidden"
                     onClick={(e) => {
                       (e.target as HTMLInputElement).value = '';
