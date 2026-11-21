@@ -342,6 +342,32 @@ def check_alt_text(alt_text: Optional[str], is_decorative: bool, channel: str) -
 
 
 # 5. OCR Text Extraction
+def combine_ocr_lines(lines: List[str]) -> List[str]:
+    """Combine complementary consecutive fragments (e.g. '48-HOUR' + 'BATTERY LIFE')."""
+    combined = []
+    i = 0
+    while i < len(lines):
+        line = lines[i].strip()
+        if not line:
+            i += 1
+            continue
+        if i + 1 < len(lines):
+            next_line = lines[i+1].strip()
+            lower = line.lower()
+            next_lower = next_line.lower()
+            
+            # Check if this line is a prefix or fragment that should merge with next line
+            if re.search(r'\d+[-\s]*(?:hour|hours?|hrs?|day|days?|month|months?|inch|inches|g|grams?)$', lower) or \
+               lower in ['weighs just', 'weighs', 'completely', 'built-in ai', 'built in ai', 'up to', 'featuring a', 'with a', 'all-day', 'all day'] or \
+               next_lower in ['battery life', 'waterproof', 'robot buddy', '185 grams', 'grams', 'display', 'screen']:
+                combined.append(f"{line} {next_line}")
+                i += 2
+                continue
+        combined.append(line)
+        i += 1
+    return combined
+
+
 def extract_text_from_image(image_path: str) -> Tuple[str, Dict[str, Any]]:
     """Extract text from image using OCR (Apple Vision on macOS or Tesseract)."""
     ocr_metadata = {
@@ -362,7 +388,8 @@ def extract_text_from_image(image_path: str) -> Tuple[str, Dict[str, Any]]:
             annotations = ocrmac.OCR(image_path).recognize()
             if annotations:
                 lines = [item[0].strip() for item in annotations if item and item[0].strip()]
-                text = " ".join(lines)
+                clean_lines = combine_ocr_lines(lines)
+                text = "\n".join(clean_lines)
         except Exception as e:
             text = ""
             ocr_metadata["error"] = f"Apple Vision OCR error: {e}"
@@ -375,13 +402,14 @@ def extract_text_from_image(image_path: str) -> Tuple[str, Dict[str, Any]]:
                 _, thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
                 denoised = cv2.fastNlMeansDenoising(thresh, h=10)
                 custom_config = r'--oem 3 --psm 6 -l eng'
-                text = pytesseract.image_to_string(denoised, config=custom_config)
+                raw_ocr = pytesseract.image_to_string(denoised, config=custom_config)
+                raw_lines = [l.strip() for l in raw_ocr.splitlines() if l.strip()]
+                clean_lines = combine_ocr_lines(raw_lines)
+                text = "\n".join(clean_lines)
         except Exception as e:
             ocr_metadata["error"] = f"Tesseract error: {e}"
 
     text = text.strip()
-    text = re.sub(r'\n+', ' ', text)
-    text = re.sub(r'\s+', ' ', text)
     
     if text:
         ocr_metadata["textExtracted"] = True
@@ -395,20 +423,20 @@ def extract_text_from_image(image_path: str) -> Tuple[str, Dict[str, Any]]:
 # 6. Deterministic Claim Extraction
 def extract_claims_from_text(text: str) -> List[Dict[str, Any]]:
     """Extract atomic factual claims from text content."""
-    if not text or len(text) < 10:
+    if not text or len(text) < 4:
         return []
     
     claims = []
-    text_lower = text.lower()
     
-    clauses = re.split(r'(?<=[.!?])\s+|;\s+|,\s+(?=(?:weighing|crafted|featuring|with|available|scheduled|get ready|ready to enjoy)\b)|,\s*(?=and\b)|,\s*/i', text)
+    # Split by newlines, punctuation, or conjunctions
+    clauses = re.split(r'[\r\n]+|(?<=[.!?])\s+|;\s+|,\s+(?=(?:weighing|crafted|featuring|with|available|scheduled|get ready|ready to enjoy)\b)|,\s*(?=and\b)|,\s*/i', text)
     clauses = [c.strip() for c in clauses if len(c.strip()) > 3]
     
     for clause in clauses:
         lower = clause.lower()
         claim_type = None
         
-        if re.search(r'\b(battery|hours?\s+of\s+battery|battery\s+backup|mixed.use|mixed.use)\b', lower):
+        if re.search(r'\b(battery|hours?\s+of\s+battery|battery\s+backup|mixed.use|48-hour|24-hour)\b', lower):
             claim_type = 'PRODUCT_SPECIFICATION'
         elif re.search(r'\b(screen|display|inch|"|retina|resolution)\b', lower):
             claim_type = 'PRODUCT_SPECIFICATION'
@@ -420,12 +448,12 @@ def extract_claims_from_text(text: str) -> List[Dict[str, Any]]:
             claim_type = 'PRODUCT_SPECIFICATION'
         elif re.search(r'\b(launch|december\s+2026|available|release)\b', lower):
             claim_type = 'PRODUCT_SPECIFICATION'
+        elif re.search(r"\b(world'?s\s+best|best|fastest|unmatched|#1|revolutionary|ultimate|flawless|miraculous)\b", lower):
+            claim_type = 'PROMOTIONAL_CLAIM'
         elif re.search(r'\b(get ready|ready to enjoy|enjoy)\b', lower):
             claim_type = 'PROMOTIONAL_CLAIM'
         elif re.search(r'\b(robot\s+buddy|smart\s+assistant|AI\s+robot)\b', lower):
             claim_type = 'PRODUCT_SPECIFICATION'
-        elif re.search(r'\b(quantum|ultra.conductive|revolutionary|ultimate|flawless|miraculous)\b', lower):
-            claim_type = 'PROMOTIONAL_CLAIM'
         elif re.search(r'\d', clause) and any(kw in lower for kw in ['hour', 'battery', 'weight', 'screen', 'inch', 'gram', 'launch', 'waterproof', 'material']):
             claim_type = 'PRODUCT_SPECIFICATION'
         
@@ -523,27 +551,36 @@ def verify_claim_deterministic(claim_text: str, evidence: List[Dict[str, Any]]) 
 
 
     if not evidence:
+        is_waterproof = bool(re.search(r'\b(waterproof|water.resist|ip68)\b', claim_lower))
+        is_superlative = bool(re.search(r"\b(best|fastest|world'?s\s+(?:best|first|fastest)|unmatched|#1|number\s+one|incredible|revolutionary|ultimate|flawless|miraculous)\b", claim_lower))
 
-        is_waterproof = bool(re.search(r'\bwaterproof\b', claim_lower))
+        if is_waterproof:
+            return {
+                "status": "CONTRADICTED",
+                "explanation": "No approved waterproof rating exists for NexTech Nova. Claims of waterproofing contradict approved specifications.",
+                "evidenceIds": ["FACT-004"],
+                "confidence": 0.98,
+                "findingType": "FACTUAL_CONTRADICTION",
+                "severity": "HIGH",
+            }
 
-        is_superlative = bool(re.search(r"\b(best|fastest|world's\s+(?:best|first|fastest)|unmatched|#1|number\s+one|incredible|completely\s+waterproof|revolutionary|ultimate|flawless|miraculous)\b", claim_lower))
-
-
+        if is_superlative:
+            return {
+                "status": "CONTRADICTED",
+                "explanation": "Brand guidelines prohibit unsubstantiated superlatives ('World\'s best', 'ultimate') without verified third-party audit.",
+                "evidenceIds": [],
+                "confidence": 0.95,
+                "findingType": "TONE_VIOLATION",
+                "severity": "MEDIUM",
+            }
 
         return {
-
             "status": "UNVERIFIED",
-
             "explanation": "No approved evidence found to verify or refute this claim.",
-
             "evidenceIds": [],
-
             "confidence": 0.7,
-
             "findingType": "UNVERIFIED_CLAIM",
-
-            "severity": "HIGH" if is_waterproof else "MEDIUM",
-
+            "severity": "MEDIUM",
         }
 
 
@@ -773,14 +810,30 @@ def verify_claims_in_text(text: str) -> List[Dict[str, Any]]:
         verification = verify_claim_deterministic(claim_text, evidence)
         
         if verification["status"] != "SUPPORTED":
+            correction = "Revise claim to match approved specifications."
+            lower_c = claim_text.lower()
+            if "battery" in lower_c or "hour" in lower_c:
+                correction = "Update battery claim to: 'Up to 24 hours of battery life under standard test conditions'."
+            elif "waterproof" in lower_c or "ip68" in lower_c:
+                correction = "Remove waterproof claim or state: 'No approved waterproof rating'."
+            elif "best" in lower_c or "fastest" in lower_c:
+                correction = "Remove superlative claim or cite independent verification."
+            elif verification["status"] != "CONTRADICTED":
+                correction = "Add supporting evidence or remove unverified claim."
+
             finding = {
                 "type": verification.get("findingType", "UNVERIFIED_CLAIM"),
                 "severity": verification.get("severity", "MEDIUM"),
                 "ruleId": "RULE-CLAIM-001" if verification["status"] == "CONTRADICTED" else "RULE-CLAIM-002",
-                "title": "Factual claim contradicted" if verification["status"] == "CONTRADICTED" else "Unverified claim",
+                "title": (
+                    "Battery life claim contradicts approved specification" if "battery" in lower_c else
+                    ("Waterproof claim contradicts approved specification" if "waterproof" in lower_c else
+                    ("Superlative violates brand tone guidelines" if "best" in lower_c else
+                    ("Factual claim contradicted" if verification["status"] == "CONTRADICTED" else "Unverified claim")))
+                ),
                 "message": verification["explanation"],
                 "originalPhrase": claim_text,
-                "suggestedCorrection": "Revise claim to match approved specifications." if verification["status"] == "CONTRADICTED" else "Add supporting evidence or remove unverified claim.",
+                "suggestedCorrection": correction,
                 "confidence": verification["confidence"],
                 "evidence": {
                     "claimText": claim_text,

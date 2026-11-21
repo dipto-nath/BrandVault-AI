@@ -1359,7 +1359,6 @@ export default function ReviewStudioPage() {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/*, .png, .jpg, .jpeg, .webp, image/png, image/jpeg, image/webp"
                   className="hidden"
                   onClick={(e) => {
                     (e.target as HTMLInputElement).value = '';
